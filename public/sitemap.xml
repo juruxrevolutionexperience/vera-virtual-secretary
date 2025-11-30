@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+    <!-- Homepage / Landing Page -->
+    <url>
+        <loc>http://localhost:8000/</loc>
+        <lastmod>2025-11-15</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <!-- Privacy Policy -->
+    <url>
+        <loc>http://localhost:8000/privacy</loc>
+        <lastmod>2025-11-15</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <!-- Terms and Conditions -->
+    <url>
+        <loc>http://localhost:8000/terms</loc>
+        <lastmod>2025-11-15</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <!--
+    NOTA: Cuando tengas tu dominio real, reemplaza "http://localhost:8000" con tu URL real.
+    Por ejemplo: "https://jurux.com"
+
+    También puedes agregar más URLs aquí en el futuro, como:
+    - Blog posts
+    - Páginas de características individuales
+    - Casos de uso
+    - etc.
+    -->
+
+</urlset>

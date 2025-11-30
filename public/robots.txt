@@ -1,0 +1,26 @@
+# robots.txt para JURUX - Vera
+# Última actualización: 2025
+
+User-agent: *
+Allow: /
+
+# Páginas que NO queremos indexar
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /billing
+Disallow: /virtual-secretary
+Disallow: /admin
+Disallow: /api
+
+# Archivos y directorios técnicos
+Disallow: /build/
+Disallow: /vendor/
+Disallow: /*.json$
+
+# Páginas permitidas explícitamente
+Allow: /
+Allow: /privacy
+Allow: /terms
+
+# Sitemap location (actualizar con tu dominio real cuando lo tengas)
+Sitemap: http://localhost:8000/sitemap.xml
