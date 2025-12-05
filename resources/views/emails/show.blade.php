@@ -154,7 +154,7 @@
 
                         <!-- Fecha -->
                         <div class="text-sm text-gray-500 whitespace-nowrap ml-4">
-                            {{ $email->received_at->format('d M Y, H:i') }}
+                            {{ formatEmailDate($email->received_at) }}
                         </div>
                     </div>
 
@@ -218,7 +218,7 @@
                                             <p class="text-sm text-gray-600 mt-1">{{ $action->description }}</p>
                                         </div>
                                         <span class="text-xs text-gray-500">
-                                            {{ $action->created_at->diffForHumans() }}
+                                            {{ formatEmailDate($action->created_at) }}
                                         </span>
                                     </div>
                                 </div>

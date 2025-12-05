@@ -65,7 +65,7 @@
                             </div>
 
                             <span class="text-xs text-gray-500 ml-2 flex-shrink-0">
-                                {{ $email->received_at->diffForHumans() }}
+                                {{ formatEmailDate($email->received_at) }}
                             </span>
                         </div>
 
