@@ -244,4 +244,89 @@ class EmailController extends Controller
 
         return response()->json(['success' => true, 'count' => $emails->count()]);
     }
+
+    /**
+     * API: Listar emails para AJAX (sin reload)
+     */
+    public function apiList(Request $request)
+    {
+        $user = Auth::user();
+
+        // Query base - igual que en index()
+        $query = Email::where('user_id', $user->id)
+            ->with('category')
+            ->orderBy('received_at', 'desc');
+
+        // Filtros (igual que en index())
+        if ($request->has('category')) {
+            $query->where('email_category_id', $request->category);
+        }
+
+        if ($request->has('filter')) {
+            switch ($request->filter) {
+                case 'unread':
+                    $query->unread();
+                    break;
+                case 'starred':
+                    $query->starred();
+                    break;
+                case 'archived':
+                    $query->archived();
+                    break;
+            }
+        }
+
+        if ($request->has('search') && $request->search) {
+            $query->search($request->search);
+        }
+
+        // Paginación
+        $emails = $query->paginate(20);
+
+        // Estadísticas
+        $stats = Email::where('user_id', $user->id)
+            ->selectRaw('
+                  COUNT(*) as total,
+                  SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as unread,
+                  SUM(CASE WHEN is_starred = 1 THEN 1 ELSE 0 END) as starred
+              ')
+            ->first();
+
+        // Transformar emails para incluir todos los campos necesarios
+        $transformedEmails = $emails->map(function ($email) {
+            return [
+                'id' => $email->id,
+                'from_name' => $email->from_name,
+                'from_email' => $email->from_email,
+                'subject' => $email->subject,
+                'excerpt' => $email->excerpt,
+                'category' => $email->category,
+                'received_at' => $email->received_at,
+                'is_read' => $email->is_read,
+                'is_starred' => $email->is_starred,
+                'has_attachments' => $email->has_attachments,
+                'attachments_count' => $email->attachments_count ?? 0,
+                'vera_processed' => $email->vera_processed ?? false,
+                'vera_tags' => $email->vera_tags ?? [],
+                'priority' => $email->priority ?? 'normal',
+            ];
+        });
+
+        // Devolver JSON
+        return response()->json([
+            'success' => true,
+            'emails' => $transformedEmails,
+            'pagination' => [
+                'current_page' => $emails->currentPage(),
+                'last_page' => $emails->lastPage(),
+                'per_page' => $emails->perPage(),
+                'total' => $emails->total(),
+            ],
+            'stats' => [
+                'total' => $stats->total ?? 0,
+                'unread' => $stats->unread ?? 0,
+                'starred' => $stats->starred ?? 0,
+            ],
+        ]);
+    }
 }

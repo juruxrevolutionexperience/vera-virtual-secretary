@@ -7,12 +7,12 @@
     </div>
 
     <!-- Email List -->
-    <div class="flex-1 overflow-y-auto">
+    <div id="emails-container" class="flex-1 overflow-y-auto">
         @forelse($emails as $email)
             <div class="email-item border-b border-gray-100 px-4 py-3 cursor-pointer transition-colors relative
-                {{ !$email->is_read ? 'unread' : '' }}
-                {{ $email->priority === 'high' ? 'priority-high' : '' }}
-                {{ $email->priority === 'urgent' ? 'priority-urgent' : '' }}"
+                    {{ !$email->is_read ? 'unread' : '' }}
+                    {{ $email->priority === 'high' ? 'priority-high' : '' }}
+                    {{ $email->priority === 'urgent' ? 'priority-urgent' : '' }}"
                 onclick="window.location='{{ route('emails.show', $email) }}'">
 
                 <div class="flex items-start gap-3">
@@ -114,7 +114,7 @@
                             @if(in_array($email->priority, ['high', 'urgent']))
                                 <span
                                     class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium
-                                    {{ $email->priority === 'urgent' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700' }}">
+                                            {{ $email->priority === 'urgent' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700' }}">
                                     @if($email->priority === 'urgent')
                                         ⚠️ Urgente
                                     @else
@@ -148,8 +148,7 @@
 
                     <!-- Starred Indicator (always visible if starred) -->
                     @if($email->is_starred)
-                        <button @click.stop="performAction({{ $email->id }}, 'toggle-star')"
-                            class="flex-shrink-0 mt-1">
+                        <button @click.stop="performAction({{ $email->id }}, 'toggle-star')" class="flex-shrink-0 mt-1">
                             <svg class="w-4 h-4 text-yellow-500 fill-yellow-500" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -188,16 +187,14 @@
                     @if($emails->onFirstPage())
                         <button disabled class="p-1.5 rounded text-gray-300 cursor-not-allowed">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 19l-7-7 7-7" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
                     @else
                         <a href="{{ $emails->previousPageUrl() }}"
                             class="p-1.5 rounded text-gray-600 hover:bg-gray-200 transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 19l-7-7 7-7" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                             </svg>
                         </a>
                     @endif
@@ -206,15 +203,13 @@
                         <a href="{{ $emails->nextPageUrl() }}"
                             class="p-1.5 rounded text-gray-600 hover:bg-gray-200 transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 5l7 7-7 7" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
                         </a>
                     @else
                         <button disabled class="p-1.5 rounded text-gray-300 cursor-not-allowed">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 5l7 7-7 7" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
                         </button>
                     @endif

@@ -143,12 +143,12 @@
                         <!-- Header -->
                         <div class="text-center mb-8">
                             <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full
-                          mb-4 shadow-lg">
+                                      mb-4 shadow-lg">
                                 <!-- Animated envelope icon -->
                                 <svg class="w-10 h-10 text-white animate-pulse" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5
-                          19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                      19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
                             </div>
                             <h2 class="text-3xl font-bold text-gray-900 mb-2">Sincronizando tu bandeja de entrada</h2>
@@ -164,8 +164,8 @@
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
                                 <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-500 ease-out
-                          shadow-lg" :style="'width: ' + progressPercentage + '%'" x-show="progressPercentage > 0"
-                                    x-transition:enter="transition ease-out duration-300"
+                                      shadow-lg" :style="'width: ' + progressPercentage + '%'"
+                                    x-show="progressPercentage > 0" x-transition:enter="transition ease-out duration-300"
                                     x-transition:enter-start="opacity-0 transform scale-x-0"
                                     x-transition:enter-end="opacity-100 transform scale-x-100">
                                 </div>
@@ -201,8 +201,8 @@
                                         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2
-                           2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0
-                          01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                       2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0
+                                      01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                         </svg>
                                     </div>
                                 </div>
@@ -219,7 +219,7 @@
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
                                                 stroke-width="4"></circle>
                                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962
-                          7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
                                     </div>
                                 </div>
@@ -231,7 +231,7 @@
                             <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9
-                          9 0 0118 0z" />
+                                      9 0 0118 0z" />
                             </svg>
                             <div class="flex-1">
                                 <p class="text-sm text-blue-800 font-medium">Esto puede tardar unos minutos</p>
@@ -264,9 +264,227 @@
     </div>
 
     <script>
-        // Auto-refresh de emails cada 2 minutos
+        // Auto-refresh de emails cada 2 minutos (SIN reload visible)
         let autoRefreshInterval = null;
         let autoRefreshEnabled = {{ $hasEmailAccounts ? 'true' : 'false' }};
+
+        // Función para actualizar emails vía AJAX
+        async function refreshEmailsAjax() {
+            try {
+                console.log('🔄 Actualizando emails vía AJAX...');
+
+                // Obtener filtros actuales de la URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const filter = urlParams.get('filter') || '';
+                const category = urlParams.get('category') || '';
+                const search = urlParams.get('search') || '';
+
+                // Construir URL de la API
+                let apiUrl = '/emails/api/list?';
+                if (filter) apiUrl += `filter=${filter}&`;
+                if (category) apiUrl += `category=${category}&`;
+                if (search) apiUrl += `search=${search}&`;
+
+                // Hacer petición AJAX
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    console.error('❌ Error al actualizar emails:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+
+                // Actualizar la lista de emails en el DOM
+                updateEmailList(data.emails);
+
+                // Actualizar estadísticas si existen
+                updateStats(data.stats);
+
+                console.log('✅ Emails actualizados:', data.emails.length);
+
+            } catch (error) {
+                console.error('❌ Error en AJAX refresh:', error);
+            }
+        }
+
+        // Función para actualizar el DOM con nuevos emails
+        // Función para actualizar el DOM con nuevos emails
+        function updateEmailList(emails) {
+            // Usar ID específico para encontrar el contenedor correcto
+            const emailListContainer = document.getElementById('emails-container');
+
+            if (!emailListContainer) {
+                console.error('❌ No se encontró el contenedor de emails');
+                return;
+            }
+
+            // Si no hay emails, mostrar mensaje
+            if (emails.length === 0) {
+                emailListContainer.innerHTML = `
+              <div class="flex flex-col items-center justify-center h-64 text-center px-4">
+                  <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 
+  00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                  </svg>
+                  <h3 class="text-lg font-semibold text-gray-900 mb-1">No hay emails</h3>
+                  <p class="text-sm text-gray-500">Tu bandeja de entrada está vacía.</p>
+              </div>
+          `;
+                return;
+            }
+
+            // Construir HTML de emails (manteniendo estructura EXACTA del original)
+            let emailsHtml = '';
+            emails.forEach(email => {
+                const isUnread = !email.is_read;
+                const categoryColors = {
+                    'primary': '#6366f1',
+                    'promotions': '#f59e0b',
+                    'social': '#10b981',
+                    'updates': '#3b82f6',
+                    'forums': '#8b5cf6',
+                    'spam': '#ef4444',
+                    'trash': '#6b7280'
+                };
+                const categoryIcons = {
+                    'primary': '📧',
+                    'promotions': '🏷️',
+                    'social': '👥',
+                    'updates': '🔔',
+                    'forums': '💬',
+                    'spam': '⚠️',
+                    'trash': '🗑️'
+                };
+
+                const categoryColor = categoryColors[email.category] || '#6b7280';
+                const categoryIcon = categoryIcons[email.category] || '📧';
+
+                emailsHtml += `
+              <div class="email-item border-b border-gray-100 px-4 py-3 cursor-pointer transition-colors relative ${isUnread ? 'unread' :
+                        ''}"
+                  onclick="window.location='/emails/${email.id}'">
+                  
+                  <div class="flex items-start gap-3">
+                      <input type="checkbox" value="${email.id}"
+                          class="email-checkbox mt-1 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                          onclick="event.stopPropagation()"
+                          x-on:click="toggleEmailSelection(${email.id})"
+                          x-bind:checked="selectedEmails.includes(${email.id})">
+                      
+                      <div class="flex-1 min-w-0">
+                          <div class="flex items-center justify-between mb-1">
+                              <div class="flex items-center gap-2 min-w-0 flex-1">
+                                  <span class="text-sm ${isUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'} 
+  truncate">
+                                      ${email.from_name || email.from_email}
+                                  </span>
+                                  ${email.category ? `
+                                      <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                                          style="background-color: ${categoryColor}20; color: ${categoryColor}">
+                                          ${categoryIcon} ${email.category.charAt(0).toUpperCase() + email.category.slice(1)}
+                                      </span>
+                                  ` : ''}
+                              </div>
+                              <span class="text-xs text-gray-500 ml-2 flex-shrink-0">
+                                  ${formatDate(email.received_at)}
+                              </span>
+                          </div>
+                          
+                          <div class="flex items-center gap-2 mb-1">
+                              <p class="text-sm ${isUnread ? 'font-medium text-gray-900' : 'text-gray-600'} truncate flex-1">
+                                  ${email.subject || '(Sin asunto)'}
+                              </p>
+                          </div>
+                          
+                          <div class="flex items-center gap-2">
+                              <p class="text-xs text-gray-500 truncate flex-1">
+                                  ${email.excerpt || ''}
+                              </p>
+                          </div>
+                          
+                          ${email.has_attachments || email.vera_processed ? `
+                              <div class="flex items-center gap-3 mt-2">
+                                  ${email.has_attachments ? `
+                                      <div class="flex items-center gap-1 text-gray-500">
+                                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 
+  6.585a6 6 0 108.486 8.486L20.5 13" />
+                                          </svg>
+                                          <span class="text-[10px]">${email.attachments_count || ''}</span>
+                                      </div>
+                                  ` : ''}
+                                  
+                                  ${email.vera_processed ? `
+                                      <div class="flex items-center gap-1 text-purple-600" title="Procesado por Vera">
+                                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                          </svg>
+                                          <span class="text-[10px] font-medium">Vera</span>
+                                      </div>
+                                  ` : ''}
+                              </div>
+                          ` : ''}
+                      </div>
+                      
+                      ${email.is_starred ? `
+                          <button onclick="event.stopPropagation(); performAction(${email.id}, 'toggle-star')"
+                              class="flex-shrink-0 mt-1">
+                              <svg class="w-4 h-4 text-yellow-500 fill-yellow-500" fill="none" stroke="currentColor"
+                                  viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 
+  1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 
+  2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 
+  00.951-.69l1.519-4.674z" />
+                              </svg>
+                          </button>
+                      ` : ''}
+                  </div>
+              </div>
+          `;
+            });
+
+            // Actualizar contenido manteniendo el contenedor intacto
+            emailListContainer.innerHTML = emailsHtml;
+        }
+
+        // Función para actualizar estadísticas
+        function updateStats(stats) {
+            // Actualizar contadores en sidebar si existen
+            const totalEl = document.querySelector('[data-stat="total"]');
+            const unreadEl = document.querySelector('[data-stat="unread"]');
+            const starredEl = document.querySelector('[data-stat="starred"]');
+
+            if (totalEl) totalEl.textContent = stats.total || 0;
+            if (unreadEl) unreadEl.textContent = stats.unread || 0;
+            if (starredEl) starredEl.textContent = stats.starred || 0;
+        }
+
+        // Función helper para formatear fecha
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Ahora';
+            if (diffMins < 60) return `${diffMins}m`;
+            if (diffHours < 24) return `${diffHours}h`;
+            if (diffDays < 7) return `${diffDays}d`;
+
+            return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+        }
 
         function startAutoRefresh() {
             if (!autoRefreshEnabled) return;
@@ -276,17 +494,16 @@
                 clearInterval(autoRefreshInterval);
             }
 
-            // Auto-refresh cada 2 minutos (120000 ms)
+            // Auto-refresh cada 2 minutos sin reload visible
             autoRefreshInterval = setInterval(() => {
-                console.log('Auto-refreshing emails...');
-                window.location.reload();
+                refreshEmailsAjax();
             }, 120000); // 2 minutos
         }
 
         // Iniciar auto-refresh cuando se carga la página
         if (autoRefreshEnabled) {
             startAutoRefresh();
-            console.log('Auto-refresh activado: cada 2 minutos');
+            console.log('✅ Auto-refresh AJAX activado: cada 2 minutos (sin reload visible)');
         }
 
         // Limpiar intervalo cuando el usuario sale de la página
@@ -335,11 +552,11 @@
                             this.statusMessage = '✅ Sincronización completada exitosamente';
                             this.progressPercentage = 100;
 
-                            // Detener polling y recargar página después de 2 segundos
+                            // Detener polling y actualizar emails vía AJAX
                             this.stopPolling();
                             setTimeout(() => {
-                                console.log('✅ Sincronización completada, recargando página...');
-                                window.location.reload();
+                                console.log('✅ Sincronización completada, actualizando emails vía AJAX...');
+                                refreshEmailsAjax(); // Usar AJAX en lugar de reload
                             }, 2000);
                         }
 
