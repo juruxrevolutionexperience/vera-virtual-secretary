@@ -323,25 +323,21 @@ class GmailSyncService
     }
 
     /**
-     * Obtener conteo aproximado de emails
+     * Obtener conteo REAL de emails en inbox
      */
     protected function getInitialEmailCount(EmailAccount $account): void
     {
         try {
-            // Obtener profile para saber total de mensajes
-            $profile = $this->gmail->users->getProfile('me');
-            $totalMessages = $profile->getMessagesTotal();
-
-            // Guardamos solo los del inbox (aprox 50-70% del total)
-            $estimatedInbox = (int) ($totalMessages * 0.6);
+            // Obtener el conteo EXACTO de mensajes en INBOX desde la etiqueta
+            $label = $this->gmail->users_labels->get('me', 'INBOX');
+            $realInboxCount = $label->getMessagesTotal();
 
             $account->update([
-                'total_expected_emails' => $estimatedInbox,
+                'total_expected_emails' => $realInboxCount,
             ]);
 
-            Log::info('Email count estimated', [
-                'total_messages' => $totalMessages,
-                'estimated_inbox' => $estimatedInbox,
+            Log::info('Email count obtained from INBOX label', [
+                'inbox_count' => $realInboxCount,
             ]);
 
         } catch (\Exception $e) {

@@ -2,14 +2,19 @@
 
   ## 🔴 PRIORIDAD ALTA (Próxima sesión)
 
-  ### 1. Evitar refresh visible en polling
+  ### 1. Revisar mensaje de sincronización (EN INVESTIGACIÓN)
+  - **Bug detectado**: Muestra "sincronizando 3890 de 2566 emails" (números inconsistentes)
+  - **Problema identificado**: Estimaba 60% de emails en inbox en lugar de contar reales
+  - **Intento de solución 06/12/2025**: Falló - mostró "201 emails" (incorrecto)
+  - **Estado actual**: Sistema revertido a versión funcional (con bug original)
+  - **Próximo paso**: Investigar API correcta de Gmail para obtener conteo real
+    - Ver: `SESION_06_DIC_2025.md` para detalles completos
+  - **Archivos**: `app/Services/GmailSyncService.php` (método `getInitialEmailCount()`)
+
+  ### 2. Evitar refresh visible en polling
   - **Problema**: Cuando la página sincroniza emails cada 2 min, se nota el refresh
   - **Solución propuesta**: Implementar actualización de emails sin recargar página usando AJAX/Fetch con JavaScript
   - **Objetivo**: Usuario no debe notar el refresco
-
-  ### 2. Revisar mensaje de sincronización
-  - **Bug detectado**: Muestra "sincronizando 3890 de 2566 emails" (números inconsistentes)
-  - **Investigar**: ¿Es solo error visual o hay problema en la lógica de sincronización?
 
   ---
 
