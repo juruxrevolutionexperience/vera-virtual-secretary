@@ -110,6 +110,8 @@ use App\Http\Controllers\EmailController;
 Route::middleware(['auth'])->prefix('emails')->name('emails.')->group(function () {
     // API endpoint para obtener emails sin reload (AJAX)
     Route::get('/api/list', [EmailController::class, 'apiList'])->name('api.list');
+    // API endpoint para obtener un email individual (vista previa)
+    Route::get('/api/{email}', [EmailController::class, 'apiShow'])->name('api.show');
     // Vista principal de emails
     Route::get('/', [EmailController::class, 'index'])->name('index');
     // Ver un email específico

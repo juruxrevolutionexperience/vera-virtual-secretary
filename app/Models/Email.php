@@ -50,7 +50,6 @@ class Email extends Model
         'provider',
         'provider_metadata',
         'status',
-        'category',
         'metadata',
     ];
 

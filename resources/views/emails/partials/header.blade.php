@@ -1,6 +1,8 @@
-<header class="h-14 bg-white border-b border-gray-200 sticky top-0 z-40 flex items-center justify-between px-6 backdrop-blur-sm bg-white/80">
+<header
+    class="h-14 bg-white border-b border-gray-200 sticky top-0 z-40 flex items-center justify-between px-6 backdrop-blur-sm bg-white/80">
     <div class="flex items-center gap-3 flex-1">
-        <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100">
+        <button onclick="toggleSidebar()"
+            class="md:hidden text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -24,8 +26,7 @@
     <div class="flex items-center gap-2 flex-1 max-w-md">
         <form action="{{ route('emails.index') }}" method="GET" class="w-full">
             <div class="relative">
-                <input type="text" name="search" value="{{ request()->search }}"
-                    placeholder="Buscar emails..."
+                <input type="text" name="search" value="{{ request()->search }}" placeholder="Buscar emails..."
                     class="w-full px-3 py-1.5 pl-9 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-gray-50">
                 <svg class="w-4 h-4 absolute left-3 top-2.5 text-gray-400" fill="none" stroke="currentColor"
                     viewBox="0 0 24 24">
@@ -34,6 +35,56 @@
                 </svg>
             </div>
         </form>
+    </div>
+
+    <!-- Búsqueda Avanzada - Agregar después del input de búsqueda existente -->
+    <button @click="$dispatch('open-advanced-search')" class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all text-sm 
+  font-medium text-gray-700 shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 
+  110-4m0 4v2m0-6V4" />
+        </svg>
+        <span>Búsqueda Avanzada</span>
+    </button>
+
+    <!-- Selector de densidad visual con iconos -->
+    <div class="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-1"
+        x-data="{ density: localStorage.getItem('email-density') || 'comfortable' }">
+
+        <!-- Botón Compacta -->
+        <button @click="density = 'compact'; localStorage.setItem('email-density', 'compact'); location.reload()"
+            :class="density === 'compact' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:text-gray-700'"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all font-medium text-xs"
+            title="Vista compacta">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <span>Compacta</span>
+        </button>
+
+        <!-- Botón Cómoda -->
+        <button
+            @click="density = 'comfortable'; localStorage.setItem('email-density', 'comfortable'); location.reload()"
+            :class="density === 'comfortable' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:text-gray-700'"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all font-medium text-xs"
+            title="Vista cómoda (recomendada)">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+            <span>Cómoda</span>
+        </button>
+
+        <!-- Botón Espaciosa -->
+        <button @click="density = 'spacious'; localStorage.setItem('email-density', 'spacious'); location.reload()"
+            :class="density === 'spacious' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:text-gray-700'"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all font-medium text-xs"
+            title="Vista espaciosa">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
+            </svg>
+            <span>Espaciosa</span>
+        </button>
     </div>
 
     <!-- Actions -->
@@ -75,7 +126,8 @@
             class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm"
             title="Gestionar Cuentas de Email">
             <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
             <span class="hidden sm:inline">Cuentas</span>
             <span class="sm:hidden">📧</span>
@@ -89,14 +141,14 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            <span class="hidden group-hover:block absolute -bottom-8 right-0 px-2 py-1 text-xs bg-gray-800 text-white rounded shadow-lg whitespace-nowrap z-50">
+            <span
+                class="hidden group-hover:block absolute -bottom-8 right-0 px-2 py-1 text-xs bg-gray-800 text-white rounded shadow-lg whitespace-nowrap z-50">
                 Auto-refresh: cada 2 min
             </span>
         </button>
 
         <!-- Settings -->
-        <button
-            class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+        <button class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
             title="Configuración">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

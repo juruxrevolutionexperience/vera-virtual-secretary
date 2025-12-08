@@ -68,10 +68,260 @@
         .category-badge:hover {
             transform: translateX(2px);
         }
+
+        /* Densidades de vista */
+        .email-item.density-compact {
+            padding: 8px 16px !important;
+        }
+
+        .email-item.density-comfortable {
+            padding: 12px 16px !important;
+        }
+
+        .email-item.density-spacious {
+            padding: 16px 20px !important;
+        }
+
+        /* Densidades de vista - DIFERENCIAS MÁS NOTORIAS */
+        .email-item.density-compact {
+            padding: 6px 12px !important;
+        }
+
+        .email-item.density-compact .text-sm {
+            font-size: 0.813rem !important;
+            line-height: 1.3 !important;
+        }
+
+        .email-item.density-compact .text-xs {
+            font-size: 0.688rem !important;
+        }
+
+        .email-item.density-comfortable {
+            padding: 14px 16px !important;
+        }
+
+        .email-item.density-spacious {
+            padding: 20px 24px !important;
+        }
+
+        .email-item.density-spacious .text-sm {
+            font-size: 0.938rem !important;
+            line-height: 1.6 !important;
+        }
+
+        .email-item.density-spacious .text-xs {
+            font-size: 0.813rem !important;
+        }
+
+        /* Mejores hover effects */
+        .email-item:hover {
+            background-color: #f3f4f6;
+            transform: translateX(2px);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Mejores indicadores de no leído */
+        .email-item.unread {
+            background-color: #fefce8;
+            border-left: 4px solid #6366f1;
+        }
+
+        .email-item.unread:hover {
+            background-color: #fef3c7;
+        }
+
+        .email-item {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .email-item * {
+            transition: font-size 0.2s ease, line-height 0.2s ease;
+        }
+
+        /* Email seleccionado (vista previa activa) */
+        .email-item.email-selected {
+            background-color: #ede9fe !important;
+            border-left: 4px solid #7c3aed !important;
+            box-shadow: inset 0 0 0 1px #c4b5fd;
+        }
+
+        .email-item.email-selected:hover {
+            background-color: #ddd6fe !important;
+        }
+
+        /* Tooltip para doble click */
+        .email-item {
+            position: relative;
+        }
+
+        .email-item::after {
+            content: '💡 Doble click para abrir completo';
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+        }
+
+        .email-item:hover::after {
+            opacity: 0.9;
+            transition-delay: 1s;
+        }
+
+        .email-item.email-selected::after {
+            content: '💡 Doble click o usa el botón ↗️';
+        }
+
+        /* Ocultar elementos con x-cloak hasta que Alpine.js esté listo */
+        [x-cloak] {
+            display: none !important;
+        }
+
+        /* Animaciones suaves para el modal */
+        .modal-enter {
+            animation: modalFadeIn 0.3s ease-out;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
     </style>
 </head>
 
 <body class="antialiased bg-[#fafafa] font-['Inter'] text-[#1f2937]" x-data="emailApp()">
+
+    <script>
+        // Registrar componente Alpine.js para vista previa de emails
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('emailPreview', () => ({
+                selectedEmailId: null,
+                email: {},
+                loading: false,
+
+                async loadEmail(emailId) {
+                    this.loading = true;
+                    this.selectedEmailId = emailId;
+
+                    try {
+                        const response = await fetch(`/emails/api/${emailId}`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        if (!response.ok) {
+                            console.error('Error al cargar email:', response.status);
+                            return;
+                        }
+
+                        const data = await response.json();
+                        this.email = data.email;
+
+                    } catch (error) {
+                        console.error('Error en AJAX:', error);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async toggleStar() {
+                    try {
+                        const response = await fetch(`/emails/${this.email.id}/toggle-star`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            }
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.email.is_starred = data.is_starred;
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                    }
+                },
+
+                async archiveEmail() {
+                    if (!confirm('¿Archivar este email?')) return;
+
+                    try {
+                        const response = await fetch(`/emails/${this.email.id}/archive`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            }
+                        });
+
+                        if (response.ok) {
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                    }
+                },
+
+                async deleteEmail() {
+                    if (!confirm('¿Eliminar este email?')) return;
+
+                    try {
+                        const response = await fetch(`/emails/${this.email.id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            }
+                        });
+
+                        if (response.ok) {
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                    }
+                },
+
+                formatDate(dateString) {
+                    const date = new Date(dateString);
+                    return date.toLocaleString('es-ES', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                },
+
+                formatFileSize(bytes) {
+                    if (bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+                }
+            }));
+        });
+    </script>
 
     <div class="flex min-h-screen">
         <!-- Sidebar -->
@@ -143,12 +393,13 @@
                         <!-- Header -->
                         <div class="text-center mb-8">
                             <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full
-                                      mb-4 shadow-lg">
+                                                                                  mb-4 shadow-lg">
                                 <!-- Animated envelope icon -->
                                 <svg class="w-10 h-10 text-white animate-pulse" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5
-                                      19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5
+                                                                                  19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
                             </div>
                             <h2 class="text-3xl font-bold text-gray-900 mb-2">Sincronizando tu bandeja de entrada</h2>
@@ -164,8 +415,9 @@
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
                                 <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-500 ease-out
-                                      shadow-lg" :style="'width: ' + progressPercentage + '%'"
-                                    x-show="progressPercentage > 0" x-transition:enter="transition ease-out duration-300"
+                                                                                  shadow-lg"
+                                    :style="'width: ' + progressPercentage + '%'" x-show="progressPercentage > 0"
+                                    x-transition:enter="transition ease-out duration-300"
                                     x-transition:enter-start="opacity-0 transform scale-x-0"
                                     x-transition:enter-end="opacity-100 transform scale-x-100">
                                 </div>
@@ -200,9 +452,10 @@
                                     <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
                                         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2
-                                       2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0
-                                      01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2
+                                                                                   2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0
+                                                                                  01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                         </svg>
                                     </div>
                                 </div>
@@ -218,8 +471,10 @@
                                         <svg class="w-6 h-6 text-white animate-spin" fill="none" viewBox="0 0 24 24">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
                                                 stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962
-                                      7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            <path class="opacity-75" fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962
+                                                                                  7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                            </path>
                                         </svg>
                                     </div>
                                 </div>
@@ -231,7 +486,7 @@
                             <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9
-                                      9 0 0118 0z" />
+                                                                                  9 0 0118 0z" />
                             </svg>
                             <div class="flex-1">
                                 <p class="text-sm text-blue-800 font-medium">Esto puede tardar unos minutos</p>
@@ -366,9 +621,9 @@
                 const categoryColor = categoryColors[email.category] || '#6b7280';
                 const categoryIcon = categoryIcons[email.category] || '📧';
 
+                const density = localStorage.getItem('email-density') || 'comfortable';
                 emailsHtml += `
-              <div class="email-item border-b border-gray-100 px-4 py-3 cursor-pointer transition-colors relative ${isUnread ? 'unread' :
-                        ''}"
+      <div class="email-item density-${density} border-b border-gray-100 cursor-pointer relative ${isUnread ? 'unread' : ''}"
                   onclick="window.location='/emails/${email.id}'">
                   
                   <div class="flex items-start gap-3">
@@ -598,7 +853,101 @@
             }
         }
 
-        function emailApp() { }
+
+        // Función para búsqueda avanzada
+        function advancedSearch() {
+            return {
+                isOpen: false,
+                filters: {
+                    searchText: '',
+                    unreadOnly: false,
+                    starredOnly: false,
+                    archivedOnly: false,
+                    hasAttachments: false,
+                    dateRange: '',
+                    dateFrom: '',
+                    dateTo: ''
+                },
+
+                openModal() {
+                    this.isOpen = true;
+                    document.body.style.overflow = 'hidden';
+                },
+
+                closeModal() {
+                    this.isOpen = false;
+                    document.body.style.overflow = 'auto';
+                },
+
+                setDateRange(range) {
+                    this.filters.dateRange = range;
+
+                    // Auto-calcular fechas para rangos predefinidos
+                    const today = new Date();
+                    if (range === 'today') {
+                        this.filters.dateFrom = today.toISOString().split('T')[0];
+                        this.filters.dateTo = today.toISOString().split('T')[0];
+                    } else if (range === 'week') {
+                        const weekAgo = new Date(today);
+                        weekAgo.setDate(today.getDate() - 7);
+                        this.filters.dateFrom = weekAgo.toISOString().split('T')[0];
+                        this.filters.dateTo = today.toISOString().split('T')[0];
+                    } else if (range === 'month') {
+                        const monthAgo = new Date(today);
+                        monthAgo.setMonth(today.getMonth() - 1);
+                        this.filters.dateFrom = monthAgo.toISOString().split('T')[0];
+                        this.filters.dateTo = today.toISOString().split('T')[0];
+                    }
+                },
+
+                resetFilters() {
+                    this.filters = {
+                        searchText: '',
+                        unreadOnly: false,
+                        starredOnly: false,
+                        archivedOnly: false,
+                        hasAttachments: false,
+                        dateRange: '',
+                        dateFrom: '',
+                        dateTo: ''
+                    };
+                },
+
+                applySearch() {
+                    // Construir URL con parámetros
+                    let url = '/emails?';
+
+                    if (this.filters.searchText) {
+                        url += `search=${encodeURIComponent(this.filters.searchText)}&`;
+                    }
+
+                    // Solo permitir UN filtro de estado a la vez (excluyentes)
+                    if (this.filters.unreadOnly) {
+                        url += `filter=unread&`;
+                    } else if (this.filters.starredOnly) {
+                        url += `filter=starred&`;
+                    } else if (this.filters.archivedOnly) {
+                        url += `filter=archived&`;
+                    }
+
+                    if (this.filters.hasAttachments) {
+                        url += `has_attachments=1&`;
+                    }
+
+                    if (this.filters.dateFrom) {
+                        url += `date_from=${this.filters.dateFrom}&`;
+                    }
+
+                    if (this.filters.dateTo) {
+                        url += `date_to=${this.filters.dateTo}&`;
+                    }
+
+                    // Remover el último & y redirigir
+                    url = url.slice(0, -1);
+                    window.location.href = url;
+                }
+            }
+        }
 
 
         function emailApp() {
@@ -681,7 +1030,265 @@
             sidebar.classList.toggle('hidden');
             overlay.classList.toggle('hidden');
         }
+
+        // Función global para cargar email en vista previa
+        let currentSelectedEmailId = null;
+        let clickTimeout = null;
+
+        function handleEmailClick(emailId, event) {
+            // Prevenir que se dispare también el doble click
+            if (clickTimeout !== null) {
+                return;
+            }
+
+            // Esperar 300ms para distinguir entre click simple y doble click
+            clickTimeout = setTimeout(() => {
+                loadEmailPreview(emailId);
+                clickTimeout = null;
+            }, 300);
+        }
+
+        function openEmailFullPage(emailId) {
+            // Cancelar el timeout del click simple
+            if (clickTimeout !== null) {
+                clearTimeout(clickTimeout);
+                clickTimeout = null;
+            }
+
+            // Abrir página completa
+            window.location.href = `/emails/${emailId}`;
+        }
+
+        function loadEmailPreview(emailId) {
+            // Remover highlight del anterior
+            if (currentSelectedEmailId) {
+                const prevEmail = document.getElementById(`email-${currentSelectedEmailId}`);
+                if (prevEmail) {
+                    prevEmail.classList.remove('email-selected');
+                }
+            }
+
+            // Agregar highlight al nuevo
+            const emailElement = document.getElementById(`email-${emailId}`);
+            if (emailElement) {
+                emailElement.classList.add('email-selected');
+            }
+
+            // Guardar el ID actual
+            currentSelectedEmailId = emailId;
+
+            // Disparar evento Alpine.js
+            window.dispatchEvent(new CustomEvent('load-email', {
+                detail: { emailId: emailId }
+            }));
+        }
+
+        // Atajos de teclado: Flechas arriba/abajo para navegar entre emails
+        document.addEventListener('keydown', (event) => {
+            // Solo activar si no estamos en un input/textarea
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            // Obtener todos los emails visibles
+            const emailItems = Array.from(document.querySelectorAll('.email-item'));
+            if (emailItems.length === 0) return;
+
+            // Encontrar el email actualmente seleccionado
+            let currentIndex = emailItems.findIndex(item => item.classList.contains('email-selected'));
+
+            // Si no hay ninguno seleccionado, empezar desde el primero
+            if (currentIndex === -1 && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+                currentIndex = 0;
+                const firstEmailId = emailItems[0].getAttribute('data-email-id');
+                if (firstEmailId) {
+                    loadEmailPreview(parseInt(firstEmailId));
+                    emailItems[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return;
+            }
+
+            // Navegar con flechas
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                const nextIndex = Math.min(currentIndex + 1, emailItems.length - 1);
+                if (nextIndex !== currentIndex) {
+                    const nextEmailId = emailItems[nextIndex].getAttribute('data-email-id');
+                    if (nextEmailId) {
+                        loadEmailPreview(parseInt(nextEmailId));
+                        emailItems[nextIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                const prevIndex = Math.max(currentIndex - 1, 0);
+                if (prevIndex !== currentIndex) {
+                    const prevEmailId = emailItems[prevIndex].getAttribute('data-email-id');
+                    if (prevEmailId) {
+                        loadEmailPreview(parseInt(prevEmailId));
+                        emailItems[prevIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            }
+        });
     </script>
+
+
+    <!-- Modal de Búsqueda Avanzada -->
+    <div x-data="advancedSearch()" x-show="isOpen" @open-advanced-search.window="openModal()" x-cloak
+        class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+
+        <!-- Overlay -->
+        <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" @click="closeModal()" x-show="isOpen"
+            x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200"
+            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+        </div>
+
+        <!-- Modal Panel -->
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-3xl" @click.away="closeModal()"
+                x-show="isOpen" x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0 transform scale-95"
+                x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100 transform scale-100"
+                x-transition:leave-end="opacity-0 transform scale-95">
+
+                <!-- Header -->
+                <div
+                    class="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900">Búsqueda Avanzada</h3>
+                            <p class="text-sm text-gray-600">Encuentra emails con filtros específicos</p>
+                        </div>
+                    </div>
+                    <button @click="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="p-6 space-y-5">
+
+                    <!-- Campo de texto principal -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            Buscar en
+                        </label>
+                        <input type="text" x-model="filters.searchText"
+                            placeholder="Buscar en remitente, asunto o contenido..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 
+  focus:border-transparent text-sm">
+                    </div>
+
+                    <!-- Filtros -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            Filtros
+                        </label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg cursor-pointer
+  hover:bg-gray-50 transition-colors">
+                                <input type="checkbox" x-model="filters.unreadOnly"
+                                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                <span class="text-sm text-gray-700">📧 No leídos</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg cursor-pointer
+  hover:bg-gray-50 transition-colors">
+                                <input type="checkbox" x-model="filters.starredOnly"
+                                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                <span class="text-sm text-gray-700">⭐ Destacados</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg cursor-pointer
+  hover:bg-gray-50 transition-colors">
+                                <input type="checkbox" x-model="filters.archivedOnly"
+                                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                <span class="text-sm text-gray-700">📦 Archivados</span>
+                            </label>
+                            <label class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg cursor-pointer
+  hover:bg-gray-50 transition-colors">
+                                <input type="checkbox" x-model="filters.hasAttachments"
+                                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                <span class="text-sm text-gray-700">📎 Con adjuntos</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Filtro por Fecha -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            Rango de fechas
+                        </label>
+                        <div class="grid grid-cols-4 gap-2 mb-3">
+                            <button @click="setDateRange('today')" :class="filters.dateRange === 'today' ? 'bg-purple-100 border-purple-500 text-purple-700' : 
+  'bg-white border-gray-300 text-gray-700'"
+                                class="px-3 py-2 border rounded-lg text-xs font-medium transition-all hover:shadow-sm">
+                                Hoy
+                            </button>
+                            <button @click="setDateRange('week')" :class="filters.dateRange === 'week' ? 'bg-purple-100 border-purple-500 text-purple-700' : 
+  'bg-white border-gray-300 text-gray-700'"
+                                class="px-3 py-2 border rounded-lg text-xs font-medium transition-all hover:shadow-sm">
+                                Esta semana
+                            </button>
+                            <button @click="setDateRange('month')" :class="filters.dateRange === 'month' ? 'bg-purple-100 border-purple-500 text-purple-700' : 
+  'bg-white border-gray-300 text-gray-700'"
+                                class="px-3 py-2 border rounded-lg text-xs font-medium transition-all hover:shadow-sm">
+                                Este mes
+                            </button>
+                            <button @click="setDateRange('custom')" :class="filters.dateRange === 'custom' ? 'bg-purple-100 border-purple-500 text-purple-700' 
+  : 'bg-white border-gray-300 text-gray-700'"
+                                class="px-3 py-2 border rounded-lg text-xs font-medium transition-all hover:shadow-sm">
+                                Personalizado
+                            </button>
+                        </div>
+                        <!-- Fechas personalizadas -->
+                        <div x-show="filters.dateRange === 'custom'" x-transition class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Desde</label>
+                                <input type="date" x-model="filters.dateFrom" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500
+   focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Hasta</label>
+                                <input type="date" x-model="filters.dateTo" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500
+   focus:border-transparent">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+                <div class="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
+                    <button @click="resetFilters()"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+                        Limpiar filtros
+                    </button>
+                    <div class="flex gap-3">
+                        <button @click="closeModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 
+  transition-colors">
+                            Cancelar
+                        </button>
+                        <button @click="applySearch()" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium 
+  transition-colors shadow-sm">
+                            Buscar
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>

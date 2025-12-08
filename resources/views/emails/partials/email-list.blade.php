@@ -9,11 +9,16 @@
     <!-- Email List -->
     <div id="emails-container" class="flex-1 overflow-y-auto">
         @forelse($emails as $email)
-            <div class="email-item border-b border-gray-100 px-4 py-3 cursor-pointer transition-colors relative
-                    {{ !$email->is_read ? 'unread' : '' }}
-                    {{ $email->priority === 'high' ? 'priority-high' : '' }}
-                    {{ $email->priority === 'urgent' ? 'priority-urgent' : '' }}"
-                onclick="window.location='{{ route('emails.show', $email) }}'">
+            <div id="email-{{ $email->id }}"
+                class="email-item border-b border-gray-100 cursor-pointer relative
+                  density-comfortable
+                            {{ !$email->is_read ? 'unread' : '' }}
+                            {{ $email->priority === 'high' ? 'priority-high' : '' }}
+                            {{ $email->priority === 'urgent' ? 'priority-urgent' : '' }}"
+                onclick="handleEmailClick({{ $email->id }}, event)"
+                ondblclick="openEmailFullPage({{ $email->id }})"
+                data-email-id="{{ $email->id }}"
+                data-email-url="{{ route('emails.show', $email) }}">
 
                 <div class="flex items-start gap-3">
                     <!-- Checkbox -->
@@ -114,7 +119,7 @@
                             @if(in_array($email->priority, ['high', 'urgent']))
                                 <span
                                     class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium
-                                            {{ $email->priority === 'urgent' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700' }}">
+                                                            {{ $email->priority === 'urgent' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700' }}">
                                     @if($email->priority === 'urgent')
                                         ⚠️ Urgente
                                     @else
@@ -218,3 +223,12 @@
         </div>
     @endif
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const density = localStorage.getItem('email-density') || 'comfortable';
+        document.querySelectorAll('.email-item').forEach(item => {
+            item.classList.add(`density-${density}`);
+        });
+    });
+</script>

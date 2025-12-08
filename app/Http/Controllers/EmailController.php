@@ -51,10 +51,12 @@ class EmailController extends Controller
             ->orderBy('received_at', 'desc');
 
         // Filtros
-        if ($request->has('category')) {
+        // Filtro por categoría (solo IDs numéricos desde sidebar)
+        if ($request->has('category') && $request->category && is_numeric($request->category)) {
             $query->where('email_category_id', $request->category);
         }
 
+        // Filtros de estado (unread, starred, archived)
         if ($request->has('filter')) {
             switch ($request->filter) {
                 case 'unread':
@@ -66,16 +68,32 @@ class EmailController extends Controller
                 case 'archived':
                     $query->archived();
                     break;
-                // case 'urgent':
-                //     $query->urgent();
-                //     break;
             }
+        }
+        
+        // NUEVOS FILTROS DE BÚSQUEDA AVANZADA
+
+        // Filtro por adjuntos
+        if ($request->has('has_attachments') && $request->has_attachments == '1') {
+            $query->where('has_attachments', true);
+        }
+
+        // Filtro por rango de fechas - Desde
+        if ($request->has('date_from') && $request->date_from) {
+            $query->whereDate('received_at', '>=', $request->date_from);
+        }
+
+        // Filtro por rango de fechas - Hasta
+        if ($request->has('date_to') && $request->date_to) {
+            $query->whereDate('received_at', '<=', $request->date_to);
         }
 
         // Búsqueda
         if ($request->has('search') && $request->search) {
             $query->search($request->search);
         }
+
+
 
         // Paginación
         $emails = $query->paginate(20);
@@ -246,6 +264,56 @@ class EmailController extends Controller
     }
 
     /**
+     * API: Obtener un email individual para vista previa (sin reload)
+     */
+    public function apiShow(Email $email)
+    {
+        // Verificar que el email pertenece al usuario autenticado
+        if ($email->user_id !== Auth::id()) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        // Marcar como leído si no lo está
+        if (!$email->is_read) {
+            $email->markAsRead();
+        }
+
+        // Cargar relaciones necesarias
+        $email->load(['category', 'attachments', 'veraActions.user']);
+
+        // Devolver JSON con todos los datos necesarios
+        return response()->json([
+            'success' => true,
+            'email' => [
+                'id' => $email->id,
+                'from_name' => $email->from_name,
+                'from_email' => $email->from_email,
+                'to' => $email->to,
+                'cc' => $email->cc,
+                'bcc' => $email->bcc,
+                'subject' => $email->subject,
+                'body_html' => $email->body_html,
+                'body_text' => $email->body_text,
+                'category' => $email->category,
+                'received_at' => $email->received_at,
+                'is_read' => $email->is_read,
+                'is_starred' => $email->is_starred,
+                'is_archived' => $email->is_archived,
+                'has_attachments' => $email->has_attachments,
+                'attachments' => $email->attachments,
+                'attachments_count' => $email->attachments_count ?? 0,
+                'vera_processed' => $email->vera_processed ?? false,
+                'vera_summary' => $email->vera_summary,
+                'vera_tags' => $email->vera_tags ?? [],
+                'vera_sentiment_score' => $email->vera_sentiment_score,
+                'vera_action_required' => $email->vera_action_required,
+                'vera_actions' => $email->veraActions,
+                'priority' => $email->priority ?? 'normal',
+            ]
+        ]);
+    }
+
+    /**
      * API: Listar emails para AJAX (sin reload)
      */
     public function apiList(Request $request)
@@ -257,11 +325,13 @@ class EmailController extends Controller
             ->with('category')
             ->orderBy('received_at', 'desc');
 
-        // Filtros (igual que en index())
-        if ($request->has('category')) {
+        // Filtros
+        // Filtro por categoría (solo IDs numéricos desde sidebar)
+        if ($request->has('category') && $request->category && is_numeric($request->category)) {
             $query->where('email_category_id', $request->category);
         }
 
+        // Filtros de estado (unread, starred, archived)
         if ($request->has('filter')) {
             switch ($request->filter) {
                 case 'unread':
@@ -276,6 +346,24 @@ class EmailController extends Controller
             }
         }
 
+        // FILTROS DE BÚSQUEDA AVANZADA
+
+        // Filtro por adjuntos
+        if ($request->has('has_attachments') && $request->has_attachments == '1') {
+            $query->where('has_attachments', true);
+        }
+
+        // Filtro por rango de fechas - Desde
+        if ($request->has('date_from') && $request->date_from) {
+            $query->whereDate('received_at', '>=', $request->date_from);
+        }
+
+        // Filtro por rango de fechas - Hasta
+        if ($request->has('date_to') && $request->date_to) {
+            $query->whereDate('received_at', '<=', $request->date_to);
+        }
+
+        // Búsqueda
         if ($request->has('search') && $request->search) {
             $query->search($request->search);
         }
