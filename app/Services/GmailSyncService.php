@@ -118,6 +118,9 @@ class GmailSyncService
 
                     if ($result['action'] === 'created') {
                         $totalCreated++;
+
+                        // 🤖 Disparar Job de Vera para analizar el email automáticamente
+                        \App\Jobs\ProcessEmailWithVera::dispatch($result['email']);
                     } elseif ($result['action'] === 'updated') {
                         $totalUpdated++;
                     }
@@ -273,6 +276,9 @@ class GmailSyncService
                                     'subject' => $result['email']->subject,
                                     'from' => $result['email']->from_email,
                                 ]);
+
+                                // 🤖 Disparar Job de Vera para analizar el email automáticamente
+                                \App\Jobs\ProcessEmailWithVera::dispatch($result['email']);
                             } elseif ($result['action'] === 'updated') {
                                 $totalUpdated++;
                             }

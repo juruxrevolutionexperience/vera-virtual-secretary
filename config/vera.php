@@ -15,14 +15,20 @@ return [
     'enabled' => env('VERA_ENABLED', false),
 
     // Proveedor de IA
-    'ai_provider' => env('VERA_AI_PROVIDER', 'openai'), // openai, anthropic, local
+    'ai_provider' => env('VERA_AI_PROVIDER', 'gemini'), // gemini, openai, anthropic, local
 
     // API Keys
+    'gemini_key' => env('GEMINI_API_KEY'),
     'openai_key' => env('OPENAI_API_KEY'),
     'anthropic_key' => env('ANTHROPIC_API_KEY'),
 
-    // Modelo a usar
-    'model' => env('VERA_AI_MODEL', 'gpt-4'),
+    // Modelos por proveedor
+    'gemini_model' => env('GEMINI_MODEL', 'gemini-1.5-flash'),
+    'openai_model' => env('OPENAI_MODEL', 'gpt-4-turbo-preview'),
+    'anthropic_model' => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
+
+    // Modelo a usar (legacy - mantener por compatibilidad)
+    'model' => env('VERA_AI_MODEL', 'gemini-1.5-flash'),
 
     // Personalidad de Vera
     'personality' => [
