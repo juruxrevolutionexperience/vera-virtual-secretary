@@ -41,7 +41,11 @@ class ProcessEmailWithVera implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(VeraService $veraService, \App\Services\VeraRulesEngine $rulesEngine): void
+    public function handle(
+        VeraService $veraService,
+        \App\Services\VeraRulesEngine $rulesEngine,
+        \App\Services\VeraResponseGenerator $responseGenerator
+    ): void
     {
         // Verificar que Vera está habilitada
         if (!$veraService->isEnabled()) {
@@ -75,12 +79,33 @@ class ProcessEmailWithVera implements ShouldQueue
             // Aplicar reglas automáticas
             $appliedRules = $rulesEngine->applyRules($this->email->fresh());
 
+            // Generar respuesta automática si es necesario
+            $responseGenerated = false;
+            try {
+                $response = $responseGenerator->generateResponse($this->email->fresh());
+                if ($response) {
+                    $responseGenerated = true;
+                    Log::info('✉️  Respuesta automática generada', [
+                        'email_id' => $this->email->id,
+                        'action_id' => $response->id,
+                        'confidence' => $response->confidence_score,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // No fallar todo el proceso si la generación de respuesta falla
+                Log::warning('⚠️  Error generando respuesta automática (continuando procesamiento)', [
+                    'email_id' => $this->email->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             Log::info('✅ Email procesado con Vera exitosamente', [
                 'email_id' => $this->email->id,
                 'method' => $analysis['method'] ?? 'unknown',
                 'summary' => $analysis['summary'],
                 'priority' => $analysis['priority'] ?? 'normal',
                 'rules_applied' => count($appliedRules),
+                'response_generated' => $responseGenerated,
             ]);
 
         } catch (\Exception $e) {
