@@ -44,4 +44,12 @@ class User extends Authenticatable
             is_null($this->current_period_end) || $this->current_period_end->isFuture()
         );
     }
+
+    /**
+     * Relación con la configuración de Vera
+     */
+    public function veraConfig()
+    {
+        return $this->hasOne(\App\Models\VeraConfig::class);
+    }
 }

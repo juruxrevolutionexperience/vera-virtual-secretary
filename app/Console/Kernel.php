@@ -39,6 +39,13 @@ class Kernel extends ConsoleKernel
                 ]);
             }
         })->hourly()->name('check-email-tokens');
+
+        // Re-análisis semanal de Vera para que siga aprendiendo
+        $schedule->command('vera:weekly-reanalysis')
+            ->weekly()
+            ->sundays()
+            ->at('02:00')
+            ->name('vera-weekly-reanalysis');
     }
 
     /**

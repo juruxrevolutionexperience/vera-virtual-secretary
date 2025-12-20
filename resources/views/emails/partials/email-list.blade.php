@@ -67,6 +67,22 @@
                                         {{ $categoryIcon }} {{ ucfirst($email->category) }}
                                     </span>
                                 @endif
+
+                                <!-- Vera Response Badge -->
+                                @php
+                                    $hasVeraResponse = $email->veraActions()
+                                        ->where('action_type', 'replied')
+                                        ->where('user_feedback', 'pending')
+                                        ->exists();
+                                @endphp
+                                @if($hasVeraResponse)
+                                    <a href="{{ route('vera.responses') }}"
+                                       class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 transition"
+                                       title="Vera generó una respuesta para este email"
+                                       onclick="event.stopPropagation()">
+                                        🤖 Vera Respondió
+                                    </a>
+                                @endif
                             </div>
 
                             <span class="text-xs text-gray-500 ml-2 flex-shrink-0">

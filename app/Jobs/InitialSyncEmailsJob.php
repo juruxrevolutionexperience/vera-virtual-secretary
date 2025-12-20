@@ -60,6 +60,12 @@ class InitialSyncEmailsJob implements ShouldQueue
                 'total_synced' => $this->emailAccount->synced_emails_count,
             ]);
 
+            // Disparar análisis automático de Vera
+            Log::info('🧠 Dispatching Vera analysis for user', [
+                'user_id' => $this->emailAccount->user_id,
+            ]);
+            \App\Jobs\AnalyzeUserEmailsJob::dispatch($this->emailAccount->user_id);
+
         } catch (\Exception $e) {
             Log::error('❌ Initial sync failed', [
                 'account_id' => $this->emailAccount->id,

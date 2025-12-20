@@ -356,7 +356,8 @@
 
                     <!-- Menu Items -->
                     <div class="py-1">
-                        <a href="{{ route('profile.edit') }}"
+                        <!-- Ajustes -->
+                        <a href="#" @click.prevent="window.dispatchEvent(new CustomEvent('open-settings-modal'))"
                             class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                             <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1009,6 +1010,9 @@
         </div>
     </div>
 
+
+    <!-- Settings Modal (Estilo OpenAI) -->
+    @include('components.settings-modal')
 
     <script>
         // Sidebar toggle

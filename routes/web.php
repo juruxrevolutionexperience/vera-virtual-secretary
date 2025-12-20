@@ -129,4 +129,42 @@ Route::middleware(['auth'])->prefix('emails')->name('emails.')->group(function (
     Route::post('/bulk-action', [EmailController::class, 'bulkAction'])->name('bulk-action');
 });
 
+// ========================================
+// RUTAS DE VERA (AI ASSISTANT)
+// ========================================
+use App\Http\Controllers\VeraController;
+
+Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
+    // Dashboard de Vera
+    Route::get('/dashboard', [VeraController::class, 'dashboard'])->name('dashboard');
+
+    // Onboarding de Vera (primera configuración)
+    Route::get('/onboarding', [VeraController::class, 'onboarding'])->name('onboarding');
+    Route::post('/onboarding', [VeraController::class, 'saveOnboarding'])->name('onboarding.save');
+
+    // Configuración de Vera
+    Route::get('/config', [VeraController::class, 'config'])->name('config');
+    Route::patch('/config', [VeraController::class, 'updateConfig'])->name('config.update');
+
+    // Análisis manual
+    Route::post('/analyze', [VeraController::class, 'runAnalysis'])->name('analyze');
+
+    // Estadísticas (API)
+    Route::get('/stats', [VeraController::class, 'stats'])->name('stats');
+
+    // Check onboarding needed (API)
+    Route::get('/check-onboarding', [VeraController::class, 'checkOnboardingNeeded'])->name('check-onboarding');
+
+    // Página de respuestas de Vera
+    Route::get('/responses', [VeraController::class, 'responsesIndex'])->name('responses');
+
+    // Respuestas automáticas de Vera (API)
+    Route::get('/responses/pending', [VeraController::class, 'getPendingResponses'])->name('responses.pending');
+    Route::get('/responses/{response}', [VeraController::class, 'getResponse'])->name('responses.show');
+    Route::post('/responses/{response}/approve', [VeraController::class, 'approveResponse'])->name('responses.approve');
+    Route::post('/responses/{response}/reject', [VeraController::class, 'rejectResponse'])->name('responses.reject');
+    Route::patch('/responses/{response}', [VeraController::class, 'updateResponse'])->name('responses.update');
+    Route::post('/responses/{response}/send', [VeraController::class, 'sendResponse'])->name('responses.send');
+});
+
 require __DIR__ . '/auth.php';

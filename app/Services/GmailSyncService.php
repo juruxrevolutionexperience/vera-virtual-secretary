@@ -552,6 +552,10 @@ class GmailSyncService
             return ['action' => 'updated', 'email' => $email];
         } else {
             $email = Email::create($emailData);
+
+            // Disparar procesamiento con Vera para emails nuevos
+            \App\Jobs\ProcessEmailWithVera::dispatch($email);
+
             return ['action' => 'created', 'email' => $email];
         }
     }

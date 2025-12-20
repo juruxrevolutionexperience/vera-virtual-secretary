@@ -12,6 +12,14 @@ use Illuminate\Support\Str;
 class VeraReportGenerator
 {
     /**
+     * Generar reporte en formato HTML para web
+     */
+    public function generateReport(array $analysis): string
+    {
+        return view('vera.partials.analysis-report', ['analysis' => $analysis])->render();
+    }
+
+    /**
      * Generar reporte completo en formato texto para CLI
      */
     public function generateCliReport(array $analysis): string

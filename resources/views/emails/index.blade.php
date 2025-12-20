@@ -518,6 +518,9 @@
     <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden" onclick="toggleSidebar()">
     </div>
 
+    <!-- Settings Modal (Estilo OpenAI) -->
+    @include('components.settings-modal')
+
     <script>
         // Auto-refresh de emails cada 2 minutos (SIN reload visible)
         let autoRefreshInterval = null;

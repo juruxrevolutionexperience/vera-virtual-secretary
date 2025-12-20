@@ -78,6 +78,11 @@ class Email extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function emailAccount(): BelongsTo
+    {
+        return $this->belongsTo(EmailAccount::class);
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(EmailCategory::class, 'email_category_id');
