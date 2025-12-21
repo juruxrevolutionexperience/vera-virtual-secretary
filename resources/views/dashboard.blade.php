@@ -9,7 +9,8 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        as="style">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css'])
 
@@ -1065,6 +1066,33 @@
                     }, 50);
                 }, index * 50);
             });
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Verificar si necesita onboarding de Vera
+            fetch('/vera/check-onboarding')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.needs_onboarding) {
+                        console.log('🚀 Vera onboarding detectado, abriendo modal...');
+
+                        setTimeout(() => {
+                            // Abrir modal de ajustes
+                            const modal = document.getElementById('settingsModal');
+                            if (modal) {
+                                modal.classList.remove('hidden');
+
+                                // Activar categoría "Configurador VERA"
+                                switchCategory('vera-config');
+                            } else {
+                                console.error('❌ Modal settingsModal no encontrado');
+                            }
+                        }, 1000); // 1 segundo de delay
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error verificando onboarding:', error);
+                });
         });
     </script>
 </body>

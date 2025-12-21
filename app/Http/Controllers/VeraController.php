@@ -36,7 +36,7 @@ class VeraController extends Controller
         $config = VeraConfig::where('user_id', $user->id)->first();
 
         // Verificar si tiene emails para analizar
-        $emailsCount = Email::whereHas('emailAccount', function($query) use ($user) {
+        $emailsCount = Email::whereHas('emailAccount', function ($query) use ($user) {
             $query->where('user_id', $user->id);
         })->count();
 
@@ -54,12 +54,12 @@ class VeraController extends Controller
         $existingConfig = VeraConfig::where('user_id', $user->id)->first();
 
         // Obtener emails del usuario
-        $emails = Email::whereHas('emailAccount', function($query) use ($user) {
+        $emails = Email::whereHas('emailAccount', function ($query) use ($user) {
             $query->where('user_id', $user->id);
         })->get();
 
         // Analizar emails
-        $analysis = $this->analyzer->analyze($emails);
+        $analysis = $this->analyzer->analyzeUser($user);
 
         // Generar reporte visual
         $report = $this->reportGenerator->generateReport($analysis);
@@ -81,32 +81,32 @@ class VeraController extends Controller
         $validated = $request->validate([
             'primary_goal' => 'required|string|in:filter,respond,balanced',
             'writing_style' => 'required|string|in:formal,professional,casual',
-            'response_mode' => 'required|string|in:filter_focus,suggest_responses',
+            'response_mode' => 'required|string|in:filter_focus,suggest_responses,always,important_only,ask_first,no',
             'newsletter_handling' => 'required|string|in:auto_archive,mark_read,categorize,manual',
             'priority_contacts' => 'nullable|array',
             'priority_contacts.*' => 'email',
             'active_hours_start' => 'required|string',
             'active_hours_end' => 'required|string',
             'autonomy_level' => 'required|string|in:conservative,moderate,aggressive',
-            'confidence_threshold' => 'nullable|integer|min:0|max:100',
+            'confidence_threshold' => 'nullable|numeric|min:0|max:1',
         ]);
 
         // Crear o actualizar configuración
         $config = VeraConfig::updateOrCreate(
             ['user_id' => $user->id],
             [
-                'primary_goal' => $validated['primary_goal'],
-                'writing_style' => $validated['writing_style'],
-                'response_mode' => $validated['response_mode'],
+                'main_objective' => $validated['primary_goal'],
+                'writing_style' => ['tone' => $validated['writing_style']],
+                'auto_response_mode' => $validated['response_mode'],
+                'auto_response_enabled' => \in_array($validated['response_mode'], ['suggest_responses', 'always', 'important_only', 'ask_first']),
                 'newsletter_handling' => $validated['newsletter_handling'],
-                'priority_contacts' => $validated['priority_contacts'] ?? [],
-                'active_hours_start' => $validated['active_hours_start'],
-                'active_hours_end' => $validated['active_hours_end'],
+                'important_contacts' => $validated['priority_contacts'] ?? [],
+                'availability_start' => $validated['active_hours_start'],
+                'availability_end' => $validated['active_hours_end'],
                 'autonomy_level' => $validated['autonomy_level'],
                 'confidence_threshold' => $validated['confidence_threshold'] ?? $this->getDefaultThreshold($validated['autonomy_level']),
-                'auto_respond_enabled' => $validated['response_mode'] === 'suggest_responses',
-                'auto_archive_newsletters' => $validated['newsletter_handling'] === 'auto_archive',
-                'periodic_analysis_enabled' => true,
+                'onboarding_completed' => true,
+                'onboarding_completed_at' => now(),
                 'last_analysis_at' => now(),
             ]
         );
@@ -176,7 +176,7 @@ class VeraController extends Controller
         $user = Auth::user();
 
         // Obtener emails del usuario
-        $emails = Email::whereHas('emailAccount', function($query) use ($user) {
+        $emails = Email::whereHas('emailAccount', function ($query) use ($user) {
             $query->where('user_id', $user->id);
         })->get();
 
@@ -233,11 +233,11 @@ class VeraController extends Controller
      */
     private function getDefaultThreshold($autonomy)
     {
-        return match($autonomy) {
-            'conservative' => 90,
-            'moderate' => 75,
-            'aggressive' => 60,
-            default => 75,
+        return match ($autonomy) {
+            'conservative' => 0.90,
+            'moderate' => 0.75,
+            'aggressive' => 0.60,
+            default => 0.75,
         };
     }
 
@@ -447,13 +447,13 @@ class VeraController extends Controller
         }
 
         return [
-            'total_emails' => Email::whereHas('emailAccount', function($query) use ($user) {
+            'total_emails' => Email::whereHas('emailAccount', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })->count(),
-            'processed_emails' => Email::whereHas('emailAccount', function($query) use ($user) {
+            'processed_emails' => Email::whereHas('emailAccount', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })->where('vera_processed', true)->count(),
-            'auto_archived' => Email::whereHas('emailAccount', function($query) use ($user) {
+            'auto_archived' => Email::whereHas('emailAccount', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })->where('is_archived', true)->where('vera_processed', true)->count(),
             'responses_generated' => \DB::table('vera_email_actions')

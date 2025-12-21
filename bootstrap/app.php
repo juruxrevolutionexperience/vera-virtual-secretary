@@ -20,6 +20,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
+
+    })
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->alias([
+            // ... otros alias existentes
+            'vera.configured' => \App\Http\Middleware\EnsureVeraConfigured::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
