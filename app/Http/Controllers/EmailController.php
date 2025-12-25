@@ -47,6 +47,7 @@ class EmailController extends Controller
 
         // Query base de emails - Solo cargar category para la lista
         $query = Email::where('user_id', $user->id)
+            ->where('status', 'received') // Solo emails recibidos en inbox
             ->with('category')
             ->orderBy('received_at', 'desc');
 
@@ -98,8 +99,9 @@ class EmailController extends Controller
         // Paginación
         $emails = $query->paginate(20);
 
-        // Estadísticas - Query optimizada con una sola consulta
+        // Estadísticas - Query optimizada con una sola consulta (solo emails recibidos)
         $stats = Email::where('user_id', $user->id)
+            ->where('status', 'received') // Solo contar emails recibidos
             ->selectRaw('
                 COUNT(*) as total,
                 SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as unread,
@@ -322,6 +324,7 @@ class EmailController extends Controller
 
         // Query base - igual que en index()
         $query = Email::where('user_id', $user->id)
+            ->where('status', 'received') // Solo emails recibidos en inbox
             ->with('category')
             ->orderBy('received_at', 'desc');
 
@@ -371,8 +374,9 @@ class EmailController extends Controller
         // Paginación
         $emails = $query->paginate(20);
 
-        // Estadísticas
+        // Estadísticas (solo emails recibidos)
         $stats = Email::where('user_id', $user->id)
+            ->where('status', 'received') // Solo contar emails recibidos
             ->selectRaw('
                   COUNT(*) as total,
                   SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as unread,

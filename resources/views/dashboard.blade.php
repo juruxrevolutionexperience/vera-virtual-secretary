@@ -1068,32 +1068,7 @@
             });
         });
 
-        document.addEventListener('DOMContentLoaded', function () {
-            // Verificar si necesita onboarding de Vera
-            fetch('/vera/check-onboarding')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.needs_onboarding) {
-                        console.log('🚀 Vera onboarding detectado, abriendo modal...');
-
-                        setTimeout(() => {
-                            // Abrir modal de ajustes
-                            const modal = document.getElementById('settingsModal');
-                            if (modal) {
-                                modal.classList.remove('hidden');
-
-                                // Activar categoría "Configurador VERA"
-                                switchCategory('vera-config');
-                            } else {
-                                console.error('❌ Modal settingsModal no encontrado');
-                            }
-                        }, 1000); // 1 segundo de delay
-                    }
-                })
-                .catch(error => {
-                    console.error('❌ Error verificando onboarding:', error);
-                });
-        });
+        // La lógica del modal de Vera ahora está en /emails
     </script>
 </body>
 

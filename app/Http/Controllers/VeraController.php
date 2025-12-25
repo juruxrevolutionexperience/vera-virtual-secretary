@@ -8,6 +8,7 @@ use App\Services\VeraOnboardingService;
 use App\Services\VeraReportGenerator;
 use App\Models\VeraConfig;
 use App\Models\Email;
+use App\Models\EmailAccount;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -91,6 +92,9 @@ class VeraController extends Controller
             'confidence_threshold' => 'nullable|numeric|min:0|max:1',
         ]);
 
+        // Determinar si requiere aprobación manual según el modo
+        $requireApproval = !in_array($validated['response_mode'], ['always']);
+
         // Crear o actualizar configuración
         $config = VeraConfig::updateOrCreate(
             ['user_id' => $user->id],
@@ -99,6 +103,7 @@ class VeraController extends Controller
                 'writing_style' => ['tone' => $validated['writing_style']],
                 'auto_response_mode' => $validated['response_mode'],
                 'auto_response_enabled' => \in_array($validated['response_mode'], ['suggest_responses', 'always', 'important_only', 'ask_first']),
+                'auto_response_require_approval' => $requireApproval,
                 'newsletter_handling' => $validated['newsletter_handling'],
                 'important_contacts' => $validated['priority_contacts'] ?? [],
                 'availability_start' => $validated['active_hours_start'],
@@ -211,20 +216,49 @@ class VeraController extends Controller
 
     /**
      * Verifica si el usuario necesita onboarding
+     * Cambio: Ahora busca en BD y verifica que tenga emails sincronizados
      */
     public function checkOnboardingNeeded()
     {
         $user = Auth::user();
 
-        $needsOnboarding = cache()->get("vera_needs_onboarding_{$user->id}", false);
+        // Verificar si tiene cuentas de email conectadas y sincronizadas
+        $hasEmailAccount = EmailAccount::where('user_id', $user->id)
+            ->whereNotNull('initial_sync_completed_at')
+            ->exists();
 
-        // Si necesita onboarding, limpiar el flag después de mostrarlo
-        if ($needsOnboarding) {
-            cache()->forget("vera_needs_onboarding_{$user->id}");
+        // Si no tiene cuenta de email sincronizada, no mostrar modal aún
+        if (!$hasEmailAccount) {
+            return response()->json([
+                'needs_onboarding' => false,
+                'reason' => 'no_email_account_synced',
+            ]);
         }
+
+        // Verificar si tiene emails
+        $hasEmails = Email::whereHas('emailAccount', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })->exists();
+
+        // Si no tiene emails aún, no mostrar modal
+        if (!$hasEmails) {
+            return response()->json([
+                'needs_onboarding' => false,
+                'reason' => 'no_emails_yet',
+            ]);
+        }
+
+        // Buscar configuración de Vera en la base de datos
+        $config = VeraConfig::where('user_id', $user->id)->first();
+
+        // Necesita onboarding si:
+        // 1. Tiene emails sincronizados
+        // 2. Y (No tiene configuración de Vera O tiene config pero no completó onboarding)
+        $needsOnboarding = !$config || !$config->onboarding_completed;
 
         return response()->json([
             'needs_onboarding' => $needsOnboarding,
+            'reason' => $needsOnboarding ? 'ready_for_onboarding' : 'onboarding_completed',
         ]);
     }
 

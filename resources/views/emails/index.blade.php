@@ -815,6 +815,9 @@
                             setTimeout(() => {
                                 console.log('✅ Sincronización completada, actualizando emails vía AJAX...');
                                 refreshEmailsAjax(); // Usar AJAX en lugar de reload
+
+                                // Después de sincronizar, verificar si necesita configurar Vera
+                                checkVeraOnboarding();
                             }, 2000);
                         }
 
@@ -1085,6 +1088,45 @@
                 detail: { emailId: emailId }
             }));
         }
+
+        // Función para verificar si necesita configurar Vera
+        function checkVeraOnboarding() {
+            // Solo verificar si hay cuentas de email conectadas y NO hay sincronización en curso
+            @if($hasEmailAccounts && !$syncingAccount)
+                fetch('/vera/check-onboarding')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.needs_onboarding) {
+                            console.log('🚀 Vera necesita configuración, abriendo modal...');
+
+                            setTimeout(() => {
+                                // Abrir el modal de configuración
+                                window.dispatchEvent(new CustomEvent('open-settings-modal'));
+
+                                // Cambiar a la categoría Vera
+                                setTimeout(() => {
+                                    const modalElement = document.querySelector('[x-data*="settingsModal"]');
+                                    if (modalElement && modalElement.__x) {
+                                        modalElement.__x.$data.activeCategory = 'vera';
+                                        modalElement.__x.$data.hasVeraConfig = false;
+                                        console.log('✅ Modal abierto en categoría Vera');
+                                    }
+                                }, 300);
+                            }, 1000);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Error verificando onboarding:', error);
+                    });
+            @endif
+        }
+
+        // Verificar onboarding cuando carga la página (si no está sincronizando)
+        document.addEventListener('DOMContentLoaded', function() {
+            @if($hasEmailAccounts && !$syncingAccount)
+                checkVeraOnboarding();
+            @endif
+        });
 
         // Atajos de teclado: Flechas arriba/abajo para navegar entre emails
         document.addEventListener('keydown', (event) => {

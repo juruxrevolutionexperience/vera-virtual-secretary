@@ -17,16 +17,17 @@ class EnsureVeraConfigured
     {
         $user = Auth::user();
 
-        // Verificar si el usuario tiene VeraConfig
-        $hasVeraConfig = VeraConfig::where('user_id', $user->id)->exists();
+        // Verificar si el usuario tiene VeraConfig y si está completado
+        $config = VeraConfig::where('user_id', $user->id)->first();
 
-        if (!$hasVeraConfig) {
-            // No tiene Vera configurada → Redirigir a onboarding
-            return redirect()->route('vera.onboarding')
-                ->with('warning', '⚠️ Debes configurar Vera para acceder a tus emails');
+        if (!$config || !$config->onboarding_completed) {
+            // No tiene Vera configurada o no completó onboarding
+            // → Redirigir al DASHBOARD donde aparecerá el modal con la explicación
+            return redirect()->route('dashboard')
+                ->with('info', '💡 Por favor, configura Vera primero. El asistente te guiará.');
         }
 
-        // Tiene Vera configurada → Permitir acceso
+        // Tiene Vera configurada y completada → Permitir acceso
         return $next($request);
     }
 }

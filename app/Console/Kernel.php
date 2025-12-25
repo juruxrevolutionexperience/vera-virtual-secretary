@@ -46,6 +46,19 @@ class Kernel extends ConsoleKernel
             ->sundays()
             ->at('02:00')
             ->name('vera-weekly-reanalysis');
+
+        // 🤖 NIVEL 2: Procesamiento automático de emails con Vera
+        // Ejecutar cada 5 minutos para generar respuestas automáticas
+        $schedule->command('vera:process-emails --recent=10 --limit=100')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->name('vera-process-emails')
+            ->onSuccess(function () {
+                \Log::info('✅ Vera procesó emails exitosamente');
+            })
+            ->onFailure(function () {
+                \Log::error('❌ Error en procesamiento de Vera');
+            });
     }
 
     /**

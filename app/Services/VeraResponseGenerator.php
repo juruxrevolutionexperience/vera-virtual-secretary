@@ -24,7 +24,7 @@ class VeraResponseGenerator
     }
 
     /**
-     * Generar respuesta automática para un email
+     * Generar respuesta automática para un email (CON AUTO-ENVÍO - Nivel 2)
      */
     public function generateResponse(Email $email): ?VeraEmailAction
     {
@@ -48,7 +48,17 @@ class VeraResponseGenerator
             return null;
         }
 
-        // 3. Verificar si ya existe una respuesta generada
+        // 3. Verificar horario de disponibilidad
+        if (!$config->isWithinAvailabilityHours()) {
+            Log::info('⏰ Fuera de horario de disponibilidad', [
+                'email_id' => $email->id,
+                'now' => now()->format('H:i'),
+                'availability' => $config->availability_start . ' - ' . $config->availability_end,
+            ]);
+            return null;
+        }
+
+        // 4. Verificar si ya existe una respuesta generada
         $existingResponse = VeraEmailAction::where('email_id', $email->id)
             ->where('action_type', 'replied')
             ->first();
@@ -58,19 +68,19 @@ class VeraResponseGenerator
             return $existingResponse;
         }
 
-        // 4. Obtener perfil de comunicación con el remitente
+        // 5. Obtener perfil de comunicación con el remitente
         $profile = CommunicationProfile::where('user_id', $email->user_id)
             ->where('email_address', $email->from_email)
             ->first();
 
-        // 5. Obtener contexto (thread, emails previos)
+        // 6. Obtener contexto (thread, emails previos)
         $context = $this->getConversationContext($email);
 
-        // 6. Generar respuesta con IA
+        // 7. Generar respuesta con IA
         try {
             $response = $this->generateWithAI($email, $config, $profile, $context);
 
-            // 7. Guardar en vera_email_actions
+            // 8. Guardar en vera_email_actions
             $action = VeraEmailAction::create([
                 'email_id' => $email->id,
                 'user_id' => $email->user_id,
@@ -89,6 +99,9 @@ class VeraResponseGenerator
                 'confidence' => $response['confidence'],
             ]);
 
+            // 9. AUTO-APROBACIÓN Y AUTO-ENVÍO según configuración
+            $this->processAutoApproval($action, $config, $email);
+
             return $action;
 
         } catch (\Exception $e) {
@@ -102,26 +115,217 @@ class VeraResponseGenerator
     }
 
     /**
-     * Verificar si el email necesita respuesta
+     * Procesar auto-aprobación y envío según configuración (NUEVO - Nivel 2)
+     */
+    protected function processAutoApproval(VeraEmailAction $action, VeraConfig $config, Email $email): void
+    {
+        // Si requiere aprobación manual → NO enviar automáticamente
+        if ($config->auto_response_require_approval) {
+            Log::info('⏸️  Requiere aprobación manual, NO se envía automáticamente', [
+                'action_id' => $action->id,
+            ]);
+            return;
+        }
+
+        // Verificar umbral de confianza
+        if ($action->confidence_score < $config->confidence_threshold) {
+            Log::warning('⚠️  Confianza insuficiente, NO se envía automáticamente', [
+                'action_id' => $action->id,
+                'confidence' => $action->confidence_score,
+                'threshold' => $config->confidence_threshold,
+            ]);
+
+            $action->update([
+                'user_feedback' => 'rejected',
+                'user_notes' => 'Auto-rechazada: confianza insuficiente',
+            ]);
+
+            return;
+        }
+
+        // AUTO-APROBAR
+        $action->update([
+            'user_feedback' => 'approved',
+            'user_notes' => 'Auto-aprobada por Vera (confianza: ' . round($action->confidence_score * 100) . '%)',
+        ]);
+
+        Log::info('✅ Respuesta AUTO-APROBADA', [
+            'action_id' => $action->id,
+            'confidence' => $action->confidence_score,
+        ]);
+
+        // AUTO-ENVIAR
+        $this->sendApprovedResponse($action, $email);
+    }
+
+    /**
+     * Enviar respuesta aprobada automáticamente (NUEVO - Nivel 2)
+     */
+    protected function sendApprovedResponse(VeraEmailAction $action, Email $email): void
+    {
+        try {
+            // Obtener cuenta de email del usuario
+            $emailAccount = \App\Models\EmailAccount::where('user_id', $email->user_id)
+                ->where('provider', $email->provider)
+                ->where('sync_enabled', true)
+                ->first();
+
+            if (!$emailAccount) {
+                Log::error('❌ No hay cuenta de email activa', ['user_id' => $email->user_id]);
+                return;
+            }
+
+            // Preparar datos del email
+            $emailData = [
+                'from' => $emailAccount->email_address,
+                'to' => $email->from_email,
+                'subject' => 'Re: ' . $email->subject,
+                'body' => $action->generated_response,
+                'in_reply_to' => $email->provider_message_id,
+                'references' => $email->provider_message_id,
+                'thread_id' => $email->provider_thread_id,
+            ];
+
+            // Enviar según proveedor
+            $gmailService = new \App\Services\GmailSyncService();
+            $sentEmail = $gmailService->sendEmail($emailAccount, $emailData);
+
+            if ($sentEmail) {
+                // Marcar como enviada
+                $action->update([
+                    'response_sent' => true,
+                    'response_sent_at' => now(),
+                ]);
+
+                // Marcar email original como respondido
+                $email->update([
+                    'replied_at' => now(),
+                ]);
+
+                Log::info('📧 ✅ Respuesta ENVIADA automáticamente', [
+                    'action_id' => $action->id,
+                    'email_id' => $email->id,
+                    'sent_email_id' => $sentEmail->id,
+                ]);
+            } else {
+                Log::error('❌ Error enviando respuesta', ['action_id' => $action->id]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('❌ Excepción enviando respuesta', [
+                'action_id' => $action->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    /**
+     * Verificar si el email necesita respuesta (SIMPLIFICADO - MVP)
      */
     protected function needsResponse(Email $email): bool
     {
-        // Ya está archivado o marcado para no responder
+        // 1. Ya está archivado → NO responder
         if ($email->is_archived) {
+            Log::debug('❌ Email archivado, no responder', ['email_id' => $email->id]);
             return false;
         }
 
-        // Vera ya determinó que requiere respuesta
-        if ($email->vera_action_required === 'reply') {
-            return true;
+        // 2. Obtener configuración del usuario
+        $config = VeraConfig::where('user_id', $email->user_id)->first();
+
+        if (!$config || !$config->auto_response_enabled) {
+            Log::debug('❌ Auto-respuestas deshabilitadas', ['email_id' => $email->id]);
+            return false;
         }
 
-        // Prioridad alta o urgente
-        if (in_array($email->priority, ['high', 'urgent'])) {
-            return true;
+        // 3. Análisis de contenido
+        $content = strtolower($email->body_text ?? strip_tags($email->body_html ?? ''));
+
+        if (empty(trim($content))) {
+            Log::debug('❌ Sin contenido', ['email_id' => $email->id]);
+            return false;
         }
 
-        return false;
+        // 4. Detectar emails automáticos/newsletters (NUNCA responder)
+        $isAutomated = str_contains($content, 'no-reply')
+                    || str_contains($content, 'unsubscribe')
+                    || str_contains($email->from_email, 'noreply')
+                    || str_contains($email->from_email, 'no-reply')
+                    || $email->category === 'promotions'
+                    || $email->category === 'updates';
+
+        if ($isAutomated) {
+            Log::debug('❌ Email automático/newsletter', ['email_id' => $email->id]);
+            return false;
+        }
+
+        // 5. Detectar agradecimientos simples (NO responder)
+        // Solo considerar agradecimiento simple si:
+        // - Es MUY corto (< 50 chars)
+        // - Contiene "gracias" o "thank"
+        // - NO tiene preguntas ni solicitudes evidentes
+        $isVeryShort = strlen($content) < 50;
+        $hasThankYou = str_contains($content, 'gracias') || str_contains($content, 'thank');
+        $hasNoQuestions = !preg_match('/\?/', $content)
+                       && !str_contains($content, 'interesado')
+                       && !str_contains($content, 'información')
+                       && !str_contains($content, 'consulta');
+
+        $isThankYou = $hasThankYou && $isVeryShort && $hasNoQuestions;
+
+        if ($isThankYou) {
+            Log::debug('❌ Solo agradecimiento', ['email_id' => $email->id]);
+            return false;
+        }
+
+        // 6. Detectar indicadores de necesidad de respuesta
+        $hasQuestions = preg_match('/\?/', $content)
+                     || str_contains($content, 'puedes')
+                     || str_contains($content, 'podrías')
+                     || str_contains($content, 'me gustaría saber')
+                     || str_contains($content, 'información')
+                     || str_contains($content, 'interesado')
+                     || str_contains($content, 'consulta');
+
+        $hasRequests = str_contains($content, 'necesito')
+                    || str_contains($content, 'requiero')
+                    || str_contains($content, 'por favor')
+                    || str_contains($content, 'ayuda');
+
+        $isHighPriority = in_array($email->priority, ['high', 'urgent'])
+                       || $email->vera_action_required === 'reply';
+
+        // 7. Decisión según modo configurado (SIMPLIFICADO)
+        $shouldRespond = match ($config->auto_response_mode) {
+            // ALWAYS: Responder a casi todos excepto automáticos/agradecimientos
+            'always' => true,
+
+            // SUGGEST_RESPONSES: Igual que always (diferencia está en require_approval)
+            'suggest_responses' => true,
+
+            // IMPORTANT_ONLY: Solo preguntas, solicitudes o alta prioridad
+            'important_only' => $hasQuestions || $hasRequests || $isHighPriority,
+
+            // ASK_FIRST: Solo preguntas directas
+            'ask_first' => $hasQuestions,
+
+            // FILTER_FOCUS o NO: No responder automáticamente
+            'filter_focus', 'no' => false,
+
+            // Default: conservador (solo preguntas/solicitudes)
+            default => $hasQuestions || $hasRequests,
+        };
+
+        Log::info($shouldRespond ? '✅ Email NECESITA respuesta' : '❌ Email NO necesita respuesta', [
+            'email_id' => $email->id,
+            'mode' => $config->auto_response_mode,
+            'has_questions' => $hasQuestions,
+            'has_requests' => $hasRequests,
+            'is_high_priority' => $isHighPriority,
+        ]);
+
+        return $shouldRespond;
     }
 
     /**
@@ -215,14 +419,15 @@ INSTRUCCIONES CRÍTICAS:
 8. NO seas genérico ni robótico
 
 FORMATO DE RESPUESTA:
-Responde SOLO con un JSON válido (sin markdown, sin explicaciones):
+Responde SOLO con un JSON válido. IMPORTANTE: Usa \\n para saltos de línea dentro del content, NO uses saltos de línea reales en el JSON:
 {
-  "content": "El contenido completo de la respuesta",
+  "content": "El contenido completo de la respuesta con \\n para saltos de línea",
   "confidence": 0.75,
-  "reasoning": "Por qué generaste esta respuesta y qué tono/estilo usaste"
+  "reasoning": "Por qué generaste esta respuesta"
 }
 
 El "content" debe ser el email completo listo para enviar (con saludo y despedida).
+CRÍTICO: El JSON debe estar en una sola línea, usa \\n dentro de las cadenas de texto.
 PROMPT;
     }
 
@@ -286,10 +491,22 @@ PROMPT;
             $content = preg_replace('/```json\s*|\s*```/', '', $content);
             $content = trim($content);
 
-            // Decodificar JSON
-            $data = json_decode($content, true);
+            // Intentar decodificar directamente primero
+            $data = @json_decode($content, true);
 
+            // Si falla, intentar con multiline mode (quitando solo estructurales)
             if (json_last_error() !== JSON_ERROR_NONE) {
+                // Quitar solo los saltos de línea que están FUERA de comillas
+                // Reemplazar }\n{ con }{, :\n" con :",  etc
+                $cleanContent = preg_replace('/([}\]])[\s\n]+([{\[])/','$1$2', $content);
+                $cleanContent = preg_replace('/,[\s\n]+/', ',', $cleanContent);
+                $cleanContent = preg_replace('/:[\s\n]+"/', ':"', $cleanContent);
+                $cleanContent = preg_replace('/\{[\s\n]+"/', '{"', $cleanContent);
+
+                $data = @json_decode($cleanContent, true);
+            }
+
+            if (json_last_error() !== JSON_ERROR_NONE || !$data) {
                 throw new \Exception('JSON inválido: ' . json_last_error_msg());
             }
 
@@ -302,7 +519,7 @@ PROMPT;
         } catch (\Exception $e) {
             Log::warning('⚠️  Error parseando respuesta de IA', [
                 'error' => $e->getMessage(),
-                'content' => $content
+                'content' => substr($content, 0, 500)
             ]);
 
             throw $e;

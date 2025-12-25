@@ -119,21 +119,70 @@
                     </div>
 
                     <!-- Sin Configuración -->
-                    <div x-show="!hasVeraConfig" class="text-center py-12 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border-2 border-purple-200">
-                        <div class="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-                            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
+                    <div x-show="!hasVeraConfig" class="py-12 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border-2 border-purple-200">
+                        <div class="text-center mb-8">
+                            <div class="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-2xl font-bold text-gray-900 mb-3">¡Configura Vera por primera vez!</h3>
+                            <p class="text-gray-600 mb-2 max-w-2xl mx-auto text-base">
+                                Vera necesita conocerte para poder ayudarte de manera inteligente
+                            </p>
                         </div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">¡Configura Vera por primera vez!</h3>
-                        <p class="text-gray-600 mb-6 max-w-md mx-auto">
-                            Vera analizará tus emails para aprender tu estilo y ayudarte automáticamente
-                        </p>
-                        <button @click="goToOnboarding()"
-                            class="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all">
-                            Configurar Vera Ahora
-                        </button>
+
+                        <!-- Explicación del proceso -->
+                        <div class="max-w-3xl mx-auto px-8 mb-8">
+                            <div class="bg-white rounded-lg p-6 shadow-sm border border-purple-100">
+                                <h4 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    ¿Por qué es necesario configurar Vera?
+                                </h4>
+                                <div class="space-y-3 text-sm text-gray-700">
+                                    <div class="flex gap-3">
+                                        <div class="flex-shrink-0 w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center">
+                                            <span class="text-purple-600 font-bold text-xs">1</span>
+                                        </div>
+                                        <p><strong>Análisis inicial:</strong> Vera analizará tus emails existentes para entender tu estilo de comunicación, tus contactos frecuentes y el tipo de emails que recibes.</p>
+                                    </div>
+                                    <div class="flex gap-3">
+                                        <div class="flex-shrink-0 w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center">
+                                            <span class="text-purple-600 font-bold text-xs">2</span>
+                                        </div>
+                                        <p><strong>Personalización:</strong> Con esta información, Vera aprenderá a filtrar, organizar y sugerir respuestas que coincidan con tu forma de trabajar.</p>
+                                    </div>
+                                    <div class="flex gap-3">
+                                        <div class="flex-shrink-0 w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center">
+                                            <span class="text-purple-600 font-bold text-xs">3</span>
+                                        </div>
+                                        <p><strong>Aprendizaje continuo:</strong> Este proceso se repetirá automáticamente cada semana para que Vera se adapte a los cambios en tu comunicación y mejore constantemente.</p>
+                                    </div>
+                                </div>
+
+                                <div class="mt-5 pt-5 border-t border-purple-100">
+                                    <p class="text-xs text-gray-500 flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                        </svg>
+                                        <strong>Tu privacidad es importante:</strong> Vera solo analiza tus emails localmente y nunca comparte tu información con terceros.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center">
+                            <button @click="goToOnboarding()"
+                                class="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all">
+                                Comenzar Configuración
+                            </button>
+                            <p class="text-xs text-gray-500 mt-3">Este proceso tomará solo unos minutos</p>
+                        </div>
                     </div>
 
                     <!-- Con Configuración -->
