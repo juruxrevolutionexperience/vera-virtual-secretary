@@ -51,6 +51,10 @@ class Email extends Model
         'provider_metadata',
         'status',
         'metadata',
+        // Fase 2: Control de límites
+        'processed_this_billing_cycle',
+        'last_processed_at',
+        'vera_ai_skipped',
     ];
 
     protected $casts = [
@@ -71,6 +75,10 @@ class Email extends Model
         'archived_at' => 'datetime',
         'vera_processed_at' => 'datetime',
         'vera_sentiment_score' => 'decimal:2',
+        // Fase 2: Control de límites
+        'processed_this_billing_cycle' => 'boolean',
+        'last_processed_at' => 'datetime',
+        'vera_ai_skipped' => 'boolean',
     ];
 
     public function user(): BelongsTo

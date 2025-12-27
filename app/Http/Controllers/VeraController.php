@@ -152,24 +152,79 @@ class VeraController extends Controller
         $validated = $request->validate([
             'primary_goal' => 'sometimes|string|in:filter,respond,balanced',
             'writing_style' => 'sometimes|string|in:formal,professional,casual',
-            'response_mode' => 'sometimes|string|in:filter_focus,suggest_responses',
+            'response_mode' => 'sometimes|string|in:no,ask_first,important_only,suggest_responses,always,filter_focus',
             'newsletter_handling' => 'sometimes|string|in:auto_archive,mark_read,categorize,manual',
             'priority_contacts' => 'nullable|array',
             'active_hours_start' => 'sometimes|string',
             'active_hours_end' => 'sometimes|string',
             'autonomy_level' => 'sometimes|string|in:conservative,moderate,aggressive',
-            'confidence_threshold' => 'nullable|integer|min:0|max:100',
-            'auto_respond_enabled' => 'sometimes|boolean',
+            'confidence_threshold' => 'nullable|numeric|min:0|max:1',
+            'auto_response_enabled' => 'sometimes|boolean',
             'auto_archive_newsletters' => 'sometimes|boolean',
         ]);
 
         $config = VeraConfig::where('user_id', $user->id)->firstOrFail();
-        $config->update($validated);
+
+        // Mapear campos del formulario a los campos de la BD
+        $updateData = [];
+
+        if (isset($validated['primary_goal'])) {
+            $updateData['main_objective'] = $validated['primary_goal'];
+        }
+
+        if (isset($validated['response_mode'])) {
+            $updateData['auto_response_mode'] = $validated['response_mode'];
+            // Actualizar auto_response_enabled basado en el modo
+            $updateData['auto_response_enabled'] = !in_array($validated['response_mode'], ['no', 'filter_focus']);
+            // Actualizar auto_response_require_approval
+            $updateData['auto_response_require_approval'] = !in_array($validated['response_mode'], ['always']);
+        }
+
+        if (isset($validated['writing_style'])) {
+            // Mantener el formato existente de writing_style y solo actualizar el tone
+            $currentStyle = $config->writing_style ?? [];
+            $currentStyle['tone'] = $validated['writing_style'];
+            $updateData['writing_style'] = $currentStyle;
+        }
+
+        if (isset($validated['newsletter_handling'])) {
+            $updateData['newsletter_handling'] = $validated['newsletter_handling'];
+        }
+
+        if (isset($validated['autonomy_level'])) {
+            $updateData['autonomy_level'] = $validated['autonomy_level'];
+        }
+
+        if (isset($validated['confidence_threshold'])) {
+            $updateData['confidence_threshold'] = $validated['confidence_threshold'];
+        }
+
+        if (isset($validated['active_hours_start'])) {
+            $updateData['availability_start'] = $validated['active_hours_start'];
+        }
+
+        if (isset($validated['active_hours_end'])) {
+            $updateData['availability_end'] = $validated['active_hours_end'];
+        }
+
+        if (isset($validated['auto_response_enabled'])) {
+            $updateData['auto_response_enabled'] = $validated['auto_response_enabled'];
+        }
+
+        if (isset($validated['auto_archive_newsletters'])) {
+            $updateData['auto_archive_newsletters'] = $validated['auto_archive_newsletters'];
+        }
+
+        if (isset($validated['priority_contacts'])) {
+            $updateData['important_contacts'] = $validated['priority_contacts'];
+        }
+
+        $config->update($updateData);
 
         return response()->json([
             'success' => true,
-            'message' => 'Configuración actualizada',
-            'config' => $config,
+            'message' => 'Configuración actualizada exitosamente',
+            'config' => $config->fresh(),
         ]);
     }
 

@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Email;
 use App\Services\AI\GeminiProvider;
+use App\Services\VeraUsageService;
+use App\Exceptions\UsageLimitExceededException;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -15,12 +17,14 @@ use Illuminate\Support\Facades\Log;
 class VeraService
 {
     protected VeraRulesService $rulesService;
+    protected VeraUsageService $usageService;
     protected ?GeminiProvider $geminiProvider = null;
     protected string $aiProvider;
 
     public function __construct()
     {
         $this->rulesService = new VeraRulesService();
+        $this->usageService = new VeraUsageService();
         $this->aiProvider = config('vera.ai_provider', 'gemini');
 
         // Inicializar provider de IA si está habilitado
@@ -45,7 +49,8 @@ class VeraService
      * Flujo:
      * 1. Análisis con reglas (gratis, rápido)
      * 2. Decidir si necesita IA
-     * 3. Si necesita IA → Gemini, sino → reglas
+     * 3. Verificar límites del usuario
+     * 4. Si necesita IA Y tiene límite → Gemini, sino → reglas
      *
      * @param Email $email
      * @return array
@@ -66,36 +71,66 @@ class VeraService
                 'from' => $email->from_email
             ]);
 
-            // PASO 1: Análisis con reglas (SIEMPRE)
+            // PASO 1: Análisis con reglas (SIEMPRE - gratis)
             $rulesAnalysis = $this->rulesService->analyzeEmail($email);
 
             // PASO 2: ¿Necesita IA?
             $needsAI = $this->rulesService->needsAI($email, $rulesAnalysis);
 
-            if ($needsAI && $this->geminiProvider && $this->geminiProvider->isConfigured()) {
-                // PASO 3A: Análizar con IA
+            if (!$needsAI) {
+                // Email simple, usar solo reglas (gratis)
+                Log::info('📊 Usando solo análisis con reglas', [
+                    'email_id' => $email->id,
+                    'reason' => 'Email no requiere IA'
+                ]);
+                return $rulesAnalysis;
+            }
+
+            // PASO 3: Verificar límites del usuario
+            $user = $email->user;
+            if (!$this->usageService->canProcessEmail($user)) {
+                Log::warning('🚫 Usuario sin límite disponible, usando solo reglas', [
+                    'email_id' => $email->id,
+                    'user_id' => $user->id,
+                    'plan' => $user->plan_type,
+                    'emails_used' => $this->usageService->getEmailsProcessedThisMonth($user),
+                    'limit' => $user->monthly_email_limit,
+                ]);
+
+                // Marcar que se saltó IA por límite
+                $email->update(['vera_ai_skipped' => true]);
+
+                return array_merge($rulesAnalysis, [
+                    'method' => 'rules',
+                    'ai_skipped' => true,
+                    'skip_reason' => 'usage_limit_exceeded',
+                ]);
+            }
+
+            // PASO 4: Analizar con IA (usuario tiene límite disponible)
+            if ($this->geminiProvider && $this->geminiProvider->isConfigured()) {
                 Log::info('🤖 Email necesita análisis con IA', [
                     'email_id' => $email->id,
-                    'reason' => 'Email complejo o importante'
+                    'user_id' => $user->id,
+                    'emails_remaining' => $this->usageService->getRemainingEmails($user),
                 ]);
 
                 $aiAnalysis = $this->analyzeWithAI($email);
 
-                // Combinar análisis: IA tiene prioridad, pero mantenemos datos de reglas
+                // Registrar email como procesado
+                $this->usageService->recordEmailProcessing($user, $email, 'email_analysis');
+
+                // Combinar análisis: IA tiene prioridad
                 return array_merge($rulesAnalysis, $aiAnalysis, [
                     'method' => 'ai',
                     'ai_provider' => 'gemini'
                 ]);
 
             } else {
-                // PASO 3B: Usar solo reglas
-                Log::info('📊 Usando solo análisis con reglas', [
+                // IA no configurada, usar reglas
+                Log::info('📊 IA no configurada, usando reglas', [
                     'email_id' => $email->id,
-                    'reason' => $needsAI
-                        ? 'IA no configurada'
-                        : 'Email no requiere IA'
                 ]);
-
                 return $rulesAnalysis;
             }
 
@@ -123,8 +158,19 @@ class VeraService
             $systemPrompt = $this->getSystemPrompt();
             $userPrompt = $this->buildAnalysisPrompt($email);
 
-            // Llamar a Gemini
-            $response = $this->geminiProvider->analyze($systemPrompt, $userPrompt);
+            // Llamar a Gemini con registro automático de tokens
+            $response = $this->geminiProvider->analyze(
+                systemPrompt: $systemPrompt,
+                userPrompt: $userPrompt,
+                userId: $email->user_id,
+                emailId: $email->id,
+                actionType: 'email_analysis',
+                metadata: [
+                    'subject' => $email->subject,
+                    'from' => $email->from_email,
+                    'content_length' => strlen($email->body_text ?? $email->body_html ?? ''),
+                ]
+            );
 
             // Parsear respuesta JSON
             $analysis = $this->parseAIResponse($response['content']);

@@ -5,6 +5,7 @@ namespace App\Services\AI;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Log;
+use App\Events\VeraTokensConsumed;
 
 /**
  * GeminiProvider
@@ -113,10 +114,20 @@ class GeminiProvider
      *
      * @param string $systemPrompt
      * @param string $userPrompt
+     * @param int|null $userId ID del usuario (para registrar tokens)
+     * @param int|null $emailId ID del email (para registrar tokens)
+     * @param string $actionType Tipo de acción ('email_analysis', 'response_generation', etc.)
+     * @param array $metadata Metadata adicional para analytics
      * @return array
      */
-    public function analyze(string $systemPrompt, string $userPrompt): array
-    {
+    public function analyze(
+        string $systemPrompt,
+        string $userPrompt,
+        ?int $userId = null,
+        ?int $emailId = null,
+        string $actionType = 'email_analysis',
+        array $metadata = []
+    ): array {
         // Gemini no tiene "system" messages separados,
         // así que combinamos ambos prompts
         $fullPrompt = $systemPrompt . "\n\n" . $userPrompt;
@@ -124,8 +135,24 @@ class GeminiProvider
         try {
             $response = $this->generateContent($fullPrompt, [
                 'temperature' => 0.7,
-                'maxOutputTokens' => 1000
+                'maxOutputTokens' => 2048
             ]);
+
+            // 🎯 Registrar uso de tokens automáticamente
+            if ($userId) {
+                event(new VeraTokensConsumed(
+                    userId: $userId,
+                    actionType: $actionType,
+                    tokenData: [
+                        'prompt_tokens' => $response['usage']['prompt_tokens'] ?? 0,
+                        'completion_tokens' => $response['usage']['completion_tokens'] ?? 0,
+                        'total_tokens' => $response['usage']['total_tokens'] ?? 0,
+                        'model' => $this->model,
+                    ],
+                    emailId: $emailId,
+                    metadata: $metadata
+                ));
+            }
 
             return [
                 'content' => $response['text'],

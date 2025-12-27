@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             // ... otros alias existentes
             'vera.configured' => \App\Http\Middleware\EnsureVeraConfigured::class,
+            'vera.limit' => \App\Http\Middleware\VeraEmailLimitMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

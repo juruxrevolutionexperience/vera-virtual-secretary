@@ -146,8 +146,10 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
     Route::get('/config', [VeraController::class, 'config'])->name('config');
     Route::patch('/config', [VeraController::class, 'updateConfig'])->name('config.update');
 
-    // Análisis manual
-    Route::post('/analyze', [VeraController::class, 'runAnalysis'])->name('analyze');
+    // Análisis manual (REQUIERE VERIFICACIÓN DE LÍMITE)
+    Route::post('/analyze', [VeraController::class, 'runAnalysis'])
+        ->middleware('vera.limit')
+        ->name('analyze');
 
     // Estadísticas (API)
     Route::get('/stats', [VeraController::class, 'stats'])->name('stats');
@@ -165,6 +167,41 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
     Route::post('/responses/{response}/reject', [VeraController::class, 'rejectResponse'])->name('responses.reject');
     Route::patch('/responses/{response}', [VeraController::class, 'updateResponse'])->name('responses.update');
     Route::post('/responses/{response}/send', [VeraController::class, 'sendResponse'])->name('responses.send');
+});
+
+// ========================================
+// RUTAS DE SETTINGS (USAGE & PLANS)
+// ========================================
+use App\Http\Controllers\VeraUsageController;
+
+Route::middleware(['auth'])->prefix('settings')->name('settings.')->group(function () {
+    // Página de uso - Vista de consumo de emails
+    Route::get('/usage', [VeraUsageController::class, 'index'])->name('usage');
+
+    // API para obtener uso actual (AJAX)
+    Route::get('/usage/current', [VeraUsageController::class, 'current'])->name('usage.current');
+
+    // Página de planes - Comparación y upgrade
+    Route::get('/plans', [VeraUsageController::class, 'plans'])->name('plans');
+
+    // Actualizar plan del usuario
+    Route::post('/plans/update', [VeraUsageController::class, 'updatePlan'])->name('plans.update');
+});
+
+// ========================================
+// RUTAS DE ADMIN - VERA ANALYTICS
+// ========================================
+use App\Http\Controllers\Admin\VeraAnalyticsController;
+
+Route::middleware(['auth'])->prefix('admin/vera')->name('admin.vera.')->group(function () {
+    // Dashboard de analytics
+    Route::get('/analytics', [VeraAnalyticsController::class, 'index'])->name('analytics');
+
+    // Analytics de usuario específico
+    Route::get('/analytics/user/{userId}', [VeraAnalyticsController::class, 'user'])->name('analytics.user');
+
+    // Exportar datos a CSV
+    Route::get('/analytics/export', [VeraAnalyticsController::class, 'export'])->name('analytics.export');
 });
 
 require __DIR__ . '/auth.php';

@@ -7,6 +7,7 @@ use App\Models\VeraConfig;
 use App\Models\VeraEmailAction;
 use App\Models\CommunicationProfile;
 use App\Services\AI\GeminiProvider;
+use App\Services\VeraUsageService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -17,10 +18,12 @@ use Illuminate\Support\Facades\Log;
 class VeraResponseGenerator
 {
     protected GeminiProvider $gemini;
+    protected VeraUsageService $usageService;
 
     public function __construct()
     {
         $this->gemini = new GeminiProvider();
+        $this->usageService = new VeraUsageService();
     }
 
     /**
@@ -48,7 +51,20 @@ class VeraResponseGenerator
             return null;
         }
 
-        // 3. Verificar horario de disponibilidad
+        // 3. Verificar límites del usuario (NUEVO)
+        $user = $email->user;
+        if (!$this->usageService->canProcessEmail($user)) {
+            Log::warning('🚫 Usuario sin límite disponible, no se genera respuesta', [
+                'email_id' => $email->id,
+                'user_id' => $user->id,
+                'plan' => $user->plan_type,
+                'emails_used' => $this->usageService->getEmailsProcessedThisMonth($user),
+                'limit' => $user->monthly_email_limit,
+            ]);
+            return null;
+        }
+
+        // 4. Verificar horario de disponibilidad
         if (!$config->isWithinAvailabilityHours()) {
             Log::info('⏰ Fuera de horario de disponibilidad', [
                 'email_id' => $email->id,
@@ -58,7 +74,7 @@ class VeraResponseGenerator
             return null;
         }
 
-        // 4. Verificar si ya existe una respuesta generada
+        // 5. Verificar si ya existe una respuesta generada
         $existingResponse = VeraEmailAction::where('email_id', $email->id)
             ->where('action_type', 'replied')
             ->first();
@@ -68,19 +84,22 @@ class VeraResponseGenerator
             return $existingResponse;
         }
 
-        // 5. Obtener perfil de comunicación con el remitente
+        // 6. Obtener perfil de comunicación con el remitente
         $profile = CommunicationProfile::where('user_id', $email->user_id)
             ->where('email_address', $email->from_email)
             ->first();
 
-        // 6. Obtener contexto (thread, emails previos)
+        // 7. Obtener contexto (thread, emails previos)
         $context = $this->getConversationContext($email);
 
-        // 7. Generar respuesta con IA
+        // 8. Generar respuesta con IA
         try {
             $response = $this->generateWithAI($email, $config, $profile, $context);
 
-            // 8. Guardar en vera_email_actions
+            // Registrar email como procesado (NUEVO)
+            $this->usageService->recordEmailProcessing($user, $email, 'response_generation');
+
+            // 9. Guardar en vera_email_actions
             $action = VeraEmailAction::create([
                 'email_id' => $email->id,
                 'user_id' => $email->user_id,
@@ -97,9 +116,10 @@ class VeraResponseGenerator
                 'email_id' => $email->id,
                 'action_id' => $action->id,
                 'confidence' => $response['confidence'],
+                'emails_remaining' => $this->usageService->getRemainingEmails($user),
             ]);
 
-            // 9. AUTO-APROBACIÓN Y AUTO-ENVÍO según configuración
+            // 10. AUTO-APROBACIÓN Y AUTO-ENVÍO según configuración
             $this->processAutoApproval($action, $config, $email);
 
             return $action;
@@ -358,7 +378,20 @@ class VeraResponseGenerator
         $systemPrompt = $this->buildSystemPrompt($config, $profile);
         $userPrompt = $this->buildUserPrompt($email, $context);
 
-        $response = $this->gemini->analyze($systemPrompt, $userPrompt);
+        // Llamar a Gemini con registro automático de tokens
+        $response = $this->gemini->analyze(
+            systemPrompt: $systemPrompt,
+            userPrompt: $userPrompt,
+            userId: $email->user_id,
+            emailId: $email->id,
+            actionType: 'response_generation',
+            metadata: [
+                'subject' => $email->subject,
+                'from' => $email->from_email,
+                'content_length' => strlen($email->body_text ?? $email->body_html ?? ''),
+                'context_emails' => $context->count(),
+            ]
+        );
 
         return $this->parseResponse($response['content']);
     }
@@ -491,11 +524,19 @@ PROMPT;
             $content = preg_replace('/```json\s*|\s*```/', '', $content);
             $content = trim($content);
 
+            // Log completo para debugging
+            Log::debug('🔍 Parseando respuesta de IA', [
+                'content_length' => strlen($content),
+                'full_content' => $content
+            ]);
+
             // Intentar decodificar directamente primero
             $data = @json_decode($content, true);
 
             // Si falla, intentar con multiline mode (quitando solo estructurales)
             if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::debug('⚠️  Primer intento de parse falló, intentando limpiar');
+
                 // Quitar solo los saltos de línea que están FUERA de comillas
                 // Reemplazar }\n{ con }{, :\n" con :",  etc
                 $cleanContent = preg_replace('/([}\]])[\s\n]+([{\[])/','$1$2', $content);
@@ -519,7 +560,9 @@ PROMPT;
         } catch (\Exception $e) {
             Log::warning('⚠️  Error parseando respuesta de IA', [
                 'error' => $e->getMessage(),
-                'content' => substr($content, 0, 500)
+                'content_length' => strlen($content),
+                'full_content' => $content,
+                'content_preview' => substr($content, 0, 500)
             ]);
 
             throw $e;
