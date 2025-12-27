@@ -493,6 +493,22 @@ class VeraController extends Controller
                     'replied_at' => now(),
                 ]);
 
+                // Actualizar actividad para reflejar que fue enviada
+                $activity = \App\Models\VeraActivityLog::where('email_id', $email->id)
+                    ->where('activity_type', 'email_replied')
+                    ->latest()
+                    ->first();
+
+                if ($activity) {
+                    $metadata = $activity->metadata ?? [];
+                    $metadata['response_sent'] = true;
+                    $metadata['manual_send'] = true;
+                    $activity->update([
+                        'metadata' => $metadata,
+                        'description' => $activity->description . ' (Enviada manualmente)',
+                    ]);
+                }
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Respuesta enviada exitosamente',

@@ -189,6 +189,28 @@ Route::middleware(['auth'])->prefix('settings')->name('settings.')->group(functi
 });
 
 // ========================================
+// RUTAS DE VERA - REGISTRO DE ACTIVIDAD
+// ========================================
+use App\Http\Controllers\VeraActivityController;
+
+Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
+    // Registro de actividad principal
+    Route::get('/activity', [VeraActivityController::class, 'index'])->name('activity.index');
+
+    // Ver detalles de una actividad específica
+    Route::get('/activity/{id}', [VeraActivityController::class, 'show'])->name('activity.show');
+
+    // Actualizar feedback de una actividad
+    Route::patch('/activity/{id}/feedback', [VeraActivityController::class, 'updateFeedback'])->name('activity.feedback');
+
+    // API: Obtener estadísticas (para gráficos)
+    Route::get('/activity/stats', [VeraActivityController::class, 'stats'])->name('activity.stats');
+
+    // Exportar actividades a CSV
+    Route::get('/activity/export', [VeraActivityController::class, 'export'])->name('activity.export');
+});
+
+// ========================================
 // RUTAS DE ADMIN - VERA ANALYTICS
 // ========================================
 use App\Http\Controllers\Admin\VeraAnalyticsController;

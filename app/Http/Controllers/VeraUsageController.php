@@ -49,6 +49,13 @@ class VeraUsageController extends Controller
             'success' => true,
             'usage' => $usage,
             'alert_level' => $this->usageService->getAlertLevel($user),
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'plan_type' => $user->plan_type,
+                'monthly_email_limit' => $user->monthly_email_limit,
+            ],
         ]);
     }
 

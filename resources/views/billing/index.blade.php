@@ -16,7 +16,7 @@
             <div class="flex justify-between items-center h-20">
                 <!-- Logo -->
                 <div class="flex items-center space-x-3">
-                    <a href="{{ route('landing') }}" class="flex items-center space-x-3">
+                    <a href="{{ route('landing-new') }}" class="flex items-center space-x-3">
                         <div class="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center glow-violet">
                             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
@@ -153,7 +153,7 @@
                             </div>
                             <p class="text-gray-400 text-lg mb-6">No tienes una suscripción activa</p>
                             <p class="text-gray-500 mb-8">Elige un plan para comenzar a usar Virtual Employee</p>
-                            <a href="{{ route('landing') }}#pricing" class="button-primary px-8 py-4 rounded-xl font-semibold text-white inline-block">
+                            <a href="{{ route('landing-new') }}#pricing" class="button-primary px-8 py-4 rounded-xl font-semibold text-white inline-block">
                                 Ver Planes Disponibles
                                 <svg class="inline-block w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
@@ -187,7 +187,7 @@
 
             <!-- Back to home -->
             <div class="text-center mt-8">
-                <a href="{{ route('landing') }}" class="text-violet-400 hover:text-violet-300 transition-colors duration-200 inline-flex items-center">
+                <a href="{{ route('landing-new') }}" class="text-violet-400 hover:text-violet-300 transition-colors duration-200 inline-flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                     </svg>

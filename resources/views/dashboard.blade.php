@@ -321,14 +321,14 @@
                         <span class="tooltip-text">Conversa con Vera</span>
                     </a>
 
-                    <a href="#"
+                    <a href="{{ route('vera.activity.index') }}"
                         class="flex items-center gap-2 px-2 py-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md mb-1 group tooltip">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
-                        <span class="flex-1">Historial</span>
-                        <span class="tooltip-text">Actividad de Vera</span>
+                        <span class="flex-1">Actividad</span>
+                        <span class="tooltip-text">Registro de acciones de Vera</span>
                     </a>
 
                 </div>
@@ -359,7 +359,26 @@
                     <div class="py-1">
                         <!-- Ajustes -->
                         <a href="#" @click.prevent="window.dispatchEvent(new CustomEvent('open-settings-modal'))"
-                            class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                            class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors relative"
+                            x-data="{ alertDot: 'hidden', alertColor: 'bg-gray-400' }"
+                            x-init="
+                                fetch('/settings/usage/current')
+                                    .then(r => r.json())
+                                    .then(data => {
+                                        const percentage = data.usage?.usage_percentage || 0;
+                                        if (percentage >= 90) {
+                                            alertDot = 'block';
+                                            alertColor = 'bg-red-500';
+                                        } else if (percentage >= 75) {
+                                            alertDot = 'block';
+                                            alertColor = 'bg-yellow-500';
+                                        } else if (percentage >= 50) {
+                                            alertDot = 'block';
+                                            alertColor = 'bg-blue-500';
+                                        }
+                                    })
+                                    .catch(e => console.log(e));
+                            ">
                             <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -367,6 +386,10 @@
                                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                             <span>Ajustes</span>
+                            <!-- Alert Badge -->
+                            <span x-show="alertDot !== 'hidden'"
+                                  :class="alertColor"
+                                  class="absolute top-2 left-2 w-2 h-2 rounded-full ring-2 ring-white animate-pulse"></span>
                             <span class="ml-auto text-xs text-gray-400">⌘+Ctrl+,</span>
                         </a>
 
@@ -812,7 +835,60 @@
                     </div>
 
                     <!-- Right Column - Sidebar Widgets (1/3) -->
-                    <div class="lg:col-span-1 space-y-6">
+                    <div class="lg:col-span-1 space-y-6" x-data="usageWidget()">
+                        <!-- Usage Widget - NEW -->
+                        <div class="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-5 hover-lift cursor-pointer"
+                             @click="openUsageModal()">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                        </svg>
+                                    </div>
+                                    <h3 class="text-sm font-semibold text-gray-900">Uso de Vera</h3>
+                                </div>
+                                <span x-text="statusBadge"
+                                      :class="`text-xs px-2 py-0.5 rounded-full font-semibold ${statusBadgeClass}`"></span>
+                            </div>
+
+                            <!-- Loading State -->
+                            <div x-show="loading" class="flex justify-center py-4">
+                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                            </div>
+
+                            <!-- Content -->
+                            <div x-show="!loading" class="space-y-3">
+                                <div class="flex justify-between items-baseline">
+                                    <span class="text-xs text-gray-600">Este mes</span>
+                                    <span class="text-2xl font-bold text-gray-900" x-text="`${emailsProcessed}/${emailLimit}`"></span>
+                                </div>
+
+                                <!-- Progress Bar -->
+                                <div>
+                                    <div class="w-full bg-white rounded-full h-2.5 overflow-hidden shadow-inner">
+                                        <div class="h-full transition-all duration-500"
+                                             :class="progressBarColor"
+                                             :style="`width: ${Math.min(usagePercentage, 100)}%`"></div>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-1">
+                                        <span class="text-xs text-gray-600" x-text="`${usagePercentage}% utilizado`"></span>
+                                        <span class="text-xs font-semibold"
+                                              :class="emailsRemaining < 10 ? 'text-red-600' : 'text-gray-700'"
+                                              x-text="`${emailsRemaining} restantes`"></span>
+                                    </div>
+                                </div>
+
+                                <!-- CTA -->
+                                <button class="w-full mt-3 text-xs text-purple-700 hover:text-purple-800 font-medium flex items-center justify-center gap-1 py-2 hover:bg-purple-100 rounded-md transition-colors">
+                                    <span>Ver detalles</span>
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Chat Widget - Enhanced -->
                         <div class="bg-white border border-gray-200 rounded-lg p-5 hover-lift">
                             <div class="flex items-center gap-3 mb-4">
@@ -1069,6 +1145,83 @@
         });
 
         // La lógica del modal de Vera ahora está en /emails
+
+        // Usage Widget Alpine Component
+        function usageWidget() {
+            return {
+                loading: true,
+                emailsProcessed: 0,
+                emailLimit: 100,
+                emailsRemaining: 100,
+                usagePercentage: 0,
+                alertLevel: 'normal',
+
+                init() {
+                    this.loadUsageData();
+                },
+
+                get statusBadge() {
+                    if (this.alertLevel === 'blocked') return 'Bloqueado';
+                    if (this.alertLevel === 'critical') return 'Crítico';
+                    if (this.alertLevel === 'warning') return 'Alerta';
+                    if (this.alertLevel === 'info') return 'Info';
+                    return 'Normal';
+                },
+
+                get statusBadgeClass() {
+                    if (this.alertLevel === 'blocked') return 'bg-red-100 text-red-800';
+                    if (this.alertLevel === 'critical') return 'bg-orange-100 text-orange-800';
+                    if (this.alertLevel === 'warning') return 'bg-yellow-100 text-yellow-800';
+                    if (this.alertLevel === 'info') return 'bg-blue-100 text-blue-800';
+                    return 'bg-green-100 text-green-800';
+                },
+
+                get progressBarColor() {
+                    if (this.usagePercentage >= 90) return 'bg-red-500';
+                    if (this.usagePercentage >= 75) return 'bg-orange-500';
+                    if (this.usagePercentage >= 50) return 'bg-yellow-500';
+                    return 'bg-green-500';
+                },
+
+                async loadUsageData() {
+                    try {
+                        const response = await fetch('/settings/usage/current', {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        if (!response.ok) throw new Error('Error loading usage');
+
+                        const data = await response.json();
+
+                        this.emailsProcessed = data.usage?.emails_processed || 0;
+                        this.emailLimit = data.usage?.email_limit || 100;
+                        this.emailsRemaining = data.usage?.emails_remaining || 100;
+                        this.usagePercentage = data.usage?.usage_percentage || 0;
+                        this.alertLevel = data.alert_level || 'normal';
+                        this.loading = false;
+                    } catch (error) {
+                        console.error('Error loading usage:', error);
+                        this.loading = false;
+                    }
+                },
+
+                openUsageModal() {
+                    // Abrir modal de settings en la pestaña de Uso
+                    window.dispatchEvent(new CustomEvent('open-settings-modal'));
+                    // Esperar un poco y cambiar a la pestaña de uso
+                    setTimeout(() => {
+                        // Intentar cambiar la categoría activa del modal
+                        const event = new CustomEvent('switch-settings-tab', {
+                            detail: { category: 'usage' }
+                        });
+                        window.dispatchEvent(event);
+                    }, 100);
+                }
+            };
+        }
     </script>
 </body>
 

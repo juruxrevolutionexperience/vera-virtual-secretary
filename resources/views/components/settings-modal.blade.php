@@ -64,6 +64,26 @@
                               :class="activeCategory === 'vera' ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-700'">AI</span>
                     </button>
 
+                    <!-- USO -->
+                    <button @click="activeCategory = 'usage'; loadUsageData()"
+                        :class="activeCategory === 'usage' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        <span class="font-medium">Uso</span>
+                    </button>
+
+                    <!-- PLANES -->
+                    <button @click="activeCategory = 'plans'; loadPlansData()"
+                        :class="activeCategory === 'plans' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                        </svg>
+                        <span class="font-medium">Planes</span>
+                    </button>
+
                     <button @click="activeCategory = 'account'"
                         :class="activeCategory === 'account' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'"
                         class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all">
@@ -224,6 +244,166 @@
                     <h2 class="text-2xl font-bold text-gray-900 mb-6">Cuenta</h2>
                     <p class="text-gray-600">Gestiona tu cuenta y preferencias</p>
                 </div>
+
+                <!-- Usage Settings -->
+                <div x-show="activeCategory === 'usage'" class="space-y-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Uso de Vera</h2>
+                    <p class="text-gray-600 mb-6">Monitorea tu consumo mensual de emails procesados con Vera.</p>
+
+                    <!-- Loading State -->
+                    <div x-show="!usageData" class="flex justify-center py-12">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    </div>
+
+                    <!-- Usage Content -->
+                    <div x-show="usageData" class="space-y-6">
+                        <!-- Plan Info -->
+                        <div class="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 class="text-sm font-medium text-gray-700">Plan Actual</h3>
+                                    <p class="text-2xl font-bold text-gray-900 mt-1" x-text="usageData?.user?.plan_type ? usageData.user.plan_type.charAt(0).toUpperCase() + usageData.user.plan_type.slice(1) : '-'"></p>
+                                </div>
+                                <span x-text="alertBadge" :class="`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${alertBadgeClass}`"></span>
+                            </div>
+
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Límite mensual:</span>
+                                    <span class="font-semibold text-gray-900" x-text="`${usageData?.usage?.email_limit || 0} emails`"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Emails procesados:</span>
+                                    <span class="font-semibold text-gray-900" x-text="`${usageData?.usage?.emails_processed || 0} emails`"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Emails restantes:</span>
+                                    <span class="font-semibold" :class="(usageData?.usage?.emails_remaining || 0) < 10 ? 'text-red-600' : ((usageData?.usage?.emails_remaining || 0) < 30 ? 'text-yellow-600' : 'text-gray-900')" x-text="`${usageData?.usage?.emails_remaining || 0} emails`"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="bg-white rounded-lg p-6 border border-gray-200">
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Progreso de Uso</h3>
+                            <div class="mb-2 flex justify-between text-sm text-gray-600">
+                                <span x-text="`${usageData?.usage?.usage_percentage || 0}% utilizado`"></span>
+                                <span x-text="`${usageData?.usage?.emails_processed || 0} / ${usageData?.usage?.email_limit || 0}`"></span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div class="h-full transition-all duration-500" :class="progressBarColor" :style="`width: ${Math.min(usageData?.usage?.usage_percentage || 0, 100)}%`"></div>
+                            </div>
+                        </div>
+
+                        <!-- Stats Grid -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <p class="text-xs text-gray-600 mb-1">Ciclo actual</p>
+                                <p class="text-sm font-semibold text-gray-900" x-text="formatDateRange"></p>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <p class="text-xs text-gray-600 mb-1">Tokens consumidos</p>
+                                <p class="text-sm font-semibold text-gray-900" x-text="formatNumber(usageData?.usage?.total_tokens || 0)"></p>
+                            </div>
+                        </div>
+
+                        <!-- Upgrade CTA -->
+                        <div x-show="(usageData?.usage?.emails_remaining || 100) < 20 || usageData?.alert_level === 'blocked'"
+                             class="bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">
+                                <span x-show="usageData?.alert_level === 'blocked'">Has alcanzado el límite de tu plan</span>
+                                <span x-show="usageData?.alert_level !== 'blocked'">Te estás quedando sin emails</span>
+                            </h3>
+                            <p class="text-sm text-gray-600 mb-4">
+                                Considera actualizar tu plan para obtener más capacidad
+                            </p>
+                            <button @click="activeCategory = 'plans'; loadPlansData()"
+                                    class="px-6 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-semibold transition-colors text-sm">
+                                Ver Planes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Plans Settings -->
+                <div x-show="activeCategory === 'plans'" class="space-y-6">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-gray-900">Planes de Vera</h2>
+                        <p class="text-gray-600 mt-2">Elige el plan que mejor se adapte a tus necesidades</p>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div x-show="!plansData" class="flex justify-center py-12">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    </div>
+
+                    <!-- Plans Grid -->
+                    <div x-show="plansData" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <template x-for="(plan, planKey) in plansData?.plans || {}" :key="planKey">
+                            <div class="relative">
+                                <!-- Popular Badge -->
+                                <div x-show="plan.popular" class="absolute -top-2 left-1/2 transform -translate-x-1/2 z-10">
+                                    <span class="bg-violet-600 text-white px-3 py-0.5 rounded-full text-xs font-semibold shadow-lg">
+                                        Más Popular
+                                    </span>
+                                </div>
+
+                                <!-- Plan Card -->
+                                <div class="bg-white rounded-lg border-2 p-5 h-full flex flex-col"
+                                     :class="plan.is_current ? 'border-violet-500 shadow-md' : 'border-gray-200'">
+
+                                    <!-- Current Badge -->
+                                    <div x-show="plan.is_current" class="mb-3">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 text-xs font-semibold">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                            </svg>
+                                            Plan Actual
+                                        </span>
+                                    </div>
+
+                                    <!-- Name & Price -->
+                                    <h3 class="text-xl font-bold text-gray-900 mb-1" x-text="plan.name"></h3>
+                                    <div class="mb-4">
+                                        <span class="text-3xl font-bold text-gray-900" x-text="'$' + plan.price"></span>
+                                        <span class="text-gray-600 text-sm">/mes</span>
+                                    </div>
+
+                                    <!-- Email Limit -->
+                                    <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                                        <div class="text-gray-600 text-xs mb-0.5">Emails con IA mensuales</div>
+                                        <div class="text-2xl font-bold text-gray-900" x-text="plan.email_limit"></div>
+                                    </div>
+
+                                    <!-- Features -->
+                                    <div class="flex-grow mb-4">
+                                        <div class="space-y-2">
+                                            <template x-for="feature in plan.features" :key="feature">
+                                                <div class="flex items-start text-xs">
+                                                    <svg class="w-4 h-4 text-violet-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                    </svg>
+                                                    <span class="text-gray-700" x-text="feature"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Button -->
+                                    <button x-show="plan.is_current" disabled
+                                            class="w-full bg-gray-100 text-gray-400 px-4 py-2 rounded-lg font-semibold cursor-not-allowed text-sm">
+                                        Plan Actual
+                                    </button>
+                                    <button x-show="!plan.is_current" @click="updatePlan(planKey, plan.name, plan.price, plan.email_limit)"
+                                            class="w-full bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors text-sm"
+                                            :id="'btn-' + planKey">
+                                        <span x-text="planKey === 'basic' ? 'Cambiar a Basic' : 'Actualizar a ' + plan.name"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -236,10 +416,63 @@
             activeCategory: 'general',
             hasVeraConfig: false,
             veraConfig: {},
+            usageData: null,
+            plansData: null,
 
             init() {
                 // Verificar si necesita onboarding automático
                 this.checkAutoOnboarding();
+
+                // Escuchar evento para cambiar de pestaña
+                window.addEventListener('switch-settings-tab', (e) => {
+                    if (e.detail && e.detail.category) {
+                        this.activeCategory = e.detail.category;
+                        // Cargar datos si es necesario
+                        if (e.detail.category === 'usage') {
+                            this.loadUsageData();
+                        } else if (e.detail.category === 'plans') {
+                            this.loadPlansData();
+                        }
+                    }
+                });
+            },
+
+            // Computed properties for usage
+            get alertBadge() {
+                const level = this.usageData?.alert_level;
+                if (level === 'blocked') return 'Bloqueado';
+                if (level === 'critical') return 'Crítico';
+                if (level === 'warning') return 'Advertencia';
+                if (level === 'info') return 'Info';
+                return 'Normal';
+            },
+
+            get alertBadgeClass() {
+                const level = this.usageData?.alert_level;
+                if (level === 'blocked') return 'bg-red-100 text-red-800';
+                if (level === 'critical') return 'bg-orange-100 text-orange-800';
+                if (level === 'warning') return 'bg-yellow-100 text-yellow-800';
+                if (level === 'info') return 'bg-blue-100 text-blue-800';
+                return 'bg-green-100 text-green-800';
+            },
+
+            get progressBarColor() {
+                const percentage = this.usageData?.usage?.usage_percentage || 0;
+                if (percentage >= 90) return 'bg-red-500';
+                if (percentage >= 75) return 'bg-orange-500';
+                if (percentage >= 50) return 'bg-yellow-500';
+                return 'bg-green-500';
+            },
+
+            get formatDateRange() {
+                if (!this.usageData?.usage) return '-';
+                const start = new Date(this.usageData.usage.billing_cycle_start);
+                const end = new Date(this.usageData.usage.billing_cycle_end);
+                return `${start.toLocaleDateString('es-ES')} - ${end.toLocaleDateString('es-ES')}`;
+            },
+
+            formatNumber(num) {
+                return new Intl.NumberFormat('es-ES').format(num || 0);
             },
 
             async checkAutoOnboarding() {
@@ -337,6 +570,145 @@
                 } catch (error) {
                     alert('Error al ejecutar análisis');
                     console.error('Error:', error);
+                }
+            },
+
+            async loadUsageData() {
+                if (this.usageData) return; // Already loaded
+
+                try {
+                    const response = await fetch('/settings/usage/current', {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) throw new Error('Error loading usage data');
+
+                    const data = await response.json();
+                    this.usageData = data;
+                } catch (error) {
+                    console.error('Error loading usage:', error);
+                    this.usageData = { error: true };
+                }
+            },
+
+            async loadPlansData() {
+                if (this.plansData) return; // Already loaded
+
+                try {
+                    // Cargar datos de uso primero para mostrar uso actual
+                    const usageResponse = await fetch('/settings/usage/current', {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    let currentUsage = null;
+                    if (usageResponse.ok) {
+                        currentUsage = await usageResponse.json();
+                    }
+
+                    // Simular datos de planes (igual que el controlador)
+                    const user = currentUsage?.user || {};
+                    this.plansData = {
+                        plans: {
+                            basic: {
+                                name: 'Basic',
+                                price: 5,
+                                email_limit: 100,
+                                features: [
+                                    'Análisis automático de emails',
+                                    'Respuestas sugeridas',
+                                    'Reglas básicas de filtrado',
+                                    'Soporte por email (48h)'
+                                ],
+                                is_current: user.plan_type === 'basic'
+                            },
+                            starter: {
+                                name: 'Starter',
+                                price: 15,
+                                email_limit: 250,
+                                features: [
+                                    'Todo de Basic',
+                                    'Respuestas automáticas',
+                                    'Análisis semanal',
+                                    'Perfiles de comunicación',
+                                    'Soporte prioritario (24h)'
+                                ],
+                                is_current: user.plan_type === 'starter',
+                                popular: true
+                            },
+                            pro: {
+                                name: 'Pro',
+                                price: 30,
+                                email_limit: 450,
+                                features: [
+                                    'Todo de Starter',
+                                    'Reglas ilimitadas',
+                                    'API access',
+                                    'Analytics avanzados',
+                                    'Soporte 24/7'
+                                ],
+                                is_current: user.plan_type === 'pro'
+                            }
+                        },
+                        currentUsage
+                    };
+                } catch (error) {
+                    console.error('Error loading plans:', error);
+                    this.plansData = { error: true };
+                }
+            },
+
+            async updatePlan(planKey, planName, planPrice, emailLimit) {
+                const confirmed = confirm(`¿Confirmas el cambio al plan ${planName} ($${planPrice}/mes - ${emailLimit} emails)?\n\nTu límite se reiniciará inmediatamente.`);
+                if (!confirmed) return;
+
+                const button = document.getElementById(`btn-${planKey}`);
+                const originalText = button ? button.textContent : '';
+
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = 'Procesando...';
+                }
+
+                try {
+                    const response = await fetch('/settings/plans/update', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ plan: planKey })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert('✅ Plan actualizado exitosamente');
+                        // Reload data
+                        this.plansData = null;
+                        this.usageData = null;
+                        await this.loadPlansData();
+                        await this.loadUsageData();
+                    } else {
+                        alert('Error al actualizar el plan: ' + (data.message || 'Error desconocido'));
+                        if (button) {
+                            button.disabled = false;
+                            button.textContent = originalText;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error al actualizar el plan. Por favor, intenta de nuevo.');
+                    if (button) {
+                        button.disabled = false;
+                        button.textContent = originalText;
+                    }
                 }
             },
 

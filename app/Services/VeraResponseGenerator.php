@@ -19,11 +19,13 @@ class VeraResponseGenerator
 {
     protected GeminiProvider $gemini;
     protected VeraUsageService $usageService;
+    protected VeraActivityService $activityService;
 
     public function __construct()
     {
         $this->gemini = new GeminiProvider();
         $this->usageService = new VeraUsageService();
+        $this->activityService = new VeraActivityService();
     }
 
     /**
@@ -118,6 +120,14 @@ class VeraResponseGenerator
                 'confidence' => $response['confidence'],
                 'emails_remaining' => $this->usageService->getRemainingEmails($user),
             ]);
+
+            // Registrar actividad de respuesta generada
+            $tokenUsage = \App\Models\VeraTokenUsage::where('email_id', $email->id)
+                ->where('action_type', 'response_generation')
+                ->latest()
+                ->first();
+
+            $this->activityService->logEmailReplied($email, $action, $tokenUsage, false);
 
             // 10. AUTO-APROBACIÓN Y AUTO-ENVÍO según configuración
             $this->processAutoApproval($action, $config, $email);
@@ -221,6 +231,22 @@ class VeraResponseGenerator
                 $email->update([
                     'replied_at' => now(),
                 ]);
+
+                // Actualizar actividad para reflejar que fue enviada
+                $activity = \App\Models\VeraActivityLog::where('email_id', $email->id)
+                    ->where('activity_type', 'email_replied')
+                    ->latest()
+                    ->first();
+
+                if ($activity) {
+                    $metadata = $activity->metadata ?? [];
+                    $metadata['response_sent'] = true;
+                    $metadata['auto_sent'] = true;
+                    $activity->update([
+                        'metadata' => $metadata,
+                        'description' => $activity->description . ' (Enviada automáticamente)',
+                    ]);
+                }
 
                 Log::info('📧 ✅ Respuesta ENVIADA automáticamente', [
                     'action_id' => $action->id,

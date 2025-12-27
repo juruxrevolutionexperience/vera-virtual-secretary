@@ -14,6 +14,13 @@ use Illuminate\Support\Facades\Log;
  */
 class VeraRulesEngine
 {
+    protected VeraActivityService $activityService;
+
+    public function __construct()
+    {
+        $this->activityService = new VeraActivityService();
+    }
+
     /**
      * Aplicar todas las reglas habilitadas de un usuario a un email
      *
@@ -92,6 +99,9 @@ class VeraRulesEngine
             'archived_at' => now(),
         ]);
 
+        // Registrar actividad de archivado
+        $this->activityService->logEmailArchived($email, "Regla automática: {$rule->name}");
+
         Log::info('📦 Email archivado automáticamente', [
             'email_id' => $email->id,
             'rule' => $rule->name,
@@ -107,6 +117,9 @@ class VeraRulesEngine
 
         if ($category) {
             $email->update(['category' => $category]);
+
+            // Registrar actividad de categorización
+            $this->activityService->logEmailCategorized($email, $category, 1.0);
 
             Log::info('📁 Email categorizado automáticamente', [
                 'email_id' => $email->id,

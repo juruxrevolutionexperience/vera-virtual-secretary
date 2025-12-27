@@ -44,7 +44,8 @@ class ProcessEmailWithVera implements ShouldQueue
     public function handle(
         VeraService $veraService,
         \App\Services\VeraRulesEngine $rulesEngine,
-        \App\Services\VeraResponseGenerator $responseGenerator
+        \App\Services\VeraResponseGenerator $responseGenerator,
+        \App\Services\VeraActivityService $activityService
     ): void
     {
         // Verificar que Vera está habilitada
@@ -75,6 +76,19 @@ class ProcessEmailWithVera implements ShouldQueue
 
             // Guardar análisis en BD
             $veraService->saveAnalysisToEmail($this->email, $analysis);
+
+            // Registrar actividad de procesamiento
+            $tokenUsage = \App\Models\VeraTokenUsage::where('email_id', $this->email->id)
+                ->where('action_type', 'email_analysis')
+                ->latest()
+                ->first();
+
+            $activityService->logEmailProcessed($this->email, $tokenUsage, [
+                'method' => $analysis['method'] ?? 'unknown',
+                'summary' => $analysis['summary'] ?? '',
+                'priority' => $analysis['priority'] ?? 'normal',
+                'sentiment' => $analysis['sentiment_label'] ?? 'neutral',
+            ]);
 
             // Aplicar reglas automáticas
             $appliedRules = $rulesEngine->applyRules($this->email->fresh());
