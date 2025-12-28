@@ -84,6 +84,16 @@
                         <span class="font-medium">Planes</span>
                     </button>
 
+                    <!-- NOTIFICACIONES -->
+                    <button @click="activeCategory = 'notifications'; loadNotificationsData()"
+                        :class="activeCategory === 'notifications' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        <span class="font-medium">Notificaciones</span>
+                    </button>
+
                     <button @click="activeCategory = 'account'"
                         :class="activeCategory === 'account' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'"
                         class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all">
@@ -325,6 +335,164 @@
                     </div>
                 </div>
 
+                <!-- Notifications Settings -->
+                <div x-show="activeCategory === 'notifications'" class="space-y-6">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-gray-900">Preferencias de Notificaciones</h2>
+                        <p class="text-gray-600 mt-2">Configura cómo y cuándo quieres recibir actualizaciones de Vera</p>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div x-show="!notificationsData" class="flex justify-center py-12">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    </div>
+
+                    <!-- Notifications Content -->
+                    <div x-show="notificationsData" class="space-y-6">
+                        <!-- Success Message -->
+                        <div x-show="notificationsSaved" x-transition class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            <span>Preferencias guardadas correctamente</span>
+                        </div>
+
+                        <!-- Canales de Notificación -->
+                        <div class="bg-gray-50 rounded-lg border border-gray-200">
+                            <div class="px-5 py-3 border-b border-gray-200 bg-white rounded-t-lg">
+                                <h3 class="text-sm font-semibold text-gray-900">Canales de Notificación</h3>
+                                <p class="text-xs text-gray-500 mt-0.5">Elige cómo quieres recibir notificaciones</p>
+                            </div>
+                            <div class="p-5 space-y-3">
+                                <label class="flex items-start gap-3 p-3 rounded-lg hover:bg-white transition-colors cursor-pointer">
+                                    <input type="checkbox" x-model="notificationsData.email_enabled" class="w-4 h-4 mt-0.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <div class="flex-1">
+                                        <div class="text-sm font-medium text-gray-900">📧 Notificaciones por Email</div>
+                                        <div class="text-xs text-gray-500 mt-0.5">Recibe notificaciones importantes en tu correo</div>
+                                    </div>
+                                </label>
+                                <label class="flex items-start gap-3 p-3 rounded-lg hover:bg-white transition-colors cursor-pointer">
+                                    <input type="checkbox" x-model="notificationsData.push_enabled" class="w-4 h-4 mt-0.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <div class="flex-1">
+                                        <div class="text-sm font-medium text-gray-900">📱 Notificaciones Push</div>
+                                        <div class="text-xs text-gray-500 mt-0.5">Notificaciones instantáneas en el navegador</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Resúmenes Automáticos -->
+                        <div class="bg-gray-50 rounded-lg border border-gray-200">
+                            <div class="px-5 py-3 border-b border-gray-200 bg-white rounded-t-lg">
+                                <h3 class="text-sm font-semibold text-gray-900">Resúmenes Automáticos</h3>
+                                <p class="text-xs text-gray-500 mt-0.5">Recibe resúmenes periódicos de la actividad de Vera</p>
+                            </div>
+                            <div class="p-5 space-y-4">
+                                <!-- Resumen Diario -->
+                                <div class="bg-white rounded-lg p-4 border border-gray-200">
+                                    <label class="flex items-start gap-3 cursor-pointer mb-3">
+                                        <input type="checkbox" x-model="notificationsData.daily_summary_enabled" class="w-4 h-4 mt-0.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                        <div class="flex-1">
+                                            <div class="text-sm font-medium text-gray-900">📅 Resumen Diario</div>
+                                            <div class="text-xs text-gray-500 mt-0.5">Actividad del día: emails procesados, respuestas enviadas</div>
+                                        </div>
+                                    </label>
+                                    <div x-show="notificationsData.daily_summary_enabled" x-transition class="ml-7 flex items-center gap-2">
+                                        <span class="text-xs text-gray-600">Hora:</span>
+                                        <input type="time" x-model="notificationsData.daily_summary_time" class="px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                        <span class="text-xs text-gray-400">(18:00 recomendado)</span>
+                                    </div>
+                                </div>
+
+                                <!-- Resumen Semanal -->
+                                <div class="bg-white rounded-lg p-4 border border-gray-200">
+                                    <label class="flex items-start gap-3 cursor-pointer mb-3">
+                                        <input type="checkbox" x-model="notificationsData.weekly_summary_enabled" class="w-4 h-4 mt-0.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                        <div class="flex-1">
+                                            <div class="text-sm font-medium text-gray-900">📊 Resumen Semanal</div>
+                                            <div class="text-xs text-gray-500 mt-0.5">Estadísticas semanales: tiempo ahorrado, tendencias</div>
+                                        </div>
+                                    </label>
+                                    <div x-show="notificationsData.weekly_summary_enabled" x-transition class="ml-7 flex items-center gap-2 flex-wrap">
+                                        <span class="text-xs text-gray-600">Día:</span>
+                                        <select x-model="notificationsData.weekly_summary_day" class="px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                            <option value="monday">Lunes</option>
+                                            <option value="tuesday">Martes</option>
+                                            <option value="wednesday">Miércoles</option>
+                                            <option value="thursday">Jueves</option>
+                                            <option value="friday">Viernes</option>
+                                            <option value="saturday">Sábado</option>
+                                            <option value="sunday">Domingo</option>
+                                        </select>
+                                        <span class="text-xs text-gray-600">Hora:</span>
+                                        <input type="time" x-model="notificationsData.weekly_summary_time" class="px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                    </div>
+                                </div>
+
+                                <!-- Resumen Mensual -->
+                                <div class="bg-white rounded-lg p-4 border border-gray-200">
+                                    <label class="flex items-start gap-3 cursor-pointer mb-3">
+                                        <input type="checkbox" x-model="notificationsData.monthly_summary_enabled" class="w-4 h-4 mt-0.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                        <div class="flex-1">
+                                            <div class="text-sm font-medium text-gray-900">📈 Resumen Mensual</div>
+                                            <div class="text-xs text-gray-500 mt-0.5">Informe completo: métricas, consumo de plan</div>
+                                        </div>
+                                    </label>
+                                    <div x-show="notificationsData.monthly_summary_enabled" x-transition class="ml-7 flex items-center gap-2 flex-wrap">
+                                        <span class="text-xs text-gray-600">Día del mes:</span>
+                                        <input type="number" x-model="notificationsData.monthly_summary_day" min="1" max="31" class="px-2 py-1 border border-gray-300 rounded text-xs w-16 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                        <span class="text-xs text-gray-600">Hora:</span>
+                                        <input type="time" x-model="notificationsData.monthly_summary_time" class="px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Alertas -->
+                        <div class="bg-gray-50 rounded-lg border border-gray-200">
+                            <div class="px-5 py-3 border-b border-gray-200 bg-white rounded-t-lg">
+                                <h3 class="text-sm font-semibold text-gray-900">Alertas Importantes</h3>
+                                <p class="text-xs text-gray-500 mt-0.5">Recibe alertas cuando ocurran eventos importantes</p>
+                            </div>
+                            <div class="p-5 space-y-3">
+                                <!-- Límite de Uso -->
+                                <div class="bg-white rounded-lg p-4 border border-gray-200">
+                                    <label class="flex items-start gap-3 cursor-pointer mb-3">
+                                        <input type="checkbox" x-model="notificationsData.limit_warnings_enabled" class="w-4 h-4 mt-0.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                        <div class="flex-1">
+                                            <div class="text-sm font-medium text-gray-900">⚠️ Advertencias de Límite de Uso</div>
+                                            <div class="text-xs text-gray-500 mt-0.5">Aviso cuando estés cerca de tu límite mensual</div>
+                                        </div>
+                                    </label>
+                                    <div x-show="notificationsData.limit_warnings_enabled" x-transition class="ml-7 flex items-center gap-2">
+                                        <span class="text-xs text-gray-600">Alertar al:</span>
+                                        <input type="number" x-model="notificationsData.warning_threshold_percentage" min="50" max="100" class="px-2 py-1 border border-gray-300 rounded text-xs w-16 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                        <span class="text-xs text-gray-600">%</span>
+                                        <span class="text-xs text-gray-400">(80% recomendado)</span>
+                                    </div>
+                                </div>
+
+                                <label class="flex items-start gap-3 p-3 rounded-lg hover:bg-white transition-colors cursor-pointer border border-gray-200 bg-white">
+                                    <input type="checkbox" x-model="notificationsData.high_activity_alerts" class="w-4 h-4 mt-0.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <div class="flex-1">
+                                        <div class="text-sm font-medium text-gray-900">🔥 Alertas de Alta Actividad</div>
+                                        <div class="text-xs text-gray-500 mt-0.5">Aviso si detectamos picos inusuales de emails</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Save Button -->
+                        <div class="flex items-center justify-end pt-2">
+                            <button @click="saveNotifications()" :disabled="savingNotifications"
+                                    class="px-6 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 focus:ring-4 focus:ring-purple-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                <span x-show="!savingNotifications">Guardar Cambios</span>
+                                <span x-show="savingNotifications">Guardando...</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Plans Settings -->
                 <div x-show="activeCategory === 'plans'" class="space-y-6">
                     <div class="mb-6">
@@ -418,6 +586,9 @@
             veraConfig: {},
             usageData: null,
             plansData: null,
+            notificationsData: null,
+            savingNotifications: false,
+            notificationsSaved: false,
 
             init() {
                 // Verificar si necesita onboarding automático
@@ -737,6 +908,75 @@
                     'aggressive': 'Agresivo'
                 };
                 return levels[level] || level;
+            },
+
+            async loadNotificationsData() {
+                if (this.notificationsData) return; // Already loaded
+
+                try {
+                    const response = await fetch('/settings/notifications/data', {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) throw new Error('Error loading notifications data');
+
+                    const data = await response.json();
+                    this.notificationsData = data.preferences;
+                } catch (error) {
+                    console.error('Error loading notifications:', error);
+                    // Valores por defecto si falla
+                    this.notificationsData = {
+                        email_enabled: true,
+                        push_enabled: false,
+                        daily_summary_enabled: false,
+                        daily_summary_time: '18:00',
+                        weekly_summary_enabled: false,
+                        weekly_summary_day: 'monday',
+                        weekly_summary_time: '09:00',
+                        monthly_summary_enabled: false,
+                        monthly_summary_day: 1,
+                        monthly_summary_time: '09:00',
+                        limit_warnings_enabled: true,
+                        warning_threshold_percentage: 80,
+                        high_activity_alerts: false
+                    };
+                }
+            },
+
+            async saveNotifications() {
+                this.savingNotifications = true;
+                this.notificationsSaved = false;
+
+                try {
+                    const response = await fetch('/settings/notifications', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(this.notificationsData)
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success || response.ok) {
+                        this.notificationsSaved = true;
+                        setTimeout(() => {
+                            this.notificationsSaved = false;
+                        }, 3000);
+                    } else {
+                        alert('Error al guardar preferencias: ' + (data.message || 'Error desconocido'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error al guardar preferencias. Por favor, intenta de nuevo.');
+                } finally {
+                    this.savingNotifications = false;
+                }
             }
         }
     }

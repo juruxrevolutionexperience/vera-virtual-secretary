@@ -474,6 +474,9 @@
         </main>
     </div>
 
+    <!-- Settings Modal -->
+    @include('components.settings-modal')
+
     <script>
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');

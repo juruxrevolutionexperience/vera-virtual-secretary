@@ -14,7 +14,7 @@ Hemos completado exitosamente la **Fase 3** del sistema de gestión de planes y 
 2. **`app/Http/Controllers/VeraUsageController.php`** - Controlador para gestión de uso y planes
 3. **`resources/views/settings/usage.blade.php`** - Vista de uso para usuarios
 4. **`resources/views/settings/plans.blade.php`** - Vista de planes y comparación
-5. **`app/Console/Commands/TestVeraUsageSystem.php`** - Comando de pruebas del sistema
+5. **`app/Console/Commands/TestVeraUsageSystem.php`** - Comand de pruebas del sistema
 
 ### ✏️ Archivos modificados (3)
 

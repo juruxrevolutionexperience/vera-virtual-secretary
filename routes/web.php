@@ -173,6 +173,7 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
 // RUTAS DE SETTINGS (USAGE & PLANS)
 // ========================================
 use App\Http\Controllers\VeraUsageController;
+use App\Http\Controllers\VeraNotificationController;
 
 Route::middleware(['auth'])->prefix('settings')->name('settings.')->group(function () {
     // Página de uso - Vista de consumo de emails
@@ -186,6 +187,11 @@ Route::middleware(['auth'])->prefix('settings')->name('settings.')->group(functi
 
     // Actualizar plan del usuario
     Route::post('/plans/update', [VeraUsageController::class, 'updatePlan'])->name('plans.update');
+
+    // Configuración de Notificaciones (FASE 4)
+    Route::get('/notifications', [VeraNotificationController::class, 'index'])->name('notifications');
+    Route::get('/notifications/data', [VeraNotificationController::class, 'data'])->name('notifications.data');
+    Route::patch('/notifications', [VeraNotificationController::class, 'update'])->name('notifications.update');
 });
 
 // ========================================
@@ -211,19 +217,84 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
 });
 
 // ========================================
+// RUTAS DE VERA - MÉTRICAS Y ANALYTICS (FASE 2)
+// ========================================
+use App\Http\Controllers\VeraAnalyticsController;
+
+Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
+    // Dashboard principal de analytics
+    Route::get('/analytics', [VeraAnalyticsController::class, 'index'])->name('analytics.index');
+
+    // API: Tendencia de actividad
+    Route::get('/analytics/api/trend', [VeraAnalyticsController::class, 'apiActivityTrend'])->name('analytics.api.trend');
+
+    // API: Distribución por tipo
+    Route::get('/analytics/api/distribution', [VeraAnalyticsController::class, 'apiDistribution'])->name('analytics.api.distribution');
+
+    // API: Comparativa mes a mes
+    Route::get('/analytics/api/comparison', [VeraAnalyticsController::class, 'apiMonthComparison'])->name('analytics.api.comparison');
+
+    // API: Costos por día de la semana
+    Route::get('/analytics/api/cost-by-day', [VeraAnalyticsController::class, 'apiCostByDayOfWeek'])->name('analytics.api.cost-by-day');
+
+    // API: Top categorías de emails
+    Route::get('/analytics/api/top-categories', [VeraAnalyticsController::class, 'apiTopCategories'])->name('analytics.api.top-categories');
+
+    // API: Predicción de consumo mensual
+    Route::get('/analytics/api/prediction', [VeraAnalyticsController::class, 'apiPrediction'])->name('analytics.api.prediction');
+
+    // API: Análisis de feedback
+    Route::get('/analytics/api/feedback', [VeraAnalyticsController::class, 'apiFeedbackAnalysis'])->name('analytics.api.feedback');
+
+    // API: Resumen ejecutivo completo
+    Route::get('/analytics/api/summary', [VeraAnalyticsController::class, 'apiExecutiveSummary'])->name('analytics.api.summary');
+});
+
+// ========================================
+// RUTAS DE VERA - CHAT INTERACTIVO (FASE 3)
+// ========================================
+use App\Http\Controllers\VeraChatController;
+
+Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
+    // Vista principal de chat
+    Route::get('/chat', [VeraChatController::class, 'index'])->name('chat.index');
+
+    // API: Enviar mensaje
+    Route::post('/chat/message', [VeraChatController::class, 'sendMessage'])->name('chat.send');
+
+    // API: Obtener mensajes de conversación
+    Route::get('/chat/conversation/{conversationId}/messages', [VeraChatController::class, 'getMessages'])->name('chat.messages');
+
+    // API: Crear nueva conversación
+    Route::post('/chat/conversation', [VeraChatController::class, 'createConversation'])->name('chat.create');
+
+    // API: Archivar conversación
+    Route::post('/chat/conversation/{conversationId}/archive', [VeraChatController::class, 'archiveConversation'])->name('chat.archive');
+
+    // API: Obtener todas las conversaciones
+    Route::get('/chat/conversations', [VeraChatController::class, 'getConversations'])->name('chat.conversations');
+
+    // API: Dar feedback a un mensaje
+    Route::post('/chat/message/{messageId}/feedback', [VeraChatController::class, 'messageFeedback'])->name('chat.feedback');
+
+    // API: Obtener contexto actual
+    Route::get('/chat/context', [VeraChatController::class, 'getContext'])->name('chat.context');
+});
+
+// ========================================
 // RUTAS DE ADMIN - VERA ANALYTICS
 // ========================================
-use App\Http\Controllers\Admin\VeraAnalyticsController;
+use App\Http\Controllers\Admin\VeraAnalyticsController as AdminVeraAnalyticsController;
 
 Route::middleware(['auth'])->prefix('admin/vera')->name('admin.vera.')->group(function () {
     // Dashboard de analytics
-    Route::get('/analytics', [VeraAnalyticsController::class, 'index'])->name('analytics');
+    Route::get('/analytics', [AdminVeraAnalyticsController::class, 'index'])->name('analytics');
 
     // Analytics de usuario específico
-    Route::get('/analytics/user/{userId}', [VeraAnalyticsController::class, 'user'])->name('analytics.user');
+    Route::get('/analytics/user/{userId}', [AdminVeraAnalyticsController::class, 'user'])->name('analytics.user');
 
     // Exportar datos a CSV
-    Route::get('/analytics/export', [VeraAnalyticsController::class, 'export'])->name('analytics.export');
+    Route::get('/analytics/export', [AdminVeraAnalyticsController::class, 'export'])->name('analytics.export');
 });
 
 require __DIR__ . '/auth.php';
