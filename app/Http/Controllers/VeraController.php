@@ -535,6 +535,217 @@ class VeraController extends Controller
     }
 
     /**
+     * Obtener configuración de filtros de respuesta
+     */
+    public function getResponseFilters()
+    {
+        $user = Auth::user();
+        $config = VeraConfig::where('user_id', $user->id)->first();
+
+        if (!$config) {
+            // Retornar valores por defecto si no existe configuración
+            return response()->json([
+                'success' => true,
+                'filters' => VeraConfig::getDefaultFilters(),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'filters' => [
+                'response_allowed_categories' => $config->response_allowed_categories,
+                'response_blocked_categories' => $config->response_blocked_categories,
+                'blocked_keywords' => $config->blocked_keywords,
+                'blocked_senders' => $config->blocked_senders,
+                'allowed_senders' => $config->allowed_senders,
+            ],
+        ]);
+    }
+
+    /**
+     * Actualizar filtros de respuesta automática
+     */
+    public function updateResponseFilters(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'response_allowed_categories' => 'nullable|array',
+            'response_allowed_categories.*' => 'string|in:trabajo,personal,promociones,newsletters,social',
+            'response_blocked_categories' => 'nullable|array',
+            'response_blocked_categories.*' => 'string|in:trabajo,personal,promociones,newsletters,social',
+            'blocked_keywords' => 'nullable|array',
+            'blocked_keywords.*' => 'string|max:100',
+            'blocked_senders' => 'nullable|array',
+            'blocked_senders.*' => 'string|max:255',
+            'allowed_senders' => 'nullable|array',
+            'allowed_senders.*' => 'string|max:255',
+        ]);
+
+        $config = VeraConfig::where('user_id', $user->id)->firstOrFail();
+
+        $config->update($validated);
+
+        Log::info('🎯 Filtros de respuesta actualizados', [
+            'user_id' => $user->id,
+            'filters' => $validated,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Filtros actualizados exitosamente',
+            'filters' => [
+                'response_allowed_categories' => $config->response_allowed_categories,
+                'response_blocked_categories' => $config->response_blocked_categories,
+                'blocked_keywords' => $config->blocked_keywords,
+                'blocked_senders' => $config->blocked_senders,
+                'allowed_senders' => $config->allowed_senders,
+            ],
+        ]);
+    }
+
+    /**
+     * Agregar un patrón a un filtro específico
+     */
+    public function addFilterPattern(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'filter_type' => 'required|string|in:blocked_keywords,blocked_senders,allowed_senders',
+            'pattern' => 'required|string|max:255',
+        ]);
+
+        $config = VeraConfig::where('user_id', $user->id)->firstOrFail();
+
+        $filterType = $validated['filter_type'];
+        $pattern = trim($validated['pattern']);
+
+        // Obtener array actual
+        $currentFilters = $config->{$filterType} ?? [];
+
+        // Verificar si ya existe
+        if (in_array($pattern, $currentFilters)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este patrón ya existe en el filtro',
+            ], 400);
+        }
+
+        // Agregar el nuevo patrón
+        $currentFilters[] = $pattern;
+
+        $config->update([
+            $filterType => $currentFilters,
+        ]);
+
+        Log::info('➕ Patrón agregado al filtro', [
+            'user_id' => $user->id,
+            'filter_type' => $filterType,
+            'pattern' => $pattern,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Patrón agregado exitosamente',
+            'filter_type' => $filterType,
+            'patterns' => $currentFilters,
+        ]);
+    }
+
+    /**
+     * Eliminar un patrón de un filtro específico
+     */
+    public function removeFilterPattern(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'filter_type' => 'required|string|in:blocked_keywords,blocked_senders,allowed_senders,response_allowed_categories,response_blocked_categories',
+            'pattern' => 'required|string',
+        ]);
+
+        $config = VeraConfig::where('user_id', $user->id)->firstOrFail();
+
+        $filterType = $validated['filter_type'];
+        $pattern = $validated['pattern'];
+
+        // Obtener array actual
+        $currentFilters = $config->{$filterType} ?? [];
+
+        // Eliminar el patrón
+        $currentFilters = array_values(array_filter($currentFilters, fn($item) => $item !== $pattern));
+
+        $config->update([
+            $filterType => $currentFilters,
+        ]);
+
+        Log::info('➖ Patrón eliminado del filtro', [
+            'user_id' => $user->id,
+            'filter_type' => $filterType,
+            'pattern' => $pattern,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Patrón eliminado exitosamente',
+            'filter_type' => $filterType,
+            'patterns' => $currentFilters,
+        ]);
+    }
+
+    /**
+     * Agregar/quitar categoría del filtro de categorías
+     */
+    public function toggleCategory(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'category' => 'required|string|in:trabajo,personal,promociones,newsletters,social',
+            'filter_type' => 'required|string|in:allowed,blocked',
+        ]);
+
+        $config = VeraConfig::where('user_id', $user->id)->firstOrFail();
+
+        $category = $validated['category'];
+        $filterType = $validated['filter_type'] === 'allowed'
+            ? 'response_allowed_categories'
+            : 'response_blocked_categories';
+
+        $currentCategories = $config->{$filterType} ?? [];
+
+        // Toggle: si existe, quitar; si no existe, agregar
+        if (in_array($category, $currentCategories)) {
+            $currentCategories = array_values(array_filter($currentCategories, fn($c) => $c !== $category));
+            $action = 'removed';
+        } else {
+            $currentCategories[] = $category;
+            $action = 'added';
+        }
+
+        $config->update([
+            $filterType => $currentCategories,
+        ]);
+
+        Log::info('🔄 Categoría toggleada', [
+            'user_id' => $user->id,
+            'category' => $category,
+            'filter_type' => $filterType,
+            'action' => $action,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $action === 'added' ? 'Categoría agregada' : 'Categoría eliminada',
+            'category' => $category,
+            'filter_type' => $validated['filter_type'],
+            'categories' => $currentCategories,
+            'action' => $action,
+        ]);
+    }
+
+    /**
      * Helper: Obtener estadísticas de Vera
      */
     private function getVeraStats($user)

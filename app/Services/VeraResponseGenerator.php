@@ -285,7 +285,50 @@ class VeraResponseGenerator
             return false;
         }
 
-        // 3. Análisis de contenido
+        // 3. VERIFICAR FILTROS DEL USUARIO (NUEVO - Sistema de filtros inteligente)
+
+        // 3.1. Remitentes prioritarios tienen prioridad absoluta (SIEMPRE responder)
+        if ($config->isSenderAllowed($email->from_email)) {
+            Log::info('⭐ Remitente prioritario - SIEMPRE responder', [
+                'email_id' => $email->id,
+                'from' => $email->from_email,
+            ]);
+            return true; // Forzar respuesta, saltar demás verificaciones
+        }
+
+        // 3.2. Verificar remitentes bloqueados
+        if ($config->isSenderBlocked($email->from_email)) {
+            Log::info('🚫 Remitente bloqueado', [
+                'email_id' => $email->id,
+                'from' => $email->from_email,
+            ]);
+            return false;
+        }
+
+        // 3.3. Verificar categoría permitida
+        $category = $email->category ?? $email->vera_tags[0] ?? null;
+        if (!$config->isCategoryAllowed($category)) {
+            Log::info('🚫 Categoría no permitida para respuesta automática', [
+                'email_id' => $email->id,
+                'category' => $category,
+                'allowed' => $config->response_allowed_categories,
+                'blocked' => $config->response_blocked_categories,
+            ]);
+            return false;
+        }
+
+        // 3.4. Verificar palabras clave bloqueadas
+        $subject = $email->subject ?? '';
+        $body = $email->body_text ?? strip_tags($email->body_html ?? '');
+        if ($config->hasBlockedKeywords($subject, $body)) {
+            Log::info('🚫 Contiene palabras clave bloqueadas', [
+                'email_id' => $email->id,
+                'blocked_keywords' => $config->blocked_keywords,
+            ]);
+            return false;
+        }
+
+        // 4. Análisis de contenido
         $content = strtolower($email->body_text ?? strip_tags($email->body_html ?? ''));
 
         if (empty(trim($content))) {

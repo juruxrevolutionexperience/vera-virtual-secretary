@@ -146,6 +146,13 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
     Route::get('/config', [VeraController::class, 'config'])->name('config');
     Route::patch('/config', [VeraController::class, 'updateConfig'])->name('config.update');
 
+    // Filtros de respuesta automática (NUEVO)
+    Route::get('/filters', [VeraController::class, 'getResponseFilters'])->name('filters.get');
+    Route::patch('/filters', [VeraController::class, 'updateResponseFilters'])->name('filters.update');
+    Route::post('/filters/pattern/add', [VeraController::class, 'addFilterPattern'])->name('filters.pattern.add');
+    Route::delete('/filters/pattern/remove', [VeraController::class, 'removeFilterPattern'])->name('filters.pattern.remove');
+    Route::post('/filters/category/toggle', [VeraController::class, 'toggleCategory'])->name('filters.category.toggle');
+
     // Análisis manual (REQUIERE VERIFICACIÓN DE LÍMITE)
     Route::post('/analyze', [VeraController::class, 'runAnalysis'])
         ->middleware('vera.limit')

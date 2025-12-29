@@ -586,7 +586,21 @@
             veraConfig: {},
             usageData: null,
             plansData: null,
-            notificationsData: null,
+            notificationsData: {
+                email_enabled: true,
+                push_enabled: false,
+                daily_summary_enabled: false,
+                daily_summary_time: '18:00',
+                weekly_summary_enabled: false,
+                weekly_summary_day: 'monday',
+                weekly_summary_time: '09:00',
+                monthly_summary_enabled: false,
+                monthly_summary_day: 1,
+                monthly_summary_time: '09:00',
+                limit_warnings_enabled: true,
+                warning_threshold_percentage: 80,
+                high_activity_alerts: true
+            },
             savingNotifications: false,
             notificationsSaved: false,
 
@@ -911,8 +925,7 @@
             },
 
             async loadNotificationsData() {
-                if (this.notificationsData) return; // Already loaded
-
+                // Permitir recargar datos incluso si ya existen valores por defecto
                 try {
                     const response = await fetch('/settings/notifications/data', {
                         headers: {

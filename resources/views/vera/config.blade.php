@@ -198,6 +198,166 @@
                     </div>
                     <p class="text-xs text-gray-500 mt-1">Solo enviar respuestas con este nivel de confianza o superior</p>
                 </div>
+
+                <!-- Filtros de Respuesta Automática (NUEVO) -->
+                <div class="border-t pt-6 space-y-6">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">🎯 Filtros de Respuesta Automática</h3>
+                        <p class="text-sm text-gray-600 mb-4">Personaliza qué tipos de correos quieres que Vera responda automáticamente</p>
+                    </div>
+
+                    <!-- Categorías de Correo -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-800 mb-3">
+                            📧 Categorías de correo a responder
+                        </label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-purple-50 transition-colors"
+                                   :class="filters.allowedCategories.includes('trabajo') ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">
+                                <input type="checkbox"
+                                       @change="toggleCategoryFilter('trabajo')"
+                                       :checked="filters.allowedCategories.includes('trabajo')"
+                                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-5 h-5">
+                                <div class="flex-1">
+                                    <span class="text-sm font-medium text-gray-800">💼 Trabajo</span>
+                                    <p class="text-xs text-gray-500">Correos profesionales y laborales</p>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-purple-50 transition-colors"
+                                   :class="filters.allowedCategories.includes('personal') ? 'border-purple-500 bg-purple-50' : 'border-gray-200'">
+                                <input type="checkbox"
+                                       @change="toggleCategoryFilter('personal')"
+                                       :checked="filters.allowedCategories.includes('personal')"
+                                       class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-5 h-5">
+                                <div class="flex-1">
+                                    <span class="text-sm font-medium text-gray-800">👤 Personal</span>
+                                    <p class="text-xs text-gray-500">Correos de amigos y familia</p>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-red-50 transition-colors"
+                                   :class="!filters.blockedCategories.includes('promociones') ? 'border-red-500 bg-red-50' : 'border-gray-200'">
+                                <input type="checkbox"
+                                       @change="toggleCategoryFilter('promociones', true)"
+                                       :checked="!filters.blockedCategories.includes('promociones')"
+                                       class="rounded border-gray-300 text-red-600 focus:ring-red-500 w-5 h-5">
+                                <div class="flex-1">
+                                    <span class="text-sm font-medium text-gray-800">🏷️ Promociones</span>
+                                    <p class="text-xs text-gray-500">Ofertas y publicidad</p>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-red-50 transition-colors"
+                                   :class="!filters.blockedCategories.includes('newsletters') ? 'border-red-500 bg-red-50' : 'border-gray-200'">
+                                <input type="checkbox"
+                                       @change="toggleCategoryFilter('newsletters', true)"
+                                       :checked="!filters.blockedCategories.includes('newsletters')"
+                                       class="rounded border-gray-300 text-red-600 focus:ring-red-500 w-5 h-5">
+                                <div class="flex-1">
+                                    <span class="text-sm font-medium text-gray-800">📰 Newsletters</span>
+                                    <p class="text-xs text-gray-500">Boletines informativos</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Remitentes Bloqueados -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-800 mb-2">
+                            🚫 Remitentes o dominios bloqueados
+                        </label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="text"
+                                   x-model="newBlockedSender"
+                                   @keydown.enter.prevent="addBlockedSender()"
+                                   placeholder="ej: noreply, marketing@, @spam.com"
+                                   class="flex-1 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2 shadow-sm text-sm">
+                            <button type="button"
+                                    @click="addBlockedSender()"
+                                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium">
+                                ➕ Agregar
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap gap-2" x-show="filters.blockedSenders.length > 0">
+                            <template x-for="(sender, index) in filters.blockedSenders" :key="index">
+                                <span class="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
+                                    <span x-text="sender"></span>
+                                    <button type="button"
+                                            @click="removeBlockedSender(sender)"
+                                            class="ml-1 text-red-600 hover:text-red-800">
+                                        ✕
+                                    </button>
+                                </span>
+                            </template>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Vera nunca responderá a estos remitentes</p>
+                    </div>
+
+                    <!-- Remitentes Prioritarios -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-800 mb-2">
+                            ⭐ Remitentes prioritarios (siempre responder)
+                        </label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="text"
+                                   x-model="newAllowedSender"
+                                   @keydown.enter.prevent="addAllowedSender()"
+                                   placeholder="ej: jefe@empresa.com, @clientevip.com"
+                                   class="flex-1 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2 shadow-sm text-sm">
+                            <button type="button"
+                                    @click="addAllowedSender()"
+                                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium">
+                                ➕ Agregar
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap gap-2" x-show="filters.allowedSenders.length > 0">
+                            <template x-for="(sender, index) in filters.allowedSenders" :key="index">
+                                <span class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                                    <span x-text="sender"></span>
+                                    <button type="button"
+                                            @click="removeAllowedSender(sender)"
+                                            class="ml-1 text-green-600 hover:text-green-800">
+                                        ✕
+                                    </button>
+                                </span>
+                            </template>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Vera siempre responderá a estos remitentes</p>
+                    </div>
+
+                    <!-- Palabras Clave Bloqueadas -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-800 mb-2">
+                            🔤 Palabras clave bloqueadas
+                        </label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="text"
+                                   x-model="newBlockedKeyword"
+                                   @keydown.enter.prevent="addBlockedKeyword()"
+                                   placeholder="ej: unsubscribe, oferta, descuento"
+                                   class="flex-1 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2 shadow-sm text-sm">
+                            <button type="button"
+                                    @click="addBlockedKeyword()"
+                                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium">
+                                ➕ Agregar
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap gap-2" x-show="filters.blockedKeywords.length > 0">
+                            <template x-for="(keyword, index) in filters.blockedKeywords" :key="index">
+                                <span class="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
+                                    <span x-text="keyword"></span>
+                                    <button type="button"
+                                            @click="removeBlockedKeyword(keyword)"
+                                            class="ml-1 text-orange-600 hover:text-orange-800">
+                                        ✕
+                                    </button>
+                                </span>
+                            </template>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">No responder emails que contengan estas palabras</p>
+                    </div>
+                </div>
             </div>
 
             <!-- Action Buttons -->
@@ -257,9 +417,22 @@
                     auto_archive_newsletters: {{ $config->auto_archive_newsletters ?? false ? 'true' : 'false' }}
                 },
 
+                // Filtros de respuesta (NUEVO)
+                filters: {
+                    allowedCategories: @json($config->response_allowed_categories ?? []),
+                    blockedCategories: @json($config->response_blocked_categories ?? ['promociones', 'newsletters']),
+                    blockedKeywords: @json($config->blocked_keywords ?? []),
+                    blockedSenders: @json($config->blocked_senders ?? []),
+                    allowedSenders: @json($config->allowed_senders ?? [])
+                },
+                newBlockedSender: '',
+                newAllowedSender: '',
+                newBlockedKeyword: '',
+
                 init() {
                     console.log('✅ Alpine.js componente inicializado');
                     console.log('📋 FormData inicial:', this.formData);
+                    console.log('🎯 Filtros iniciales:', this.filters);
                 },
 
                 updateConfidenceThreshold() {
@@ -280,6 +453,7 @@
                     this.hideNotification();
 
                     try {
+                        // 1. Guardar configuración general
                         const url = '{{ route('vera.config.update') }}';
                         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
@@ -308,8 +482,33 @@
                         const data = await response.json();
                         console.log('📥 Response data:', data);
 
-                        if (data.success) {
-                            console.log('✅ Configuración guardada exitosamente');
+                        if (!data.success) {
+                            throw new Error(data.message || 'Error desconocido');
+                        }
+
+                        // 2. Guardar filtros de respuesta (NUEVO)
+                        console.log('🎯 Guardando filtros...');
+                        const filtersResponse = await fetch('{{ route('vera.filters.update') }}', {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                response_allowed_categories: this.filters.allowedCategories,
+                                response_blocked_categories: this.filters.blockedCategories,
+                                blocked_keywords: this.filters.blockedKeywords,
+                                blocked_senders: this.filters.blockedSenders,
+                                allowed_senders: this.filters.allowedSenders
+                            })
+                        });
+
+                        const filtersData = await filtersResponse.json();
+                        console.log('📥 Filtros response:', filtersData);
+
+                        if (filtersData.success) {
+                            console.log('✅ Configuración y filtros guardados exitosamente');
                             this.showNotification('success', '✅ Configuración guardada exitosamente');
 
                             // Redirigir después de 1.5 segundos
@@ -318,7 +517,7 @@
                                 window.location.href = '/emails';
                             }, 1500);
                         } else {
-                            throw new Error(data.message || 'Error desconocido');
+                            throw new Error(filtersData.message || 'Error al guardar filtros');
                         }
                     } catch (error) {
                         console.error('❌ Error completo:', error);
@@ -360,6 +559,102 @@
                         alert('Error al analizar:\n' + error.message);
                     } finally {
                         this.analyzing = false;
+                    }
+                },
+
+                // === MÉTODOS DE GESTIÓN DE FILTROS (NUEVO) ===
+
+                toggleCategoryFilter(category, isBlocked = false) {
+                    console.log(`🔄 Toggling category: ${category}, isBlocked: ${isBlocked}`);
+
+                    if (isBlocked) {
+                        // Es una categoría bloqueada (promociones/newsletters)
+                        const index = this.filters.blockedCategories.indexOf(category);
+                        if (index > -1) {
+                            // Está bloqueada, remover del bloqueo (permitir)
+                            this.filters.blockedCategories.splice(index, 1);
+                        } else {
+                            // No está bloqueada, agregarla al bloqueo
+                            this.filters.blockedCategories.push(category);
+                        }
+                    } else {
+                        // Es una categoría permitida (trabajo/personal)
+                        const index = this.filters.allowedCategories.indexOf(category);
+                        if (index > -1) {
+                            // Está permitida, removerla
+                            this.filters.allowedCategories.splice(index, 1);
+                        } else {
+                            // No está permitida, agregarla
+                            this.filters.allowedCategories.push(category);
+                        }
+                    }
+
+                    console.log('📋 Filtros actualizados:', this.filters);
+                },
+
+                addBlockedSender() {
+                    const sender = this.newBlockedSender.trim();
+                    if (!sender) return;
+
+                    if (this.filters.blockedSenders.includes(sender)) {
+                        this.showNotification('error', '⚠️ Este remitente ya está bloqueado');
+                        return;
+                    }
+
+                    this.filters.blockedSenders.push(sender);
+                    this.newBlockedSender = '';
+                    console.log('🚫 Remitente bloqueado agregado:', sender);
+                },
+
+                removeBlockedSender(sender) {
+                    const index = this.filters.blockedSenders.indexOf(sender);
+                    if (index > -1) {
+                        this.filters.blockedSenders.splice(index, 1);
+                        console.log('✅ Remitente bloqueado eliminado:', sender);
+                    }
+                },
+
+                addAllowedSender() {
+                    const sender = this.newAllowedSender.trim();
+                    if (!sender) return;
+
+                    if (this.filters.allowedSenders.includes(sender)) {
+                        this.showNotification('error', '⚠️ Este remitente ya está en la lista prioritaria');
+                        return;
+                    }
+
+                    this.filters.allowedSenders.push(sender);
+                    this.newAllowedSender = '';
+                    console.log('⭐ Remitente prioritario agregado:', sender);
+                },
+
+                removeAllowedSender(sender) {
+                    const index = this.filters.allowedSenders.indexOf(sender);
+                    if (index > -1) {
+                        this.filters.allowedSenders.splice(index, 1);
+                        console.log('✅ Remitente prioritario eliminado:', sender);
+                    }
+                },
+
+                addBlockedKeyword() {
+                    const keyword = this.newBlockedKeyword.trim().toLowerCase();
+                    if (!keyword) return;
+
+                    if (this.filters.blockedKeywords.includes(keyword)) {
+                        this.showNotification('error', '⚠️ Esta palabra clave ya está bloqueada');
+                        return;
+                    }
+
+                    this.filters.blockedKeywords.push(keyword);
+                    this.newBlockedKeyword = '';
+                    console.log('🔤 Palabra clave bloqueada agregada:', keyword);
+                },
+
+                removeBlockedKeyword(keyword) {
+                    const index = this.filters.blockedKeywords.indexOf(keyword);
+                    if (index > -1) {
+                        this.filters.blockedKeywords.splice(index, 1);
+                        console.log('✅ Palabra clave bloqueada eliminada:', keyword);
                     }
                 },
 
