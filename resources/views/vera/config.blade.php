@@ -262,24 +262,94 @@
                         </div>
                     </div>
 
-                    <!-- Remitentes Bloqueados -->
+                    <!-- Remitentes Bloqueados (NUEVO SELECTOR INTELIGENTE) -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-800 mb-2">
                             🚫 Remitentes o dominios bloqueados
                         </label>
-                        <div class="flex gap-2 mb-2">
-                            <input type="text"
-                                   x-model="newBlockedSender"
-                                   @keydown.enter.prevent="addBlockedSender()"
-                                   placeholder="ej: noreply, marketing@, @spam.com"
-                                   class="flex-1 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2 shadow-sm text-sm">
-                            <button type="button"
-                                    @click="addBlockedSender()"
-                                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium">
-                                ➕ Agregar
-                            </button>
+
+                        <!-- Botón para abrir el selector -->
+                        <button type="button"
+                                @click="contactsBlockedShow = !contactsBlockedShow"
+                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-left flex items-center justify-between text-sm font-medium text-gray-700">
+                            <span>
+                                <span x-show="filters.blockedSenders.length === 0">Seleccionar remitentes a bloquear...</span>
+                                <span x-show="filters.blockedSenders.length > 0" x-text="filters.blockedSenders.length + ' remitente(s) bloqueado(s)'"></span>
+                            </span>
+                            <svg class="w-5 h-5 transition-transform" :class="contactsBlockedShow && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        <!-- Panel selector (desplegable) -->
+                        <div x-show="contactsBlockedShow"
+                             x-transition
+                             class="mt-2 border-2 border-purple-200 rounded-lg bg-white shadow-lg p-4">
+
+                            <!-- Buscador -->
+                            <div class="mb-3">
+                                <input type="text"
+                                       x-model="contactsBlockedSearch"
+                                       placeholder="🔍 Buscar por email o nombre..."
+                                       class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm px-3 py-2 text-gray-900 bg-white">
+                            </div>
+
+                            <!-- Añadir manualmente -->
+                            <div class="mb-3 flex gap-2">
+                                <input type="text"
+                                       x-model="contactsBlockedManual"
+                                       @keydown.enter.prevent="addBlockedSenderManual()"
+                                       placeholder="Añadir manualmente: ej. @spam.com, noreply"
+                                       class="flex-1 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm px-3 py-2 text-gray-900 bg-white">
+                                <button type="button"
+                                        @click="addBlockedSenderManual()"
+                                        class="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-xs font-medium">
+                                    ➕ Añadir
+                                </button>
+                            </div>
+
+                            <!-- Loading -->
+                            <div x-show="contactsBlockedLoading" class="text-center py-4 text-gray-500">
+                                <svg class="animate-spin h-6 w-6 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <p class="text-sm">Cargando contactos...</p>
+                            </div>
+
+                            <!-- Lista de contactos -->
+                            <div x-show="!contactsBlockedLoading" class="max-h-64 overflow-y-auto space-y-2">
+                                <template x-for="contact in getFilteredContacts(contactsBlockedSearch, allContacts)" :key="contact.email">
+                                    <label class="flex items-center gap-3 p-2 border rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
+                                           :class="filters.blockedSenders.includes(contact.email) ? 'border-red-500 bg-red-50' : 'border-gray-200'">
+                                        <input type="checkbox"
+                                               :checked="filters.blockedSenders.includes(contact.email)"
+                                               @change="toggleBlockedSender(contact.email)"
+                                               class="rounded border-gray-300 text-red-600 focus:ring-red-500 w-4 h-4">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-sm font-medium text-gray-900 truncate" x-text="contact.email"></span>
+                                                <span x-show="contact.is_noreply" class="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full">No-reply</span>
+                                                <span x-show="contact.is_marketing" class="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full">Marketing</span>
+                                            </div>
+                                            <div class="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                                                <span x-text="contact.name"></span>
+                                                <span>•</span>
+                                                <span x-text="contact.count + ' emails'"></span>
+                                                <span x-show="contact.category" class="text-xs px-1.5 py-0.5 bg-gray-100 rounded" x-text="contact.category"></span>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </template>
+
+                                <div x-show="getFilteredContacts(contactsBlockedSearch, allContacts).length === 0 && !contactsBlockedLoading" class="text-center py-4 text-gray-500 text-sm">
+                                    No se encontraron contactos
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex flex-wrap gap-2" x-show="filters.blockedSenders.length > 0">
+
+                        <!-- Tags seleccionados -->
+                        <div class="flex flex-wrap gap-2 mt-3" x-show="filters.blockedSenders.length > 0">
                             <template x-for="(sender, index) in filters.blockedSenders" :key="index">
                                 <span class="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
                                     <span x-text="sender"></span>
@@ -291,27 +361,96 @@
                                 </span>
                             </template>
                         </div>
+
                         <p class="text-xs text-gray-500 mt-2">Vera nunca responderá a estos remitentes</p>
                     </div>
 
-                    <!-- Remitentes Prioritarios -->
+                    <!-- Remitentes Prioritarios (NUEVO SELECTOR INTELIGENTE) -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-800 mb-2">
                             ⭐ Remitentes prioritarios (siempre responder)
                         </label>
-                        <div class="flex gap-2 mb-2">
-                            <input type="text"
-                                   x-model="newAllowedSender"
-                                   @keydown.enter.prevent="addAllowedSender()"
-                                   placeholder="ej: jefe@empresa.com, @clientevip.com"
-                                   class="flex-1 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2 shadow-sm text-sm">
-                            <button type="button"
-                                    @click="addAllowedSender()"
-                                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium">
-                                ➕ Agregar
-                            </button>
+
+                        <!-- Botón para abrir el selector -->
+                        <button type="button"
+                                @click="contactsAllowedShow = !contactsAllowedShow"
+                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-left flex items-center justify-between text-sm font-medium text-gray-700">
+                            <span>
+                                <span x-show="filters.allowedSenders.length === 0">Seleccionar remitentes prioritarios...</span>
+                                <span x-show="filters.allowedSenders.length > 0" x-text="filters.allowedSenders.length + ' remitente(s) prioritario(s)'"></span>
+                            </span>
+                            <svg class="w-5 h-5 transition-transform" :class="contactsAllowedShow && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        <!-- Panel selector (desplegable) -->
+                        <div x-show="contactsAllowedShow"
+                             x-transition
+                             class="mt-2 border-2 border-green-200 rounded-lg bg-white shadow-lg p-4">
+
+                            <!-- Buscador -->
+                            <div class="mb-3">
+                                <input type="text"
+                                       x-model="contactsAllowedSearch"
+                                       placeholder="🔍 Buscar por email o nombre..."
+                                       class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm px-3 py-2 text-gray-900 bg-white">
+                            </div>
+
+                            <!-- Añadir manualmente -->
+                            <div class="mb-3 flex gap-2">
+                                <input type="text"
+                                       x-model="contactsAllowedManual"
+                                       @keydown.enter.prevent="addAllowedSenderManual()"
+                                       placeholder="Añadir manualmente: ej. jefe@empresa.com"
+                                       class="flex-1 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm px-3 py-2 text-gray-900 bg-white">
+                                <button type="button"
+                                        @click="addAllowedSenderManual()"
+                                        class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium">
+                                    ➕ Añadir
+                                </button>
+                            </div>
+
+                            <!-- Loading -->
+                            <div x-show="contactsAllowedLoading" class="text-center py-4 text-gray-500">
+                                <svg class="animate-spin h-6 w-6 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <p class="text-sm">Cargando contactos...</p>
+                            </div>
+
+                            <!-- Lista de contactos -->
+                            <div x-show="!contactsAllowedLoading" class="max-h-64 overflow-y-auto space-y-2">
+                                <template x-for="contact in getFilteredContacts(contactsAllowedSearch, allContacts)" :key="contact.email">
+                                    <label class="flex items-center gap-3 p-2 border rounded-lg hover:bg-green-50 transition-colors cursor-pointer"
+                                           :class="filters.allowedSenders.includes(contact.email) ? 'border-green-500 bg-green-50' : 'border-gray-200'">
+                                        <input type="checkbox"
+                                               :checked="filters.allowedSenders.includes(contact.email)"
+                                               @change="toggleAllowedSender(contact.email)"
+                                               class="rounded border-gray-300 text-green-600 focus:ring-green-500 w-4 h-4">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-sm font-medium text-gray-900 truncate" x-text="contact.email"></span>
+                                            </div>
+                                            <div class="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                                                <span x-text="contact.name"></span>
+                                                <span>•</span>
+                                                <span x-text="contact.count + ' emails'"></span>
+                                                <span x-show="contact.category" class="text-xs px-1.5 py-0.5 bg-gray-100 rounded" x-text="contact.category"></span>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </template>
+
+                                <div x-show="getFilteredContacts(contactsAllowedSearch, allContacts).length === 0 && !contactsAllowedLoading" class="text-center py-4 text-gray-500 text-sm">
+                                    No se encontraron contactos
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex flex-wrap gap-2" x-show="filters.allowedSenders.length > 0">
+
+                        <!-- Tags seleccionados -->
+                        <div class="flex flex-wrap gap-2 mt-3" x-show="filters.allowedSenders.length > 0">
                             <template x-for="(sender, index) in filters.allowedSenders" :key="index">
                                 <span class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
                                     <span x-text="sender"></span>
@@ -323,26 +462,80 @@
                                 </span>
                             </template>
                         </div>
+
                         <p class="text-xs text-gray-500 mt-2">Vera siempre responderá a estos remitentes</p>
                     </div>
 
-                    <!-- Palabras Clave Bloqueadas -->
+                    <!-- Palabras Clave Bloqueadas (NUEVO CON SUGERENCIAS) -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-800 mb-2">
                             🔤 Palabras clave bloqueadas
                         </label>
+
+                        <!-- Botón para abrir sugerencias -->
+                        <button type="button"
+                                @click="keywordsShow = !keywordsShow"
+                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-left flex items-center justify-between text-sm font-medium text-gray-700 mb-3">
+                            <span>💡 Ver sugerencias de palabras clave</span>
+                            <svg class="w-5 h-5 transition-transform" :class="keywordsShow && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        <!-- Sugerencias basadas en emails del usuario -->
+                        <div x-show="keywordsShow"
+                             x-transition
+                             class="mb-3 border-2 border-orange-200 rounded-lg bg-white shadow-lg p-4">
+                            <p class="text-sm text-gray-600 mb-3">✨ Sugerencias basadas en tus emails:</p>
+
+                            <div x-show="keywordsLoading" class="text-center py-4">
+                                <svg class="animate-spin h-5 w-5 mx-auto text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
+
+                            <div x-show="!keywordsLoading" class="space-y-2 max-h-48 overflow-y-auto">
+                                <template x-for="suggestion in keywordsSuggestions" :key="suggestion.keyword">
+                                    <label class="flex items-center justify-between p-2 border rounded-lg hover:bg-orange-50 cursor-pointer"
+                                           :class="filters.blockedKeywords.includes(suggestion.keyword) ? 'border-orange-500 bg-orange-50' : 'border-gray-200'">
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox"
+                                                   :checked="filters.blockedKeywords.includes(suggestion.keyword)"
+                                                   @change="toggleKeyword(suggestion.keyword)"
+                                                   class="rounded border-gray-300 text-orange-600 focus:ring-orange-500 w-4 h-4">
+                                            <span class="text-sm font-medium text-gray-900" x-text="suggestion.keyword"></span>
+                                            <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full"
+                                                  x-text="suggestion.count + ' emails'"></span>
+                                        </div>
+                                        <span class="text-xs px-2 py-0.5 rounded-full"
+                                              :class="{
+                                                  'bg-red-100 text-red-700': suggestion.type === 'unsubscribe',
+                                                  'bg-orange-100 text-orange-700': suggestion.type === 'marketing',
+                                                  'bg-blue-100 text-blue-700': suggestion.type === 'newsletter',
+                                                  'bg-gray-100 text-gray-700': suggestion.type === 'other'
+                                              }"
+                                              x-text="suggestion.type"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Input manual -->
                         <div class="flex gap-2 mb-2">
                             <input type="text"
                                    x-model="newBlockedKeyword"
                                    @keydown.enter.prevent="addBlockedKeyword()"
                                    placeholder="ej: unsubscribe, oferta, descuento"
-                                   class="flex-1 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2 shadow-sm text-sm">
+                                   class="flex-1 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 px-4 py-2 shadow-sm text-sm text-gray-900 bg-white">
                             <button type="button"
                                     @click="addBlockedKeyword()"
-                                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium">
+                                    class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium">
                                 ➕ Agregar
                             </button>
                         </div>
+
+                        <!-- Tags seleccionados -->
                         <div class="flex flex-wrap gap-2" x-show="filters.blockedKeywords.length > 0">
                             <template x-for="(keyword, index) in filters.blockedKeywords" :key="index">
                                 <span class="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
@@ -355,6 +548,7 @@
                                 </span>
                             </template>
                         </div>
+
                         <p class="text-xs text-gray-500 mt-2">No responder emails que contengan estas palabras</p>
                     </div>
                 </div>
@@ -429,10 +623,126 @@
                 newAllowedSender: '',
                 newBlockedKeyword: '',
 
-                init() {
+                // NUEVO: Variables para selectores inteligentes
+                contactsBlockedShow: false,
+                contactsBlockedLoading: true,
+                contactsBlockedSearch: '',
+                contactsBlockedManual: '',
+                contactsAllowedShow: false,
+                contactsAllowedLoading: true,
+                contactsAllowedSearch: '',
+                contactsAllowedManual: '',
+                allContacts: [],
+                keywordsShow: false,
+                keywordsLoading: true,
+                keywordsSuggestions: [],
+
+                async init() {
                     console.log('✅ Alpine.js componente inicializado');
                     console.log('📋 FormData inicial:', this.formData);
                     console.log('🎯 Filtros iniciales:', this.filters);
+
+                    // Cargar contactos y keywords
+                    await this.loadContacts();
+                    await this.loadKeywordsSuggestions();
+                },
+
+                // NUEVO: Cargar todos los contactos
+                async loadContacts() {
+                    try {
+                        const response = await fetch('{{ route('vera.suggestions.contacts') }}');
+                        const data = await response.json();
+                        if (data.success) {
+                            this.allContacts = data.contacts;
+                            console.log('✅ Contactos cargados:', data.total);
+                        }
+                    } catch (error) {
+                        console.error('❌ Error cargando contactos:', error);
+                    } finally {
+                        this.contactsBlockedLoading = false;
+                        this.contactsAllowedLoading = false;
+                    }
+                },
+
+                // NUEVO: Cargar sugerencias de keywords
+                async loadKeywordsSuggestions() {
+                    try {
+                        const response = await fetch('{{ route('vera.suggestions.keywords') }}');
+                        const data = await response.json();
+                        if (data.success) {
+                            this.keywordsSuggestions = data.suggestions;
+                            console.log('✅ Keywords cargadas:', data.total);
+                        }
+                    } catch (error) {
+                        console.error('❌ Error cargando keywords:', error);
+                    } finally {
+                        this.keywordsLoading = false;
+                    }
+                },
+
+                // NUEVO: Filtrar contactos por búsqueda
+                getFilteredContacts(searchQuery, contacts) {
+                    if (!searchQuery) return contacts;
+                    const query = searchQuery.toLowerCase();
+                    return contacts.filter(contact =>
+                        contact.email.toLowerCase().includes(query) ||
+                        contact.name.toLowerCase().includes(query)
+                    );
+                },
+
+                // NUEVO: Toggle remitente bloqueado
+                toggleBlockedSender(email) {
+                    const index = this.filters.blockedSenders.indexOf(email);
+                    if (index > -1) {
+                        this.filters.blockedSenders.splice(index, 1);
+                    } else {
+                        this.filters.blockedSenders.push(email);
+                    }
+                    console.log('✅ Remitente bloqueado toggled:', email);
+                },
+
+                // NUEVO: Añadir bloqueado manualmente
+                addBlockedSenderManual() {
+                    const email = this.contactsBlockedManual.trim();
+                    if (!email) return;
+                    if (!this.filters.blockedSenders.includes(email)) {
+                        this.filters.blockedSenders.push(email);
+                        console.log('✅ Remitente bloqueado añadido:', email);
+                    }
+                    this.contactsBlockedManual = '';
+                },
+
+                // NUEVO: Toggle remitente prioritario
+                toggleAllowedSender(email) {
+                    const index = this.filters.allowedSenders.indexOf(email);
+                    if (index > -1) {
+                        this.filters.allowedSenders.splice(index, 1);
+                    } else {
+                        this.filters.allowedSenders.push(email);
+                    }
+                    console.log('✅ Remitente prioritario toggled:', email);
+                },
+
+                // NUEVO: Añadir prioritario manualmente
+                addAllowedSenderManual() {
+                    const email = this.contactsAllowedManual.trim();
+                    if (!email) return;
+                    if (!this.filters.allowedSenders.includes(email)) {
+                        this.filters.allowedSenders.push(email);
+                        console.log('✅ Remitente prioritario añadido:', email);
+                    }
+                    this.contactsAllowedManual = '';
+                },
+
+                // NUEVO: Toggle keyword
+                toggleKeyword(keyword) {
+                    const index = this.filters.blockedKeywords.indexOf(keyword);
+                    if (index > -1) {
+                        this.filters.blockedKeywords.splice(index, 1);
+                    } else {
+                        this.filters.blockedKeywords.push(keyword);
+                    }
+                    console.log('✅ Keyword toggled:', keyword);
                 },
 
                 updateConfidenceThreshold() {

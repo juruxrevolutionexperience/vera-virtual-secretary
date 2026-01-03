@@ -153,6 +153,10 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
     Route::delete('/filters/pattern/remove', [VeraController::class, 'removeFilterPattern'])->name('filters.pattern.remove');
     Route::post('/filters/category/toggle', [VeraController::class, 'toggleCategory'])->name('filters.category.toggle');
 
+    // Sugerencias inteligentes para filtros (NUEVO)
+    Route::get('/suggestions/contacts', [VeraController::class, 'getContactsSuggestions'])->name('suggestions.contacts');
+    Route::get('/suggestions/keywords', [VeraController::class, 'getKeywordsSuggestions'])->name('suggestions.keywords');
+
     // Análisis manual (REQUIERE VERIFICACIÓN DE LÍMITE)
     Route::post('/analyze', [VeraController::class, 'runAnalysis'])
         ->middleware('vera.limit')

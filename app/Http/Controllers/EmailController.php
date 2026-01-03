@@ -71,30 +71,11 @@ class EmailController extends Controller
                     break;
             }
         }
-        
-        // NUEVOS FILTROS DE BÚSQUEDA AVANZADA
-
-        // Filtro por adjuntos
-        if ($request->has('has_attachments') && $request->has_attachments == '1') {
-            $query->where('has_attachments', true);
-        }
-
-        // Filtro por rango de fechas - Desde
-        if ($request->has('date_from') && $request->date_from) {
-            $query->whereDate('received_at', '>=', $request->date_from);
-        }
-
-        // Filtro por rango de fechas - Hasta
-        if ($request->has('date_to') && $request->date_to) {
-            $query->whereDate('received_at', '<=', $request->date_to);
-        }
 
         // Búsqueda
         if ($request->has('search') && $request->search) {
             $query->search($request->search);
         }
-
-
 
         // Paginación
         $emails = $query->paginate(20);
@@ -347,23 +328,6 @@ class EmailController extends Controller
                     $query->archived();
                     break;
             }
-        }
-
-        // FILTROS DE BÚSQUEDA AVANZADA
-
-        // Filtro por adjuntos
-        if ($request->has('has_attachments') && $request->has_attachments == '1') {
-            $query->where('has_attachments', true);
-        }
-
-        // Filtro por rango de fechas - Desde
-        if ($request->has('date_from') && $request->date_from) {
-            $query->whereDate('received_at', '>=', $request->date_from);
-        }
-
-        // Filtro por rango de fechas - Hasta
-        if ($request->has('date_to') && $request->date_to) {
-            $query->whereDate('received_at', '<=', $request->date_to);
         }
 
         // Búsqueda

@@ -746,6 +746,141 @@ class VeraController extends Controller
     }
 
     /**
+     * Obtener sugerencias de contactos con estadísticas (NUEVO)
+     */
+    public function getContactsSuggestions()
+    {
+        $user = Auth::user();
+
+        // Obtener todos los remitentes únicos con estadísticas
+        $contacts = Email::whereHas('emailAccount', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })
+        ->select('from_email', 'from_name')
+        ->selectRaw('COUNT(*) as email_count')
+        ->selectRaw('MAX(received_at) as last_received')
+        ->selectRaw('MIN(received_at) as first_received')
+        ->groupBy('from_email', 'from_name')
+        ->orderByDesc('email_count')
+        ->get()
+        ->map(function ($contact) {
+            $email = strtolower($contact->from_email ?? '');
+            $name = $contact->from_name ?? 'Sin nombre';
+
+            // Detectar características automáticamente
+            $isNoreply = str_contains($email, 'noreply') || str_contains($email, 'no-reply') || str_contains($email, 'donotreply');
+            $isMarketing = str_contains($email, 'marketing') || str_contains($email, 'promo') || str_contains($email, 'newsletter');
+
+            // Categoría más común de este remitente
+            $categoryInfo = Email::whereHas('emailAccount', function ($query) use ($contact) {
+                $query->where('user_id', auth()->id());
+            })
+            ->where('from_email', $contact->from_email)
+            ->whereNotNull('category')
+            ->select('category')
+            ->selectRaw('COUNT(*) as cat_count')
+            ->groupBy('category')
+            ->orderByDesc('cat_count')
+            ->first();
+
+            $category = $categoryInfo->category ?? null;
+
+            // Sugerencia de acción
+            $suggestedAction = 'neutral';
+            if ($isNoreply || $isMarketing || in_array($category, ['promociones', 'newsletters', 'updates'])) {
+                $suggestedAction = 'block';
+            }
+
+            return [
+                'email' => $contact->from_email,
+                'name' => $name,
+                'count' => $contact->email_count,
+                'last_received' => $contact->last_received,
+                'first_received' => $contact->first_received,
+                'is_noreply' => $isNoreply,
+                'is_marketing' => $isMarketing,
+                'category' => $category,
+                'suggested_action' => $suggestedAction, // 'block', 'allow', 'neutral'
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'contacts' => $contacts,
+            'total' => $contacts->count(),
+        ]);
+    }
+
+    /**
+     * Obtener sugerencias de palabras clave bloqueadas (NUEVO)
+     */
+    public function getKeywordsSuggestions()
+    {
+        $user = Auth::user();
+
+        // Palabras clave comunes encontradas en emails
+        $commonKeywords = [
+            'unsubscribe', 'darse de baja', 'cancelar suscripción',
+            'oferta', 'descuento', 'promoción', 'sale', 'black friday',
+            'newsletter', 'boletín', 'actualización',
+            'no reply', 'do not reply', 'noreply',
+        ];
+
+        // Buscar cuántas veces aparecen estas keywords en los emails del usuario
+        $suggestions = [];
+
+        foreach ($commonKeywords as $keyword) {
+            $count = Email::whereHas('emailAccount', function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })
+            ->where(function ($query) use ($keyword) {
+                $query->where('subject', 'LIKE', "%{$keyword}%")
+                      ->orWhere('body_text', 'LIKE', "%{$keyword}%");
+            })
+            ->count();
+
+            if ($count > 0) {
+                $suggestions[] = [
+                    'keyword' => $keyword,
+                    'count' => $count,
+                    'type' => $this->getKeywordType($keyword),
+                ];
+            }
+        }
+
+        // Ordenar por cantidad de apariciones
+        usort($suggestions, fn($a, $b) => $b['count'] <=> $a['count']);
+
+        return response()->json([
+            'success' => true,
+            'suggestions' => $suggestions,
+            'total' => count($suggestions),
+        ]);
+    }
+
+    /**
+     * Helper: Determinar tipo de keyword
+     */
+    private function getKeywordType($keyword)
+    {
+        $marketingKeywords = ['oferta', 'descuento', 'promoción', 'sale', 'black friday'];
+        $newsletterKeywords = ['newsletter', 'boletín', 'actualización'];
+        $unsubscribeKeywords = ['unsubscribe', 'darse de baja', 'cancelar suscripción'];
+
+        if (in_array($keyword, $unsubscribeKeywords)) {
+            return 'unsubscribe';
+        }
+        if (in_array($keyword, $marketingKeywords)) {
+            return 'marketing';
+        }
+        if (in_array($keyword, $newsletterKeywords)) {
+            return 'newsletter';
+        }
+
+        return 'other';
+    }
+
+    /**
      * Helper: Obtener estadísticas de Vera
      */
     private function getVeraStats($user)
