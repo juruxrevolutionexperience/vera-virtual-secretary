@@ -90,17 +90,21 @@ class VeraConfig extends Model
             return true;
         }
 
-        // Si hay lista de permitidas, verificar que esté en la lista
-        if (!empty($this->response_allowed_categories)) {
-            return in_array($category, $this->response_allowed_categories);
+        // NUEVO: Solo bloquear categorías claramente automáticas/promocionales
+        // Esto permite que emails de personas reales (reunión, consulta, soporte, etc.)
+        // se respondan sin importar la categoría
+        $autoCategories = ['promociones', 'newsletters', 'notificaciones', 'updates', 'promotions'];
+
+        if (in_array($category, $autoCategories)) {
+            return false; // Bloquear automáticos
         }
 
-        // Si hay lista de bloqueadas, verificar que NO esté en la lista
+        // Si hay lista de bloqueadas explícitas, respetarla
         if (!empty($this->response_blocked_categories)) {
             return !in_array($category, $this->response_blocked_categories);
         }
 
-        // Por defecto, permitir todo
+        // Por defecto, permitir todo (personas reales)
         return true;
     }
 

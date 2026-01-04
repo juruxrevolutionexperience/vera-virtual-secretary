@@ -305,19 +305,53 @@ class VeraResponseGenerator
             return false;
         }
 
-        // 3.3. Verificar categoría permitida
-        $category = $email->category ?? $email->vera_tags[0] ?? null;
-        if (!$config->isCategoryAllowed($category)) {
-            Log::info('🚫 Categoría no permitida para respuesta automática', [
+        // 3.3. PRIMERO: Detectar emails automáticos/newsletters (NUNCA responder)
+        // Esto tiene prioridad sobre categorías, porque queremos filtrar automáticos ANTES
+        $content = strtolower($email->body_text ?? strip_tags($email->body_html ?? ''));
+        $fromEmail = strtolower($email->from_email ?? '');
+
+        if (empty(trim($content))) {
+            Log::debug('❌ Sin contenido', ['email_id' => $email->id]);
+            return false;
+        }
+
+        $isAutomated = str_contains($content, 'no-reply')
+                    || str_contains($content, 'unsubscribe')
+                    || str_contains($content, 'darse de baja')
+                    || str_contains($content, 'cancelar suscripción')
+                    || str_contains($fromEmail, 'noreply')
+                    || str_contains($fromEmail, 'no-reply')
+                    || str_contains($fromEmail, 'donotreply')
+                    || str_contains($fromEmail, 'notification')
+                    || str_contains($fromEmail, 'automated')
+                    || $email->category === 'promotions'
+                    || $email->category === 'updates';
+
+        if ($isAutomated) {
+            Log::info('🚫 Email automático/newsletter detectado', [
                 'email_id' => $email->id,
-                'category' => $category,
-                'allowed' => $config->response_allowed_categories,
-                'blocked' => $config->response_blocked_categories,
+                'from' => $email->from_email,
+                'category' => $email->category,
             ]);
             return false;
         }
 
-        // 3.4. Verificar palabras clave bloqueadas
+        // 3.4. NUEVO: Si llegó hasta aquí, es una PERSONA REAL
+        // Solo verificamos categoría para promociones/newsletters (que ya filtramos arriba)
+        // Para personas reales, respondemos sin importar si es reunión, consulta, soporte, etc.
+        $category = $email->category ?? $email->vera_tags[0] ?? null;
+
+        // Solo bloquear si es una categoría claramente promocional/automática
+        $autoCategories = ['promociones', 'newsletters', 'notificaciones', 'updates', 'promotions'];
+        if (in_array($category, $autoCategories)) {
+            Log::info('🚫 Categoría automática bloqueada', [
+                'email_id' => $email->id,
+                'category' => $category,
+            ]);
+            return false;
+        }
+
+        // 3.5. Verificar palabras clave bloqueadas (solo para casos edge)
         $subject = $email->subject ?? '';
         $body = $email->body_text ?? strip_tags($email->body_html ?? '');
         if ($config->hasBlockedKeywords($subject, $body)) {
@@ -328,26 +362,12 @@ class VeraResponseGenerator
             return false;
         }
 
-        // 4. Análisis de contenido
-        $content = strtolower($email->body_text ?? strip_tags($email->body_html ?? ''));
-
-        if (empty(trim($content))) {
-            Log::debug('❌ Sin contenido', ['email_id' => $email->id]);
-            return false;
-        }
-
-        // 4. Detectar emails automáticos/newsletters (NUNCA responder)
-        $isAutomated = str_contains($content, 'no-reply')
-                    || str_contains($content, 'unsubscribe')
-                    || str_contains($email->from_email, 'noreply')
-                    || str_contains($email->from_email, 'no-reply')
-                    || $email->category === 'promotions'
-                    || $email->category === 'updates';
-
-        if ($isAutomated) {
-            Log::debug('❌ Email automático/newsletter', ['email_id' => $email->id]);
-            return false;
-        }
+        // Si llegó aquí, es una PERSONA REAL contactando
+        Log::info('✅ Email de persona real detectado', [
+            'email_id' => $email->id,
+            'from' => $email->from_email,
+            'category' => $category,
+        ]);
 
         // 5. Detectar agradecimientos simples (NO responder)
         // Solo considerar agradecimiento simple si:
