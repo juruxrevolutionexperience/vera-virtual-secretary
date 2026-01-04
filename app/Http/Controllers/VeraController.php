@@ -235,13 +235,8 @@ class VeraController extends Controller
     {
         $user = Auth::user();
 
-        // Obtener emails del usuario
-        $emails = Email::whereHas('emailAccount', function ($query) use ($user) {
-            $query->where('user_id', $user->id);
-        })->get();
-
         // Analizar
-        $analysis = $this->analyzer->analyze($emails);
+        $analysis = $this->analyzer->analyzeUser($user);
 
         // Generar reporte
         $report = $this->reportGenerator->generateReport($analysis);

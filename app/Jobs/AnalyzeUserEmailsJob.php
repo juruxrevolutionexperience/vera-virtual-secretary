@@ -34,19 +34,19 @@ class AnalyzeUserEmailsJob implements ShouldQueue
                 return;
             }
 
-            // Obtener emails del usuario
-            $emails = Email::whereHas('emailAccount', function($query) use ($user) {
+            // Verificar que tenga emails
+            $emailsCount = Email::whereHas('emailAccount', function($query) use ($user) {
                 $query->where('user_id', $user->id);
-            })->get();
+            })->count();
 
-            if ($emails->isEmpty()) {
+            if ($emailsCount === 0) {
                 Log::info("No hay emails para analizar para usuario: {$this->userId}");
                 return;
             }
 
             // Ejecutar análisis
             Log::info("Iniciando análisis de Vera para usuario: {$this->userId}");
-            $analysis = $analyzer->analyze($emails);
+            $analysis = $analyzer->analyzeUser($user);
 
             // Verificar si el usuario necesita onboarding
             $config = VeraConfig::where('user_id', $user->id)->first();
@@ -65,7 +65,7 @@ class AnalyzeUserEmailsJob implements ShouldQueue
             }
 
             Log::info("Análisis de Vera completado para usuario: {$this->userId}", [
-                'total_emails' => $analysis['total_emails'] ?? 0,
+                'total_emails' => $analysis['email_statistics']['total_emails'] ?? 0,
                 'needs_onboarding' => !$config,
             ]);
 
