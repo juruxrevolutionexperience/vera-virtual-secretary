@@ -212,8 +212,8 @@ class EmailAccountController extends Controller
             abort(403);
         }
 
-        // Eliminar todos los emails asociados a esta cuenta
-        \App\Models\Email::where('email_account_id', $emailAccount->id)->delete();
+        // Eliminar PERMANENTEMENTE todos los emails asociados a esta cuenta (incluso soft deleted)
+        \App\Models\Email::where('email_account_id', $emailAccount->id)->forceDelete();
 
         // Eliminar la cuenta
         $emailAccount->delete();

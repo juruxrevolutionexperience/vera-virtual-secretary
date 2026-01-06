@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('email_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('vera_action_id')->nullable()->constrained('vera_email_actions')->onDelete('set null');
-            $table->foreignId('token_usage_id')->nullable()->constrained('vera_token_usage')->onDelete('set null');
+            $table->unsignedBigInteger('token_usage_id')->nullable(); // Sin FK por ahora, se agregará después
 
             // Tipo de actividad
             $table->enum('activity_type', [

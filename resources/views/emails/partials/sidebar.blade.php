@@ -120,6 +120,98 @@
                 </a>
             @endforeach
         </div>
+
+        <div class="h-px bg-gray-200 my-3"></div>
+
+        <!-- Folders Section -->
+        <div class="mb-4" x-data="foldersTree()">
+            <div class="flex justify-between items-center px-2 mb-1">
+                <p class="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Mis Carpetas</p>
+                <button @click="openCreateFolderModal()"
+                    class="text-purple-600 hover:text-purple-800 transition-colors"
+                    title="Nueva carpeta">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Árbol de carpetas -->
+            <div id="folders-tree-container">
+                <template x-if="loading">
+                    <div class="text-center py-3">
+                        <svg class="animate-spin h-4 w-4 mx-auto text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                    </div>
+                </template>
+
+                <template x-if="!loading && folders.length === 0">
+                    <p class="text-xs text-gray-400 px-2 py-2">No hay carpetas</p>
+                </template>
+
+                <template x-if="!loading && folders.length > 0">
+                    <div>
+                        <template x-for="folder in folders" :key="folder.id">
+                            <div x-data="{ expanded: false }">
+                                <!-- Carpeta principal -->
+                                <div @click="selectFolder(folder.id)"
+                                    :class="selectedFolderId === folder.id ? 'bg-purple-50 text-purple-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'"
+                                    class="flex items-center gap-2 px-2 py-1.5 rounded-md mb-1 cursor-pointer group relative">
+
+                                    <!-- Chevron si tiene hijos -->
+                                    <template x-if="folder.children && folder.children.length > 0">
+                                        <button @click.stop="expanded = !expanded" class="flex-shrink-0">
+                                            <svg class="w-3 h-3 transition-transform" :class="expanded ? 'rotate-90' : ''" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </button>
+                                    </template>
+                                    <template x-if="!folder.children || folder.children.length === 0">
+                                        <span class="w-3"></span>
+                                    </template>
+
+                                    <!-- Ícono de carpeta -->
+                                    <span x-html="getFolderIcon(folder.icon)" :style="'color: ' + (folder.color || '#6B7280')" class="text-sm flex-shrink-0"></span>
+
+                                    <!-- Nombre de carpeta -->
+                                    <span class="flex-1 truncate text-sm" x-text="folder.name"></span>
+
+                                    <!-- Contador de emails -->
+                                    <span class="text-xs text-gray-400 font-medium" x-text="folder.emails_count || 0"></span>
+
+                                    <!-- Botón de menú (solo para carpetas no del sistema) -->
+                                    <template x-if="!folder.is_system_folder">
+                                        <button @click.stop="openFolderMenu(folder.id)"
+                                            class="opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
+                                            </svg>
+                                        </button>
+                                    </template>
+                                </div>
+
+                                <!-- Subcarpetas (recursivo) -->
+                                <template x-if="expanded && folder.children && folder.children.length > 0">
+                                    <div class="ml-4">
+                                        <template x-for="child in folder.children" :key="child.id">
+                                            <div @click="selectFolder(child.id)"
+                                                :class="selectedFolderId === child.id ? 'bg-purple-50 text-purple-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'"
+                                                class="flex items-center gap-2 px-2 py-1.5 rounded-md mb-1 cursor-pointer">
+                                                <span x-html="getFolderIcon(child.icon)" :style="'color: ' + (child.color || '#6B7280')" class="text-sm"></span>
+                                                <span class="flex-1 truncate text-sm" x-text="child.name"></span>
+                                                <span class="text-xs text-gray-400 font-medium" x-text="child.emails_count || 0"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
     </nav>
 
     <!-- Footer - User Menu -->

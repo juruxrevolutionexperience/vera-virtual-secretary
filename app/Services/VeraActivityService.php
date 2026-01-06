@@ -37,7 +37,7 @@ class VeraActivityService
             'metadata' => array_merge([
                 'from' => $email->from_email,
                 'subject' => $email->subject,
-                'category' => $email->category?->name,
+                'category' => $email->category, // category is a string, not a relation
                 'priority' => $email->priority,
             ], $metadata),
             'tokens_consumed' => $tokenUsage?->total_tokens ?? 0,

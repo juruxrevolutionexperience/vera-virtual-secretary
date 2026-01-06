@@ -6,6 +6,12 @@ use App\Http\Controllers\NewsletterController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BillingController;
 use Laravel\Cashier\Http\Controllers\WebhookController;
+use App\Http\Controllers\EmailAccountController;
+use App\Http\Controllers\EmailController;
+use App\Http\Controllers\EmailFolderController;
+use App\Http\Controllers\EmailWorkflowController;
+use App\Http\Controllers\VeraController;
+use App\Http\Controllers\Admin\VeraAnalyticsController as AdminVeraAnalyticsController;
 
 // Landing Page
 Route::view('/', 'landing-new')->name('landing-new');
@@ -72,7 +78,6 @@ Route::middleware(['auth'])->prefix('virtual-secretary')->name('virtual-secretar
 // ========================================
 // RUTAS DE CUENTAS DE EMAIL (OAuth2)
 // ========================================
-use App\Http\Controllers\EmailAccountController;
 
 Route::middleware(['auth'])->prefix('email-accounts')->name('email-accounts.')->group(function () {
     // Gestión de cuentas conectadas
@@ -105,7 +110,6 @@ Route::middleware(['auth'])->prefix('email-accounts')->name('email-accounts.')->
 // ========================================
 // RUTAS DEL MÓDULO EMAILS
 // ========================================
-use App\Http\Controllers\EmailController;
 
 Route::middleware(['auth'])->prefix('emails')->name('emails.')->group(function () {
     // API endpoint para obtener emails sin reload (AJAX)
@@ -130,9 +134,67 @@ Route::middleware(['auth'])->prefix('emails')->name('emails.')->group(function (
 });
 
 // ========================================
+// RUTAS DE CARPETAS DE EMAILS
+// ========================================
+
+Route::middleware(['auth'])->prefix('email-folders')->name('email-folders.')->group(function () {
+    // Obtener árbol de carpetas (AJAX)
+    Route::get('/tree', [EmailFolderController::class, 'tree'])->name('tree');
+
+    // Gestión de carpetas
+    Route::get('/', [EmailFolderController::class, 'index'])->name('index');
+    Route::post('/', [EmailFolderController::class, 'store'])->name('store');
+    Route::get('/{folder}', [EmailFolderController::class, 'show'])->name('show');
+    Route::get('/{folder}/emails', [EmailFolderController::class, 'getEmailsInFolder'])->name('emails');
+    Route::put('/{folder}', [EmailFolderController::class, 'update'])->name('update');
+    Route::delete('/{folder}', [EmailFolderController::class, 'destroy'])->name('destroy');
+
+    // Asignar emails a carpetas
+    Route::post('/{folder}/assign-email', [EmailFolderController::class, 'assignEmail'])->name('assign-email');
+    Route::post('/{folder}/bulk-assign', [EmailFolderController::class, 'bulkAssignEmails'])->name('bulk-assign');
+
+    // Reordenar carpetas (drag & drop)
+    Route::post('/reorder', [EmailFolderController::class, 'reorder'])->name('reorder');
+
+    // Crear carpetas del sistema
+    Route::post('/system/create', [EmailFolderController::class, 'createSystemFolders'])->name('system.create');
+});
+
+// ========================================
+// RUTAS DE WORKFLOW DE EMAILS
+// ========================================
+
+Route::middleware(['auth'])->prefix('email-workflow')->name('email-workflow.')->group(function () {
+    // Resumen de workflow
+    Route::get('/summary', [EmailWorkflowController::class, 'summary'])->name('summary');
+
+    // Cambiar estado de workflow
+    Route::post('/{email}/change-status', [EmailWorkflowController::class, 'changeStatus'])->name('change-status');
+    Route::post('/bulk/change-status', [EmailWorkflowController::class, 'bulkChangeStatus'])->name('bulk.change-status');
+
+    // Acciones requeridas
+    Route::post('/{email}/require-action', [EmailWorkflowController::class, 'markAsRequiringAction'])->name('require-action');
+    Route::post('/{email}/complete-action', [EmailWorkflowController::class, 'completeAction'])->name('complete-action');
+
+    // Snooze (posponer)
+    Route::post('/{email}/snooze', [EmailWorkflowController::class, 'snooze'])->name('snooze');
+    Route::post('/{email}/wakeup', [EmailWorkflowController::class, 'wakeup'])->name('wakeup');
+
+    // Due dates (fechas de vencimiento)
+    Route::post('/{email}/set-due-date', [EmailWorkflowController::class, 'setDueDate'])->name('set-due-date');
+    Route::get('/overdue', [EmailWorkflowController::class, 'overdue'])->name('overdue');
+    Route::get('/due-soon', [EmailWorkflowController::class, 'dueSoon'])->name('due-soon');
+
+    // Papelera
+    Route::post('/{email}/move-to-trash', [EmailWorkflowController::class, 'moveToTrash'])->name('move-to-trash');
+    Route::post('/{email}/restore', [EmailWorkflowController::class, 'restoreFromTrash'])->name('restore');
+    Route::post('/bulk/move-to-trash', [EmailWorkflowController::class, 'bulkMoveToTrash'])->name('bulk.move-to-trash');
+    Route::delete('/trash/empty', [EmailWorkflowController::class, 'emptyTrash'])->name('empty-trash');
+});
+
+// ========================================
 // RUTAS DE VERA (AI ASSISTANT)
 // ========================================
-use App\Http\Controllers\VeraController;
 
 Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
     // Dashboard de Vera
@@ -295,7 +357,6 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
 // ========================================
 // RUTAS DE ADMIN - VERA ANALYTICS
 // ========================================
-use App\Http\Controllers\Admin\VeraAnalyticsController as AdminVeraAnalyticsController;
 
 Route::middleware(['auth'])->prefix('admin/vera')->name('admin.vera.')->group(function () {
     // Dashboard de analytics

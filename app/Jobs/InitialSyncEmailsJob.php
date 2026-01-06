@@ -28,6 +28,17 @@ class InitialSyncEmailsJob implements ShouldQueue
 
     public function handle(): void
     {
+        // Verificar que la cuenta todavía existe en la base de datos
+        $accountExists = EmailAccount::where('id', $this->emailAccount->id)->exists();
+
+        if (!$accountExists) {
+            Log::warning('⚠️ Email account no longer exists, cancelling sync', [
+                'account_id' => $this->emailAccount->id,
+                'email' => $this->emailAccount->email_address,
+            ]);
+            return; // Salir silenciosamente
+        }
+
         Log::info('🚀 Starting INITIAL sync', [
             'account_id' => $this->emailAccount->id,
             'email' => $this->emailAccount->email_address,

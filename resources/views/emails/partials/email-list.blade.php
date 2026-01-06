@@ -10,11 +10,13 @@
     <div id="emails-container" class="flex-1 overflow-y-auto">
         @forelse($emails as $email)
             <div id="email-{{ $email->id }}"
-                class="email-item border-b border-gray-100 cursor-pointer relative
+                class="email-item group border-b border-gray-100 cursor-pointer relative overflow-visible
                   density-comfortable
                             {{ !$email->is_read ? 'unread' : '' }}
                             {{ $email->priority === 'high' ? 'priority-high' : '' }}
                             {{ $email->priority === 'urgent' ? 'priority-urgent' : '' }}"
+                x-data="{ workflowOpen: false, folderMenuOpen: false }"
+                @mouseleave="workflowOpen = false; folderMenuOpen = false"
                 onclick="handleEmailClick({{ $email->id }}, event)"
                 ondblclick="openEmailFullPage({{ $email->id }})"
                 data-email-id="{{ $email->id }}"
@@ -97,8 +99,122 @@
                                 {{ $email->subject }}
                             </p>
 
+                            <!-- Workflow Status Badge -->
+                            @php
+                                $workflowColors = [
+                                    'unread' => 'bg-blue-100 text-blue-700',
+                                    'pending_validation' => 'bg-yellow-100 text-yellow-700',
+                                    'pending_response' => 'bg-orange-100 text-orange-700',
+                                    'in_progress' => 'bg-purple-100 text-purple-700',
+                                    'in_review' => 'bg-indigo-100 text-indigo-700',
+                                    'approved' => 'bg-green-100 text-green-700',
+                                    'completed' => 'bg-emerald-100 text-emerald-700',
+                                    'archived' => 'bg-gray-100 text-gray-600',
+                                    'no_action_needed' => 'bg-slate-100 text-slate-600',
+                                ];
+                                $workflowLabels = [
+                                    'unread' => '📬 Sin leer',
+                                    'pending_validation' => '⏳ Pendiente',
+                                    'pending_response' => '✉️ Responder',
+                                    'in_progress' => '🔄 En curso',
+                                    'in_review' => '👁️ Revisión',
+                                    'approved' => '✅ Aprobado',
+                                    'completed' => '✔️ Completado',
+                                    'archived' => '📦 Archivado',
+                                    'no_action_needed' => '➖ Sin acción',
+                                ];
+                            @endphp
+
+                            <div class="relative">
+                                <button @click.stop="workflowOpen = !workflowOpen"
+                                    class="inline-flex items-center text-[10px] px-2 py-1 rounded-full font-medium {{ $workflowColors[$email->workflow_status] ?? 'bg-gray-100 text-gray-600' }} hover:opacity-80 transition-opacity">
+                                    {{ $workflowLabels[$email->workflow_status] ?? ucfirst($email->workflow_status) }}
+                                    <svg class="w-2.5 h-2.5 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                    </svg>
+                                </button>
+
+                                <!-- Dropdown de workflow -->
+                                <div x-show="workflowOpen"
+                                     @click.away="workflowOpen = false"
+                                     x-transition:enter="transition ease-out duration-100"
+                                     x-transition:enter-start="opacity-0 scale-95"
+                                     x-transition:enter-end="opacity-100 scale-100"
+                                     class="absolute left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+                                     style="display: none;">
+                                    <div class="py-1">
+                                        <button @click.stop="changeWorkflowStatus({{ $email->id }}, 'pending_validation'); workflowOpen = false"
+                                            class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                                            ⏳ Pendiente validación
+                                        </button>
+                                        <button @click.stop="changeWorkflowStatus({{ $email->id }}, 'pending_response'); workflowOpen = false"
+                                            class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                                            ✉️ Requiere respuesta
+                                        </button>
+                                        <button @click.stop="changeWorkflowStatus({{ $email->id }}, 'in_progress'); workflowOpen = false"
+                                            class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                                            🔄 En curso
+                                        </button>
+                                        <button @click.stop="changeWorkflowStatus({{ $email->id }}, 'in_review'); workflowOpen = false"
+                                            class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                            👁️ En revisión
+                                        </button>
+                                        <button @click.stop="changeWorkflowStatus({{ $email->id }}, 'completed'); workflowOpen = false"
+                                            class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                            ✔️ Completado
+                                        </button>
+                                        <div class="border-t border-gray-200 my-1"></div>
+                                        <button @click.stop="changeWorkflowStatus({{ $email->id }}, 'no_action_needed'); workflowOpen = false"
+                                            class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                                            ➖ Sin acción necesaria
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Quick Actions -->
                             <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <!-- Mover a carpeta -->
+                                <div class="relative">
+                                    <button @click.stop="folderMenuOpen = !folderMenuOpen"
+                                        class="p-1 hover:bg-gray-200 rounded transition-colors"
+                                        title="Mover a carpeta">
+                                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                                        </svg>
+                                    </button>
+
+                                    <!-- Dropdown de carpetas -->
+                                    <div x-show="folderMenuOpen"
+                                         @click.away="folderMenuOpen = false"
+                                         x-transition
+                                         class="absolute left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-64 overflow-y-auto"
+                                         style="display: none;">
+                                        <div class="py-1" x-data="{ folders: [] }" x-init="
+                                            fetch('/email-folders/tree')
+                                                .then(r => r.json())
+                                                .then(data => folders = data.folders || [])
+                                        ">
+                                            <template x-for="folder in folders" :key="folder.id">
+                                                <button @click.stop="moveEmailToFolder({{ $email->id }}, folder.id); folderMenuOpen = false"
+                                                    class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                                    <span x-text="folder.name"></span>
+                                                </button>
+                                            </template>
+                                            <template x-if="folders.length === 0">
+                                                <p class="px-3 py-2 text-xs text-gray-400">No hay carpetas</p>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Estrella -->
                                 <button @click.stop="performAction({{ $email->id }}, 'toggle-star')"
                                     class="p-1 hover:bg-gray-200 rounded transition-colors"
                                     title="{{ $email->is_starred ? 'Quitar estrella' : 'Destacar' }}">

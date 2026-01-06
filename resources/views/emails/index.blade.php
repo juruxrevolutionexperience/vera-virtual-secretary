@@ -573,6 +573,146 @@
 
         // Función para actualizar el DOM con nuevos emails
         // Función para actualizar el DOM con nuevos emails
+        // ==========================================
+        // FUNCIÓN AUXILIAR: WORKFLOW BADGE HTML
+        // ==========================================
+        function getWorkflowBadgeHtml(email) {
+            const workflowColors = {
+                'unread': 'bg-blue-100 text-blue-700',
+                'pending_validation': 'bg-yellow-100 text-yellow-700',
+                'pending_response': 'bg-orange-100 text-orange-700',
+                'in_progress': 'bg-purple-100 text-purple-700',
+                'in_review': 'bg-indigo-100 text-indigo-700',
+                'approved': 'bg-green-100 text-green-700',
+                'completed': 'bg-emerald-100 text-emerald-700',
+                'archived': 'bg-gray-100 text-gray-600',
+                'no_action_needed': 'bg-slate-100 text-slate-600',
+            };
+
+            const workflowLabels = {
+                'unread': '📬 Sin leer',
+                'pending_validation': '⏳ Pendiente',
+                'pending_response': '✉️ Responder',
+                'in_progress': '🔄 En curso',
+                'in_review': '👁️ Revisión',
+                'approved': '✅ Aprobado',
+                'completed': '✔️ Completado',
+                'archived': '📦 Archivado',
+                'no_action_needed': '➖ Sin acción',
+            };
+
+            const status = email.workflow_status || 'unread';
+            const colorClass = workflowColors[status] || 'bg-gray-100 text-gray-600';
+            const label = workflowLabels[status] || status;
+
+            return `
+                <div class="relative z-[100]">
+                    <button @click.stop="workflowOpen = !workflowOpen"
+                        class="inline-flex items-center text-[10px] px-2 py-1 rounded-full font-medium ${colorClass} hover:opacity-80 transition-opacity">
+                        ${label}
+                        <svg class="w-2.5 h-2.5 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+
+                    <div x-show="workflowOpen"
+                         @click.away="workflowOpen = false"
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         class="absolute left-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999]"
+                         style="display: none;">
+                        <div class="py-1">
+                            <button @click.stop="changeWorkflowStatus(${email.id}, 'pending_validation'); workflowOpen = false"
+                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                                ⏳ Pendiente validación
+                            </button>
+                            <button @click.stop="changeWorkflowStatus(${email.id}, 'pending_response'); workflowOpen = false"
+                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                                ✉️ Requiere respuesta
+                            </button>
+                            <button @click.stop="changeWorkflowStatus(${email.id}, 'in_progress'); workflowOpen = false"
+                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                                🔄 En curso
+                            </button>
+                            <button @click.stop="changeWorkflowStatus(${email.id}, 'in_review'); workflowOpen = false"
+                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                👁️ En revisión
+                            </button>
+                            <button @click.stop="changeWorkflowStatus(${email.id}, 'completed'); workflowOpen = false"
+                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                ✔️ Completado
+                            </button>
+                            <div class="border-t border-gray-200 my-1"></div>
+                            <button @click.stop="changeWorkflowStatus(${email.id}, 'no_action_needed'); workflowOpen = false"
+                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                                ➖ Sin acción necesaria
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // FUNCIÓN AUXILIAR: QUICK ACTIONS HTML
+        // ==========================================
+        function getQuickActionsHtml(email) {
+            return `
+                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <!-- Mover a carpeta -->
+                    <div class="relative z-[100]">
+                        <button @click.stop="folderMenuOpen = !folderMenuOpen"
+                            class="p-1 hover:bg-gray-200 rounded transition-colors"
+                            title="Mover a carpeta">
+                            <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                            </svg>
+                        </button>
+
+                        <div x-show="folderMenuOpen"
+                             @click.away="folderMenuOpen = false"
+                             x-transition
+                             class="absolute left-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] max-h-64 overflow-y-auto"
+                             style="display: none;">
+                            <div class="py-1" x-data="{ folders: [] }" x-init="
+                                fetch('/email-folders/tree')
+                                    .then(r => r.json())
+                                    .then(data => folders = data.folders || [])
+                            ">
+                                <template x-for="folder in folders" :key="folder.id">
+                                    <button @click.stop="moveEmailToFolder(${email.id}, folder.id); folderMenuOpen = false"
+                                        class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                        <span x-text="folder.name"></span>
+                                    </button>
+                                </template>
+                                <template x-if="folders.length === 0">
+                                    <p class="px-3 py-2 text-xs text-gray-400">No hay carpetas</p>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estrella -->
+                    <button @click.stop="performAction(${email.id}, 'toggle-star')"
+                        class="p-1 hover:bg-gray-200 rounded transition-colors"
+                        title="${email.is_starred ? 'Quitar estrella' : 'Destacar'}">
+                        <svg class="w-3.5 h-3.5 ${email.is_starred ? 'text-yellow-500 fill-yellow-500' : 'text-gray-500'}"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                        </svg>
+                    </button>
+                </div>
+            `;
+        }
+
         function updateEmailList(emails) {
             // Usar ID específico para encontrar el contenedor correcto
             const emailListContainer = document.getElementById('emails-container');
@@ -626,7 +766,9 @@
 
                 const density = localStorage.getItem('email-density') || 'comfortable';
                 emailsHtml += `
-      <div class="email-item density-${density} border-b border-gray-100 cursor-pointer relative ${isUnread ? 'unread' : ''}"
+      <div class="email-item group density-${density} border-b border-gray-100 cursor-pointer relative overflow-visible ${isUnread ? 'unread' : ''}"
+                  x-data="{ workflowOpen: false, folderMenuOpen: false }"
+                  @mouseleave="workflowOpen = false; folderMenuOpen = false"
                   onclick="window.location='/emails/${email.id}'">
                   
                   <div class="flex items-start gap-3">
@@ -659,6 +801,9 @@
                               <p class="text-sm ${isUnread ? 'font-medium text-gray-900' : 'text-gray-600'} truncate flex-1">
                                   ${email.subject || '(Sin asunto)'}
                               </p>
+
+                              ${getWorkflowBadgeHtml(email)}
+                              ${getQuickActionsHtml(email)}
                           </div>
                           
                           <div class="flex items-center gap-2">
@@ -1031,6 +1176,166 @@
             @endif
         });
 
+        // ==========================================
+        // COMPONENTE ALPINE.JS: ÁRBOL DE CARPETAS
+        // ==========================================
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('foldersTree', () => ({
+                folders: [],
+                loading: true,
+                selectedFolderId: null,
+
+                init() {
+                    this.loadFolders();
+                },
+
+                async loadFolders() {
+                    try {
+                        const response = await fetch('/email-folders/tree', {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+
+                        if (!response.ok) throw new Error('Error al cargar carpetas');
+
+                        const data = await response.json();
+                        this.folders = data.folders || [];
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.folders = [];
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async selectFolder(folderId) {
+                    this.selectedFolderId = folderId;
+
+                    try {
+                        const response = await fetch(`/email-folders/${folderId}/emails`, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+
+                        if (!response.ok) throw new Error('Error al cargar emails');
+
+                        const data = await response.json();
+                        updateEmailList(data.emails);
+                    } catch (error) {
+                        console.error('Error al cargar emails de carpeta:', error);
+                    }
+                },
+
+                getFolderIcon(icon) {
+                    const icons = {
+                        folder: '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>',
+                        star: '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>',
+                        briefcase: '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd"/><path d="M2 13.692V16a2 2 0 002 2h12a2 2 0 002-2v-2.308A24.974 24.974 0 0110 15c-2.796 0-5.487-.46-8-1.308z"/></svg>',
+                        user: '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>',
+                        archive: '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z"/><path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>'
+                    };
+                    return icons[icon] || icons.folder;
+                },
+
+                openCreateFolderModal() {
+                    window.dispatchEvent(new CustomEvent('open-folder-modal'));
+                },
+
+                openFolderMenu(folderId) {
+                    // TODO: Implementar menú contextual
+                    console.log('Abrir menú para carpeta:', folderId);
+                }
+            }));
+        });
+
+        // ==========================================
+        // FUNCIÓN: CAMBIAR WORKFLOW STATUS
+        // ==========================================
+        async function changeWorkflowStatus(emailId, newStatus) {
+            try {
+                const response = await fetch(`/email-workflow/${emailId}/change-status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (!response.ok) throw new Error('Error al cambiar estado');
+
+                const data = await response.json();
+                console.log('✅ Estado de workflow actualizado:', data);
+
+                // Recargar la página para ver el cambio
+                window.location.reload();
+
+            } catch (error) {
+                console.error('❌ Error al cambiar estado de workflow:', error);
+                alert('Error al cambiar el estado. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: MOVER EMAIL A CARPETA
+        // ==========================================
+        async function moveEmailToFolder(emailId, folderId) {
+            try {
+                const response = await fetch(`/email-folders/${folderId}/assign-email`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email_id: emailId })
+                });
+
+                if (!response.ok) throw new Error('Error al mover email');
+
+                const data = await response.json();
+                console.log('✅ Email movido a carpeta:', data);
+
+                // Mostrar notificación de éxito (sin recargar)
+                showNotification('Email movido a carpeta correctamente', 'success');
+
+                // Opcional: Actualizar contador de carpetas en el sidebar
+                // sin recargar toda la página
+                if (window.Alpine && window.Alpine.store) {
+                    // Recargar árbol de carpetas
+                    window.location.reload(); // Por ahora, recargar para simplicidad
+                }
+
+            } catch (error) {
+                console.error('❌ Error al mover email a carpeta:', error);
+                alert('Error al mover el email. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: MOSTRAR NOTIFICACIÓN
+        // ==========================================
+        function showNotification(message, type = 'success') {
+            const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+
+            const notification = document.createElement('div');
+            notification.className = `fixed bottom-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity duration-300`;
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            // Fade out después de 3 segundos
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
         // Atajos de teclado: Flechas arriba/abajo para navegar entre emails
         document.addEventListener('keydown', (event) => {
             // Solo activar si no estamos en un input/textarea
@@ -1078,6 +1383,252 @@
                     }
                 }
             }
+        });
+    </script>
+
+    <!-- Modal Crear/Editar Carpeta -->
+    <div x-data="folderModal()"
+         @open-folder-modal.window="openModal()"
+         x-show="isOpen"
+         x-cloak
+         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+
+        <div @click.away="closeModal()"
+             x-show="isOpen"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform scale-95"
+             x-transition:enter-end="opacity-100 transform scale-100"
+             class="bg-white rounded-lg shadow-xl w-full max-w-md">
+
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900" x-text="folderId ? 'Editar Carpeta' : 'Nueva Carpeta'"></h3>
+            </div>
+
+            <!-- Body -->
+            <form @submit.prevent="submitForm()" class="px-6 py-4 space-y-4">
+                <!-- Nombre -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Nombre *
+                    </label>
+                    <input type="text"
+                           x-model="formData.name"
+                           required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                           placeholder="Ej: Proyectos 2026">
+                </div>
+
+                <!-- Carpeta Padre -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Carpeta Padre
+                    </label>
+                    <select x-model="formData.parent_folder_id"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                        <option value="">-- Carpeta raíz --</option>
+                        <template x-for="folder in allFolders" :key="folder.id">
+                            <option :value="folder.id" x-text="folder.full_path"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <!-- Color -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Color
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="color"
+                               x-model="formData.color"
+                               class="w-16 h-10 rounded cursor-pointer border border-gray-300">
+                        <input type="text"
+                               x-model="formData.color"
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                               readonly>
+                    </div>
+                </div>
+
+                <!-- Ícono -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Ícono
+                    </label>
+                    <div class="grid grid-cols-5 gap-2">
+                        <template x-for="iconOption in iconOptions" :key="iconOption.value">
+                            <button type="button"
+                                    @click="formData.icon = iconOption.value"
+                                    :class="formData.icon === iconOption.value ? 'bg-purple-100 border-purple-500' : 'bg-white border-gray-300'"
+                                    class="p-3 border-2 rounded-lg hover:bg-gray-50 transition-colors text-2xl">
+                                <span x-text="iconOption.emoji"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Descripción -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Descripción (opcional)
+                    </label>
+                    <textarea x-model="formData.description"
+                              rows="2"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                              placeholder="Añade una descripción..."></textarea>
+                </div>
+
+                <!-- Botones -->
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                    <button type="button"
+                            @click="closeModal()"
+                            class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                            :disabled="submitting"
+                            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        <span x-show="!submitting">Guardar</span>
+                        <span x-show="submitting">Guardando...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('folderModal', () => ({
+                isOpen: false,
+                submitting: false,
+                folderId: null,
+                allFolders: [],
+                formData: {
+                    name: '',
+                    parent_folder_id: '',
+                    color: '#6B7280',
+                    icon: 'folder',
+                    description: ''
+                },
+                iconOptions: [
+                    { value: 'folder', emoji: '📁' },
+                    { value: 'star', emoji: '⭐' },
+                    { value: 'briefcase', emoji: '💼' },
+                    { value: 'user', emoji: '👤' },
+                    { value: 'archive', emoji: '📦' },
+                    { value: 'heart', emoji: '❤️' },
+                    { value: 'flag', emoji: '🚩' },
+                    { value: 'check', emoji: '✅' },
+                    { value: 'clock', emoji: '⏰' },
+                    { value: 'document', emoji: '📄' }
+                ],
+
+                async openModal(folderId = null) {
+                    this.folderId = folderId;
+                    this.isOpen = true;
+
+                    // Cargar lista de carpetas para selector de padre
+                    await this.loadAllFolders();
+
+                    // Si es edición, cargar datos de carpeta
+                    if (folderId) {
+                        await this.loadFolderData(folderId);
+                    } else {
+                        this.resetForm();
+                    }
+                },
+
+                closeModal() {
+                    this.isOpen = false;
+                    this.resetForm();
+                },
+
+                resetForm() {
+                    this.formData = {
+                        name: '',
+                        parent_folder_id: '',
+                        color: '#6B7280',
+                        icon: 'folder',
+                        description: ''
+                    };
+                    this.folderId = null;
+                },
+
+                async loadAllFolders() {
+                    try {
+                        const response = await fetch('/email-folders/tree');
+                        const data = await response.json();
+                        this.allFolders = this.flattenFolders(data.folders || []);
+                    } catch (error) {
+                        console.error('Error al cargar carpetas:', error);
+                    }
+                },
+
+                flattenFolders(folders, result = []) {
+                    folders.forEach(folder => {
+                        result.push(folder);
+                        if (folder.children && folder.children.length > 0) {
+                            this.flattenFolders(folder.children, result);
+                        }
+                    });
+                    return result;
+                },
+
+                async loadFolderData(folderId) {
+                    try {
+                        const response = await fetch(`/email-folders/${folderId}`);
+                        const data = await response.json();
+
+                        this.formData = {
+                            name: data.folder.name,
+                            parent_folder_id: data.folder.parent_folder_id || '',
+                            color: data.folder.color || '#6B7280',
+                            icon: data.folder.icon || 'folder',
+                            description: data.folder.description || ''
+                        };
+                    } catch (error) {
+                        console.error('Error al cargar datos de carpeta:', error);
+                    }
+                },
+
+                async submitForm() {
+                    this.submitting = true;
+
+                    try {
+                        const url = this.folderId
+                            ? `/email-folders/${this.folderId}`
+                            : '/email-folders';
+
+                        const method = this.folderId ? 'PUT' : 'POST';
+
+                        const response = await fetch(url, {
+                            method: method,
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                ...this.formData,
+                                parent_folder_id: this.formData.parent_folder_id || null
+                            })
+                        });
+
+                        if (!response.ok) throw new Error('Error al guardar carpeta');
+
+                        const data = await response.json();
+
+                        // Recargar árbol de carpetas
+                        window.location.reload();
+
+                        this.closeModal();
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Error al guardar la carpeta. Por favor, inténtalo de nuevo.');
+                    } finally {
+                        this.submitting = false;
+                    }
+                }
+            }));
         });
     </script>
 

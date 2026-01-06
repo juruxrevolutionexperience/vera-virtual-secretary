@@ -13,12 +13,27 @@ return new class extends Migration
     {
         Schema::table('emails', function (Blueprint $table) {
             // Add missing columns for email sync
-            $table->string('provider_thread_id')->nullable()->after('provider_message_id');
-            $table->string('to_email')->nullable()->after('from_name');
-            $table->string('to_name')->nullable()->after('to_email');
-            $table->string('status')->default('received')->after('provider_metadata');
-            $table->string('category')->default('primary')->after('status');
-            $table->json('metadata')->nullable()->after('category');
+            if (!Schema::hasColumn('emails', 'provider_message_id')) {
+                $table->string('provider_message_id')->nullable()->after('thread_id');
+            }
+            if (!Schema::hasColumn('emails', 'provider_thread_id')) {
+                $table->string('provider_thread_id')->nullable()->after('thread_id');
+            }
+            if (!Schema::hasColumn('emails', 'to_email')) {
+                $table->string('to_email')->nullable()->after('from_name');
+            }
+            if (!Schema::hasColumn('emails', 'to_name')) {
+                $table->string('to_name')->nullable()->after('to_email');
+            }
+            if (!Schema::hasColumn('emails', 'status')) {
+                $table->string('status')->default('received')->after('provider_metadata');
+            }
+            if (!Schema::hasColumn('emails', 'category')) {
+                $table->string('category')->default('primary')->after('status');
+            }
+            if (!Schema::hasColumn('emails', 'metadata')) {
+                $table->json('metadata')->nullable()->after('category');
+            }
         });
     }
 
