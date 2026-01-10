@@ -54,9 +54,18 @@ class EmailFolderController extends Controller
         $emails = $folder->emails()
             ->where('is_deleted', false)
             ->orderBy('received_at', 'desc')
-            ->with(['category', 'attachments'])
+            ->with(['attachments'])
             ->get()
             ->map(function ($email) {
+                // Obtener la categoría - puede ser un string (campo) o una relación
+                $categoryName = null;
+                if ($email->email_category_id) {
+                    $emailCategory = \App\Models\EmailCategory::find($email->email_category_id);
+                    $categoryName = $emailCategory ? $emailCategory->name : null;
+                } elseif (is_string($email->category)) {
+                    $categoryName = $email->category;
+                }
+
                 return [
                     'id' => $email->id,
                     'from_name' => $email->from_name,
@@ -69,7 +78,7 @@ class EmailFolderController extends Controller
                     'has_attachments' => $email->has_attachments,
                     'attachments_count' => $email->attachments_count,
                     'vera_processed' => $email->vera_processed,
-                    'category' => $email->category ? $email->category->name : null,
+                    'category' => $categoryName,
                     'workflow_status' => $email->workflow_status,
                 ];
             });

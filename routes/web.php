@@ -10,6 +10,9 @@ use App\Http\Controllers\EmailAccountController;
 use App\Http\Controllers\EmailController;
 use App\Http\Controllers\EmailFolderController;
 use App\Http\Controllers\EmailWorkflowController;
+use App\Http\Controllers\EmailTemplateController;
+use App\Http\Controllers\ScheduledEmailController;
+use App\Http\Controllers\AutoResponderController;
 use App\Http\Controllers\VeraController;
 use App\Http\Controllers\Admin\VeraAnalyticsController as AdminVeraAnalyticsController;
 
@@ -116,6 +119,11 @@ Route::middleware(['auth'])->prefix('emails')->name('emails.')->group(function (
     Route::get('/api/list', [EmailController::class, 'apiList'])->name('api.list');
     // API endpoint para obtener un email individual (vista previa)
     Route::get('/api/{email}', [EmailController::class, 'apiShow'])->name('api.show');
+
+    // Vistas especiales (antes de rutas dinámicas)
+    Route::get('/trash', [EmailController::class, 'trash'])->name('trash');
+    Route::get('/drafts', [EmailController::class, 'drafts'])->name('drafts');
+
     // Vista principal de emails
     Route::get('/', [EmailController::class, 'index'])->name('index');
     // Ver un email específico
@@ -190,6 +198,50 @@ Route::middleware(['auth'])->prefix('email-workflow')->name('email-workflow.')->
     Route::post('/{email}/restore', [EmailWorkflowController::class, 'restoreFromTrash'])->name('restore');
     Route::post('/bulk/move-to-trash', [EmailWorkflowController::class, 'bulkMoveToTrash'])->name('bulk.move-to-trash');
     Route::delete('/trash/empty', [EmailWorkflowController::class, 'emptyTrash'])->name('empty-trash');
+});
+
+// ========================================
+// RUTAS DE TEMPLATES DE EMAIL
+// ========================================
+
+Route::middleware(['auth'])->prefix('email-templates')->name('email-templates.')->group(function () {
+    Route::get('/', [EmailTemplateController::class, 'index'])->name('index');
+    Route::post('/', [EmailTemplateController::class, 'store'])->name('store');
+    Route::get('/stats', [EmailTemplateController::class, 'stats'])->name('stats');
+    Route::get('/{template}', [EmailTemplateController::class, 'show'])->name('show');
+    Route::put('/{template}', [EmailTemplateController::class, 'update'])->name('update');
+    Route::delete('/{template}', [EmailTemplateController::class, 'destroy'])->name('destroy');
+    Route::post('/{template}/toggle-active', [EmailTemplateController::class, 'toggleActive'])->name('toggle-active');
+    Route::post('/{template}/set-default', [EmailTemplateController::class, 'setDefault'])->name('set-default');
+    Route::post('/{template}/duplicate', [EmailTemplateController::class, 'duplicate'])->name('duplicate');
+});
+
+// ========================================
+// RUTAS DE EMAILS PROGRAMADOS
+// ========================================
+
+Route::middleware(['auth'])->prefix('scheduled-emails')->name('scheduled-emails.')->group(function () {
+    Route::get('/', [ScheduledEmailController::class, 'index'])->name('index');
+    Route::post('/', [ScheduledEmailController::class, 'store'])->name('store');
+    Route::get('/stats', [ScheduledEmailController::class, 'stats'])->name('stats');
+    Route::get('/{scheduledEmail}', [ScheduledEmailController::class, 'show'])->name('show');
+    Route::put('/{scheduledEmail}', [ScheduledEmailController::class, 'update'])->name('update');
+    Route::post('/{scheduledEmail}/cancel', [ScheduledEmailController::class, 'cancel'])->name('cancel');
+    Route::post('/{scheduledEmail}/retry', [ScheduledEmailController::class, 'retry'])->name('retry');
+});
+
+// ========================================
+// RUTAS DE AUTO-RESPONDERS
+// ========================================
+
+Route::middleware(['auth'])->prefix('auto-responders')->name('auto-responders.')->group(function () {
+    Route::get('/', [AutoResponderController::class, 'index'])->name('index');
+    Route::post('/', [AutoResponderController::class, 'store'])->name('store');
+    Route::get('/stats', [AutoResponderController::class, 'stats'])->name('stats');
+    Route::get('/{autoResponder}', [AutoResponderController::class, 'show'])->name('show');
+    Route::put('/{autoResponder}', [AutoResponderController::class, 'update'])->name('update');
+    Route::delete('/{autoResponder}', [AutoResponderController::class, 'destroy'])->name('destroy');
+    Route::post('/{autoResponder}/toggle-active', [AutoResponderController::class, 'toggleActive'])->name('toggle-active');
 });
 
 // ========================================

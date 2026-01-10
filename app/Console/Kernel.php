@@ -59,6 +59,58 @@ class Kernel extends ConsoleKernel
             ->onFailure(function () {
                 \Log::error('❌ Error en procesamiento de Vera');
             });
+
+        // ========================================
+        // FASE 1A: WORKFLOW Y GESTIÓN
+        // ========================================
+
+        // Despertar emails del snooze cada 5 minutos
+        $schedule->command('emails:wakeup-snoozed')
+            ->everyFiveMinutes()
+            ->name('wakeup-snoozed-emails')
+            ->onSuccess(function () {
+                \Log::info('✅ Emails despertados del snooze');
+            });
+
+        // Limpiar papelera antigua (emails > 30 días) diariamente a las 3 AM
+        $schedule->command('emails:clean-old-trash --days=30')
+            ->daily()
+            ->at('03:00')
+            ->name('clean-old-trash')
+            ->onSuccess(function () {
+                \Log::info('✅ Papelera limpiada exitosamente');
+            })
+            ->onFailure(function () {
+                \Log::error('❌ Error al limpiar papelera');
+            });
+
+        // ========================================
+        // FASE 1B: AUTOMATIZACIÓN Y TEMPLATES
+        // ========================================
+
+        // Enviar emails programados cada minuto
+        $schedule->command('emails:send-scheduled --limit=50')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->name('send-scheduled-emails')
+            ->onSuccess(function () {
+                \Log::info('✅ Emails programados enviados');
+            })
+            ->onFailure(function () {
+                \Log::error('❌ Error enviando emails programados');
+            });
+
+        // Procesar auto-responders cada 5 minutos
+        $schedule->command('emails:process-auto-responders --minutes=5')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->name('process-auto-responders')
+            ->onSuccess(function () {
+                \Log::info('✅ Auto-responders procesados');
+            })
+            ->onFailure(function () {
+                \Log::error('❌ Error procesando auto-responders');
+            });
     }
 
     /**

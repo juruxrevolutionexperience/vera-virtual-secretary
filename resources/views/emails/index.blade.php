@@ -15,6 +15,8 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
+        [x-cloak] { display: none !important; }
+
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -521,6 +523,9 @@
     <!-- Settings Modal (Estilo OpenAI) -->
     @include('components.settings-modal')
 
+    <!-- Portal para dropdowns (fuera del flujo con overflow) -->
+    <div id="dropdowns-portal" class="fixed" style="z-index: 99999;"></div>
+
     <script>
         // Auto-refresh de emails cada 2 minutos (SIN reload visible)
         let autoRefreshInterval = null;
@@ -606,8 +611,9 @@
             const label = workflowLabels[status] || status;
 
             return `
-                <div class="relative z-[100]">
-                    <button @click.stop="workflowOpen = !workflowOpen"
+                <div class="relative" x-data="{ dropdownStyle: {} }" x-ref="workflowContainer">
+                    <button @click.stop="workflowOpen = !workflowOpen; if(workflowOpen) { const rect = $el.getBoundingClientRect(); dropdownStyle = { top: rect.bottom + 4 + 'px', left: rect.left + 'px' }; }"
+                        x-ref="workflowButton"
                         class="inline-flex items-center text-[10px] px-2 py-1 rounded-full font-medium ${colorClass} hover:opacity-80 transition-opacity">
                         ${label}
                         <svg class="w-2.5 h-2.5 ml-1" fill="currentColor" viewBox="0 0 20 20">
@@ -615,47 +621,50 @@
                         </svg>
                     </button>
 
-                    <div x-show="workflowOpen"
-                         @click.away="workflowOpen = false"
-                         x-transition:enter="transition ease-out duration-100"
-                         x-transition:enter-start="opacity-0 scale-95"
-                         x-transition:enter-end="opacity-100 scale-100"
-                         class="absolute left-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999]"
-                         style="display: none;">
-                        <div class="py-1">
-                            <button @click.stop="changeWorkflowStatus(${email.id}, 'pending_validation'); workflowOpen = false"
-                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
-                                ⏳ Pendiente validación
-                            </button>
-                            <button @click.stop="changeWorkflowStatus(${email.id}, 'pending_response'); workflowOpen = false"
-                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-orange-500"></span>
-                                ✉️ Requiere respuesta
-                            </button>
-                            <button @click.stop="changeWorkflowStatus(${email.id}, 'in_progress'); workflowOpen = false"
-                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-                                🔄 En curso
-                            </button>
-                            <button @click.stop="changeWorkflowStatus(${email.id}, 'in_review'); workflowOpen = false"
-                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-                                👁️ En revisión
-                            </button>
-                            <button @click.stop="changeWorkflowStatus(${email.id}, 'completed'); workflowOpen = false"
-                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                ✔️ Completado
-                            </button>
-                            <div class="border-t border-gray-200 my-1"></div>
-                            <button @click.stop="changeWorkflowStatus(${email.id}, 'no_action_needed'); workflowOpen = false"
-                                class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-slate-500"></span>
-                                ➖ Sin acción necesaria
-                            </button>
+                    <template x-teleport="#dropdowns-portal">
+                        <div x-show="workflowOpen"
+                             @click.away="workflowOpen = false"
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="opacity-0 scale-95"
+                             x-transition:enter-end="opacity-100 scale-100"
+                             class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200"
+                             :style="{ top: dropdownStyle.top, left: dropdownStyle.left, zIndex: 99999 }"
+                             x-cloak>
+                            <div class="py-1">
+                                <button @click.stop="changeWorkflowStatus(${email.id}, 'pending_validation'); workflowOpen = false"
+                                    class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                                    ⏳ Pendiente validación
+                                </button>
+                                <button @click.stop="changeWorkflowStatus(${email.id}, 'pending_response'); workflowOpen = false"
+                                    class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                                    ✉️ Requiere respuesta
+                                </button>
+                                <button @click.stop="changeWorkflowStatus(${email.id}, 'in_progress'); workflowOpen = false"
+                                    class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                                    🔄 En curso
+                                </button>
+                                <button @click.stop="changeWorkflowStatus(${email.id}, 'in_review'); workflowOpen = false"
+                                    class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                    👁️ En revisión
+                                </button>
+                                <button @click.stop="changeWorkflowStatus(${email.id}, 'completed'); workflowOpen = false"
+                                    class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    ✔️ Completado
+                                </button>
+                                <div class="border-t border-gray-200 my-1"></div>
+                                <button @click.stop="changeWorkflowStatus(${email.id}, 'no_action_needed'); workflowOpen = false"
+                                    class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                                    ➖ Sin acción necesaria
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    </template>
                 </div>
             `;
         }
@@ -667,8 +676,9 @@
             return `
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <!-- Mover a carpeta -->
-                    <div class="relative z-[100]">
-                        <button @click.stop="folderMenuOpen = !folderMenuOpen"
+                    <div class="relative" x-data="{ folderDropdownStyle: {} }" x-ref="folderContainer">
+                        <button @click.stop="folderMenuOpen = !folderMenuOpen; if(folderMenuOpen) { const rect = $el.getBoundingClientRect(); folderDropdownStyle = { top: rect.bottom + 4 + 'px', left: rect.left + 'px' }; }"
+                            x-ref="folderButton"
                             class="p-1 hover:bg-gray-200 rounded transition-colors"
                             title="Mover a carpeta">
                             <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -676,27 +686,30 @@
                             </svg>
                         </button>
 
-                        <div x-show="folderMenuOpen"
-                             @click.away="folderMenuOpen = false"
-                             x-transition
-                             class="absolute left-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] max-h-64 overflow-y-auto"
-                             style="display: none;">
-                            <div class="py-1" x-data="{ folders: [] }" x-init="
-                                fetch('/email-folders/tree')
-                                    .then(r => r.json())
-                                    .then(data => folders = data.folders || [])
-                            ">
-                                <template x-for="folder in folders" :key="folder.id">
-                                    <button @click.stop="moveEmailToFolder(${email.id}, folder.id); folderMenuOpen = false"
-                                        class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
-                                        <span x-text="folder.name"></span>
-                                    </button>
-                                </template>
-                                <template x-if="folders.length === 0">
-                                    <p class="px-3 py-2 text-xs text-gray-400">No hay carpetas</p>
-                                </template>
+                        <template x-teleport="#dropdowns-portal">
+                            <div x-show="folderMenuOpen"
+                                 @click.away="folderMenuOpen = false"
+                                 x-transition
+                                 class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-64 overflow-y-auto"
+                                 :style="{ top: folderDropdownStyle.top, left: folderDropdownStyle.left, zIndex: 99999 }"
+                                 x-cloak>
+                                <div class="py-1" x-data="{ folders: [] }" x-init="
+                                    fetch('/email-folders/tree')
+                                        .then(r => r.json())
+                                        .then(data => folders = data.folders || [])
+                                ">
+                                    <template x-for="folder in folders" :key="folder.id">
+                                        <button @click.stop="moveEmailToFolder(${email.id}, folder.id); folderMenuOpen = false"
+                                            class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
+                                            <span x-text="folder.name"></span>
+                                        </button>
+                                    </template>
+                                    <template x-if="folders.length === 0">
+                                        <p class="px-3 py-2 text-xs text-gray-400">No hay carpetas</p>
+                                    </template>
+                                </div>
                             </div>
-                        </div>
+                        </template>
                     </div>
 
                     <!-- Estrella -->
@@ -766,9 +779,9 @@
 
                 const density = localStorage.getItem('email-density') || 'comfortable';
                 emailsHtml += `
-      <div class="email-item group density-${density} border-b border-gray-100 cursor-pointer relative overflow-visible ${isUnread ? 'unread' : ''}"
+      <div class="email-item group density-${density} border-b border-gray-100 cursor-pointer relative ${isUnread ? 'unread' : ''}"
                   x-data="{ workflowOpen: false, folderMenuOpen: false }"
-                  @mouseleave="workflowOpen = false; folderMenuOpen = false"
+                  @close-dropdowns.window="workflowOpen = false; folderMenuOpen = false"
                   onclick="window.location='/emails/${email.id}'">
                   
                   <div class="flex items-start gap-3">
@@ -1224,6 +1237,19 @@
                         if (!response.ok) throw new Error('Error al cargar emails');
 
                         const data = await response.json();
+
+                        // Actualizar el título del header para mostrar la carpeta seleccionada
+                        const headerTitle = document.querySelector('header h1');
+                        if (headerTitle && data.folder) {
+                            headerTitle.textContent = `📁 ${data.folder.name}`;
+                        }
+
+                        // Actualizar contador de mensajes
+                        const messageCount = document.querySelector('header span.text-gray-500');
+                        if (messageCount) {
+                            messageCount.textContent = `${data.count || 0} mensajes`;
+                        }
+
                         updateEmailList(data.emails);
                     } catch (error) {
                         console.error('Error al cargar emails de carpeta:', error);

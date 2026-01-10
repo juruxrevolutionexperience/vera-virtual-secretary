@@ -81,7 +81,7 @@ class EmailController extends Controller
         $emails = $query->paginate(20);
 
         // Estadísticas - Query optimizada con una sola consulta (solo emails recibidos)
-        $stats = Email::where('user_id', $user->id)
+        $statsObj = Email::where('user_id', $user->id)
             ->where('status', 'received') // Solo contar emails recibidos
             ->selectRaw('
                 COUNT(*) as total,
@@ -90,7 +90,13 @@ class EmailController extends Controller
             ')
             ->first();
 
-        $stats->urgent = 0; // Campo no disponible en DB
+        // Convertir a array para compatibilidad con sidebar
+        $stats = [
+            'total' => $statsObj->total ?? 0,
+            'unread' => $statsObj->unread ?? 0,
+            'starred' => $statsObj->starred ?? 0,
+            'urgent' => 0, // Campo no disponible en DB
+        ];
 
         return view('emails.index', compact('emails', 'categories', 'stats', 'hasEmailAccounts', 'syncingAccount'));
     }
@@ -365,6 +371,7 @@ class EmailController extends Controller
                 'vera_processed' => $email->vera_processed ?? false,
                 'vera_tags' => $email->vera_tags ?? [],
                 'priority' => $email->priority ?? 'normal',
+                'workflow_status' => $email->workflow_status ?? 'unread',
             ];
         });
 
@@ -384,5 +391,102 @@ class EmailController extends Controller
                 'starred' => $stats->starred ?? 0,
             ],
         ]);
+    }
+
+    /**
+     * Vista de Papelera (emails eliminados)
+     */
+    public function trash(Request $request)
+    {
+        $user = Auth::user();
+
+        // Verificar si tiene cuentas
+        $hasEmailAccounts = EmailAccount::where('user_id', $user->id)->exists();
+
+        // Obtener categorías
+        $categories = EmailCategory::where('user_id', $user->id)
+            ->active()
+            ->ordered()
+            ->get();
+
+        // Query de emails eliminados
+        $query = Email::where('user_id', $user->id)
+            ->where('is_deleted', true)
+            ->with('category')
+            ->orderBy('deleted_at_custom', 'desc');
+
+        // Búsqueda
+        if ($request->has('search') && $request->search) {
+            $query->search($request->search);
+        }
+
+        // Paginación
+        $emails = $query->paginate(50);
+
+        // Estadísticas (como array para compatibilidad con sidebar)
+        $stats = [
+            'total' => Email::where('user_id', $user->id)->where('is_deleted', true)->count(),
+            'unread' => 0,
+            'starred' => 0,
+            'urgent' => 0,
+            'can_restore' => $emails->count(),
+        ];
+
+        return view('emails.trash', compact(
+            'emails',
+            'categories',
+            'hasEmailAccounts',
+            'stats'
+        ));
+    }
+
+    /**
+     * Vista de Borradores
+     */
+    public function drafts(Request $request)
+    {
+        $user = Auth::user();
+
+        // Verificar si tiene cuentas
+        $hasEmailAccounts = EmailAccount::where('user_id', $user->id)->exists();
+
+        // Obtener categorías
+        $categories = EmailCategory::where('user_id', $user->id)
+            ->active()
+            ->ordered()
+            ->get();
+
+        // Query de borradores
+        $query = Email::where('user_id', $user->id)
+            ->where('is_draft', true)
+            ->where('is_deleted', false)
+            ->with('category')
+            ->orderBy('updated_at', 'desc');
+
+        // Búsqueda
+        if ($request->has('search') && $request->search) {
+            $query->search($request->search);
+        }
+
+        // Paginación
+        $emails = $query->paginate(50);
+
+        // Estadísticas (como array para compatibilidad con sidebar)
+        $stats = [
+            'total' => Email::where('user_id', $user->id)
+                ->where('is_draft', true)
+                ->where('is_deleted', false)
+                ->count(),
+            'unread' => 0,
+            'starred' => 0,
+            'urgent' => 0,
+        ];
+
+        return view('emails.drafts', compact(
+            'emails',
+            'categories',
+            'hasEmailAccounts',
+            'stats'
+        ));
     }
 }
