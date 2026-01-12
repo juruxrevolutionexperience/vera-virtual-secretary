@@ -111,6 +111,59 @@ class Kernel extends ConsoleKernel
             ->onFailure(function () {
                 \Log::error('❌ Error procesando auto-responders');
             });
+
+        // ========================================
+        // FASE 1C: ALERTAS Y SEGUIMIENTO
+        // ========================================
+
+        // Verificar y crear alertas de emails cada hora
+        $schedule->command('emails:check-alerts')
+            ->hourly()
+            ->withoutOverlapping()
+            ->name('check-email-alerts')
+            ->onSuccess(function () {
+                \Log::info('✅ Alertas de emails verificadas');
+            })
+            ->onFailure(function () {
+                \Log::error('❌ Error verificando alertas');
+            });
+
+        // Procesar reglas de escalado cada 30 minutos
+        $schedule->command('emails:process-escalations --limit=100')
+            ->everyThirtyMinutes()
+            ->withoutOverlapping()
+            ->name('process-escalations')
+            ->onSuccess(function () {
+                \Log::info('✅ Reglas de escalado procesadas');
+            })
+            ->onFailure(function () {
+                \Log::error('❌ Error procesando escalados');
+            });
+
+        // Enviar recordatorios de seguimiento cada 15 minutos
+        $schedule->command('emails:send-follow-up-reminders')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping()
+            ->name('send-follow-up-reminders')
+            ->onSuccess(function () {
+                \Log::info('✅ Recordatorios enviados');
+            })
+            ->onFailure(function () {
+                \Log::error('❌ Error enviando recordatorios');
+            });
+
+        // Sincronizar contactos desde emails diariamente a las 3 AM
+        $schedule->command('contacts:sync-from-emails')
+            ->daily()
+            ->at('03:00')
+            ->withoutOverlapping()
+            ->name('sync-contacts')
+            ->onSuccess(function () {
+                \Log::info('✅ Contactos sincronizados desde emails');
+            })
+            ->onFailure(function () {
+                \Log::error('❌ Error sincronizando contactos');
+            });
     }
 
     /**
