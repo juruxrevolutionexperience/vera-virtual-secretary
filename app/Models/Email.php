@@ -125,6 +125,14 @@ class Email extends Model
         return $this->hasMany(VeraEmailAction::class);
     }
 
+    /**
+     * Relación con auto-responder history (Fase 1B)
+     */
+    public function autoResponderHistory(): HasMany
+    {
+        return $this->hasMany(AutoResponderHistory::class);
+    }
+
     public function scopeUnread($query)
     {
         return $query->where('is_read', false);
