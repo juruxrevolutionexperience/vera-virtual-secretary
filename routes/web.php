@@ -15,6 +15,10 @@ use App\Http\Controllers\ScheduledEmailController;
 use App\Http\Controllers\AutoResponderController;
 use App\Http\Controllers\VeraController;
 use App\Http\Controllers\Admin\VeraAnalyticsController as AdminVeraAnalyticsController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\EmailAlertController;
+use App\Http\Controllers\EscalationRuleController;
+use App\Http\Controllers\FollowUpReminderController;
 
 // Landing Page
 Route::view('/', 'landing-new')->name('landing-new');
@@ -419,6 +423,69 @@ Route::middleware(['auth'])->prefix('admin/vera')->name('admin.vera.')->group(fu
 
     // Exportar datos a CSV
     Route::get('/analytics/export', [AdminVeraAnalyticsController::class, 'export'])->name('analytics.export');
+});
+
+// ========================================
+// SUB-FASE 1C: CONTACTOS, ALERTAS Y SEGUIMIENTO
+// ========================================
+
+Route::middleware(['auth'])->group(function () {
+    // CONTACTOS
+    Route::prefix('contacts')->name('contacts.')->group(function () {
+        Route::get('/', [ContactController::class, 'index'])->name('index');
+        Route::post('/', [ContactController::class, 'store'])->name('store');
+        Route::get('/search', [ContactController::class, 'search'])->name('search');
+        Route::get('/frequent', [ContactController::class, 'frequent'])->name('frequent');
+        Route::get('/vip', [ContactController::class, 'vip'])->name('vip');
+        Route::get('/stats', [ContactController::class, 'stats'])->name('stats');
+        Route::post('/sync', [ContactController::class, 'syncFromEmails'])->name('sync');
+        Route::get('/{contact}', [ContactController::class, 'show'])->name('show');
+        Route::put('/{contact}', [ContactController::class, 'update'])->name('update');
+        Route::delete('/{contact}', [ContactController::class, 'destroy'])->name('destroy');
+        Route::post('/{contact}/toggle-star', [ContactController::class, 'toggleStar'])->name('toggle-star');
+        Route::post('/{contact}/block', [ContactController::class, 'block'])->name('block');
+        Route::post('/{contact}/unblock', [ContactController::class, 'unblock'])->name('unblock');
+        Route::post('/{contact}/mark-vip', [ContactController::class, 'markAsVip'])->name('mark-vip');
+    });
+
+    // ALERTAS DE EMAILS
+    Route::prefix('email-alerts')->name('email-alerts.')->group(function () {
+        Route::get('/', [EmailAlertController::class, 'index'])->name('index');
+        Route::post('/', [EmailAlertController::class, 'store'])->name('store');
+        Route::get('/stats', [EmailAlertController::class, 'stats'])->name('stats');
+        Route::post('/run-checks', [EmailAlertController::class, 'runChecks'])->name('run-checks');
+        Route::get('/{alert}', [EmailAlertController::class, 'show'])->name('show');
+        Route::post('/{alert}/acknowledge', [EmailAlertController::class, 'acknowledge'])->name('acknowledge');
+        Route::post('/{alert}/resolve', [EmailAlertController::class, 'resolve'])->name('resolve');
+        Route::post('/{alert}/dismiss', [EmailAlertController::class, 'dismiss'])->name('dismiss');
+    });
+
+    // REGLAS DE ESCALADO
+    Route::prefix('escalation-rules')->name('escalation-rules.')->group(function () {
+        Route::get('/', [EscalationRuleController::class, 'index'])->name('index');
+        Route::post('/', [EscalationRuleController::class, 'store'])->name('store');
+        Route::get('/stats', [EscalationRuleController::class, 'stats'])->name('stats');
+        Route::post('/process', [EscalationRuleController::class, 'processEscalations'])->name('process');
+        Route::get('/{rule}', [EscalationRuleController::class, 'show'])->name('show');
+        Route::put('/{rule}', [EscalationRuleController::class, 'update'])->name('update');
+        Route::delete('/{rule}', [EscalationRuleController::class, 'destroy'])->name('destroy');
+        Route::post('/{rule}/activate', [EscalationRuleController::class, 'activate'])->name('activate');
+        Route::post('/{rule}/deactivate', [EscalationRuleController::class, 'deactivate'])->name('deactivate');
+    });
+
+    // RECORDATORIOS DE SEGUIMIENTO
+    Route::prefix('follow-up-reminders')->name('follow-up-reminders.')->group(function () {
+        Route::get('/', [FollowUpReminderController::class, 'index'])->name('index');
+        Route::post('/', [FollowUpReminderController::class, 'store'])->name('store');
+        Route::get('/stats', [FollowUpReminderController::class, 'stats'])->name('stats');
+        Route::get('/upcoming', [FollowUpReminderController::class, 'upcoming'])->name('upcoming');
+        Route::get('/{reminder}', [FollowUpReminderController::class, 'show'])->name('show');
+        Route::put('/{reminder}', [FollowUpReminderController::class, 'update'])->name('update');
+        Route::delete('/{reminder}', [FollowUpReminderController::class, 'destroy'])->name('destroy');
+        Route::post('/{reminder}/snooze', [FollowUpReminderController::class, 'snooze'])->name('snooze');
+        Route::post('/{reminder}/complete', [FollowUpReminderController::class, 'complete'])->name('complete');
+        Route::post('/{reminder}/cancel', [FollowUpReminderController::class, 'cancel'])->name('cancel');
+    });
 });
 
 require __DIR__ . '/auth.php';
