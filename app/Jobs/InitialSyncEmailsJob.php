@@ -16,8 +16,9 @@ class InitialSyncEmailsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $tries = 1;
-    public $timeout = 1800; // 30 minutos
+    public $tries = 3; // 3 intentos
+    public $timeout = 3600; // 60 minutos (1 hora)
+    public $maxExceptions = 3;
 
     protected EmailAccount $emailAccount;
 

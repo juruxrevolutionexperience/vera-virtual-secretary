@@ -87,7 +87,7 @@ class GmailSyncService
 
         do {
             $params = [
-                'maxResults' => 100,
+                'maxResults' => 50, // Reducido de 100 a 50 para evitar timeouts
                 'q' => 'in:inbox', // Solo inbox para empezar
             ];
 
@@ -118,9 +118,7 @@ class GmailSyncService
 
                     if ($result['action'] === 'created') {
                         $totalCreated++;
-
-                        // 🤖 Disparar Job de Vera para analizar el email automáticamente
-                        \App\Jobs\ProcessEmailWithVera::dispatch($result['email']);
+                        // NO disparar Vera durante initial sync - se hace batch al final
                     } elseif ($result['action'] === 'updated') {
                         $totalUpdated++;
                     }

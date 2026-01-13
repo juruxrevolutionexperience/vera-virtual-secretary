@@ -62,6 +62,8 @@ export default function Index({ accounts, flash }) {
     };
 
     const handleDelete = (accountId, email) => {
+        console.log('handleDelete called with:', { accountId, email });
+
         if (!accountId) {
             console.error('Account ID is missing');
             alert('Error: No se puede desconectar la cuenta. ID de cuenta no disponible.');
@@ -69,12 +71,18 @@ export default function Index({ accounts, flash }) {
         }
 
         if (confirm(`¿Estás seguro de desconectar la cuenta ${email}?`)) {
-            router.visit(`/email-accounts/${accountId}`, {
-                method: 'delete',
+            const url = `/email-accounts/${accountId}`;
+            console.log('Attempting DELETE request to:', url);
+
+            router.delete(url, {
                 preserveScroll: true,
+                onBefore: () => {
+                    console.log('DELETE request starting...');
+                },
                 onError: (errors) => {
                     console.error('Delete error:', errors);
-                    alert('Error al desconectar la cuenta');
+                    console.error('Full error object:', JSON.stringify(errors, null, 2));
+                    alert('Error al desconectar la cuenta: ' + (errors.message || 'Error desconocido'));
                 },
                 onSuccess: () => {
                     console.log('Cuenta desconectada exitosamente');
