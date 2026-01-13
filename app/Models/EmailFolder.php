@@ -14,6 +14,7 @@ class EmailFolder extends Model
 
     protected $fillable = [
         'user_id',
+        'organization_id',
         'parent_folder_id',
         'name',
         'icon',
@@ -175,5 +176,59 @@ class EmailFolder extends Model
         }
 
         return $count;
+    }
+
+    // ==================== SCOPES DE MULTI-TENANCY ====================
+
+    /**
+     * Relación con organización
+     */
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
+    /**
+     * Scope: Filtrar por organización
+     */
+    public function scopeForOrganization($query, $organizationId)
+    {
+        return $query->where('organization_id', $organizationId);
+    }
+
+    /**
+     * Scope: Carpetas compartidas con un usuario
+     */
+    public function scopeSharedWith($query, $userId)
+    {
+        return $query->whereHas('shares', function ($q) use ($userId) {
+            $q->where('shared_with', $userId)
+              ->where(function ($subQ) {
+                  $subQ->whereNull('expires_at')
+                       ->orWhere('expires_at', '>', now());
+              });
+        });
+    }
+
+    /**
+     * Relación con shares (carpetas compartidas)
+     */
+    public function shares(): HasMany
+    {
+        return $this->hasMany(EmailFolderShare::class);
+    }
+
+    /**
+     * Verificar si está compartida con un usuario
+     */
+    public function isSharedWith(User $user): bool
+    {
+        return $this->shares()
+            ->where('shared_with', $user->id)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>', now());
+            })
+            ->exists();
     }
 }

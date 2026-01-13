@@ -15,6 +15,7 @@ class Email extends Model
 
     protected $fillable = [
         'user_id',
+        'organization_id',
         'email_account_id',
         'email_category_id',
         'message_id',
@@ -518,5 +519,59 @@ class Email extends Model
     public function isSnoozed(): bool
     {
         return $this->snoozed_until && $this->snoozed_until > now();
+    }
+
+    // ==================== SCOPES DE MULTI-TENANCY ====================
+
+    /**
+     * Relación con organización
+     */
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
+    /**
+     * Scope: Filtrar por organización
+     */
+    public function scopeForOrganization($query, $organizationId)
+    {
+        return $query->where('organization_id', $organizationId);
+    }
+
+    /**
+     * Scope: Emails compartidos con un usuario
+     */
+    public function scopeSharedWith($query, $userId)
+    {
+        return $query->whereHas('shares', function ($q) use ($userId) {
+            $q->where('shared_with', $userId)
+              ->where(function ($subQ) {
+                  $subQ->whereNull('expires_at')
+                       ->orWhere('expires_at', '>', now());
+              });
+        });
+    }
+
+    /**
+     * Relación con shares (emails compartidos)
+     */
+    public function shares(): HasMany
+    {
+        return $this->hasMany(EmailShare::class);
+    }
+
+    /**
+     * Verificar si está compartido con un usuario
+     */
+    public function isSharedWith(User $user): bool
+    {
+        return $this->shares()
+            ->where('shared_with', $user->id)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>', now());
+            })
+            ->exists();
     }
 }
