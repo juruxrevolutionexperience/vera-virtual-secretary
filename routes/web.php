@@ -486,6 +486,42 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{reminder}/complete', [FollowUpReminderController::class, 'complete'])->name('complete');
         Route::post('/{reminder}/cancel', [FollowUpReminderController::class, 'cancel'])->name('cancel');
     });
+
+    // ===========================================
+    // RUTAS DE SEGURIDAD Y COMPLIANCE (SUB-FASE 1E)
+    // ===========================================
+
+    // AUTENTICACIÓN DE DOS FACTORES (2FA)
+    Route::prefix('security/2fa')->name('security.2fa.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Security\TwoFactorAuthController::class, 'index'])->name('index');
+        Route::post('/generate-qr', [\App\Http\Controllers\Security\TwoFactorAuthController::class, 'generateQr'])->name('generate-qr');
+        Route::post('/enable', [\App\Http\Controllers\Security\TwoFactorAuthController::class, 'enable'])->name('enable');
+        Route::post('/disable', [\App\Http\Controllers\Security\TwoFactorAuthController::class, 'disable'])->name('disable');
+        Route::post('/regenerate-codes', [\App\Http\Controllers\Security\TwoFactorAuthController::class, 'regenerateRecoveryCodes'])->name('regenerate-codes');
+    });
+
+    // GESTIÓN DE SESIONES
+    Route::prefix('security/sessions')->name('security.sessions.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Security\SessionManagementController::class, 'index'])->name('index');
+        Route::delete('/{session}', [\App\Http\Controllers\Security\SessionManagementController::class, 'revoke'])->name('revoke');
+        Route::post('/revoke-all', [\App\Http\Controllers\Security\SessionManagementController::class, 'revokeAll'])->name('revoke-all');
+        Route::post('/{session}/trust', [\App\Http\Controllers\Security\SessionManagementController::class, 'trust'])->name('trust');
+    });
+
+    // RGPD / PRIVACIDAD
+    Route::prefix('privacy')->name('privacy.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Security\GDPRController::class, 'index'])->name('index');
+        Route::post('/export', [\App\Http\Controllers\Security\GDPRController::class, 'requestExport'])->name('export');
+        Route::post('/delete', [\App\Http\Controllers\Security\GDPRController::class, 'requestDeletion'])->name('delete');
+    });
+
+    // DASHBOARD DE SEGURIDAD
+    Route::get('/security/dashboard', [\App\Http\Controllers\Security\SecurityDashboardController::class, 'index'])
+        ->name('security.dashboard');
 });
+
+// DESCARGA DE EXPORTACIÓN RGPD (sin auth, usa token)
+Route::get('/privacy/download/{token}', [\App\Http\Controllers\Security\GDPRController::class, 'downloadExport'])
+    ->name('privacy.download');
 
 require __DIR__ . '/auth.php';
