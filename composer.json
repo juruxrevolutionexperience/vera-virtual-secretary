@@ -7,13 +7,18 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "bacon/bacon-qr-code": "^3.0",
+        "barryvdh/laravel-dompdf": "^3.1",
         "google/apiclient": "^2.18",
         "inertiajs/inertia-laravel": "^2.0",
+        "jenssegers/agent": "^2.6",
         "laravel/cashier": "^16.0",
         "laravel/framework": "^12.0",
         "laravel/socialite": "^5.23",
         "laravel/tinker": "^2.10.1",
+        "maatwebsite/excel": "^3.1",
         "microsoft/microsoft-graph": "^2.50",
+        "pragmarx/google2fa-laravel": "^2.3",
         "spatie/laravel-permission": "^6.24"
     },
     "require-dev": {
