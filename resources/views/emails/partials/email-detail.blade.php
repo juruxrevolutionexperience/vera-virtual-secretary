@@ -144,10 +144,54 @@
                     </div>
                 </div>
 
-                <!-- Contenido HTML o texto -->
-                <div x-html="email.body_html || email.body_text?.replace(/\n/g, '<br>')"
-                    class="prose prose-sm max-w-none text-gray-800">
-                </div>
+                <!-- Contenido HTML o texto en IFRAME (aislado del resto de la app) -->
+                <iframe
+                    x-ref="emailIframe"
+                    @load="
+                        const iframe = $refs.emailIframe;
+                        const doc = iframe.contentDocument || iframe.contentWindow.document;
+                        doc.open();
+                        doc.write(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <meta charset='utf-8'>
+                                <meta name='viewport' content='width=device-width, initial-scale=1'>
+                                <style>
+                                    body {
+                                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                                        font-size: 14px;
+                                        line-height: 1.6;
+                                        color: #1f2937;
+                                        margin: 0;
+                                        padding: 20px;
+                                        background: white;
+                                        overflow-x: hidden;
+                                    }
+                                    img { max-width: 100%; height: auto; }
+                                    a { color: #6366f1; text-decoration: none; }
+                                    a:hover { text-decoration: underline; }
+                                    table { max-width: 100%; border-collapse: collapse; }
+                                    pre { white-space: pre-wrap; word-wrap: break-word; }
+                                    * { max-width: 100%; box-sizing: border-box; }
+                                </style>
+                            </head>
+                            <body>
+                                ${email.body_html || (email.body_text ? email.body_text.replace(/\n/g, '<br>') : '<p class=\'text-gray-400\'>Sin contenido</p>')}
+                            </body>
+                            </html>
+                        `);
+                        doc.close();
+
+                        // Auto-resize del iframe según contenido
+                        setTimeout(() => {
+                            iframe.style.height = (doc.documentElement.scrollHeight + 40) + 'px';
+                        }, 100);
+                    "
+                    sandbox="allow-same-origin allow-scripts"
+                    class="w-full border-0 min-h-[400px]"
+                    style="background: white;">
+                </iframe>
             </div>
         </div>
 

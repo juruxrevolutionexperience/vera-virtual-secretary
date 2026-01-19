@@ -158,10 +158,38 @@
                         </div>
                     </div>
 
-                    <!-- Contenido del email -->
+                    <!-- Contenido del email (AISLADO EN IFRAME) -->
                     <div class="email-body prose max-w-none">
                         @if($email->body_html)
-                            {!! $email->body_html !!}
+                            <!-- Iframe para aislar el HTML del email y evitar que afecte al resto de la app -->
+                            <iframe
+                                id="email-iframe"
+                                sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+                                class="w-full border-0 min-h-[500px]"
+                                style="background: white;">
+                            </iframe>
+                            <script>
+                                // Inyectar contenido HTML del email en el iframe de forma segura
+                                (function() {
+                                    const iframe = document.getElementById('email-iframe');
+                                    const emailContent = @json($email->body_html);
+
+                                    iframe.onload = function() {
+                                        const doc = iframe.contentDocument || iframe.contentWindow.document;
+                                        doc.open();
+                                        doc.write(emailContent);
+                                        doc.close();
+
+                                        // Auto-resize
+                                        setTimeout(() => {
+                                            iframe.style.height = (doc.documentElement.scrollHeight + 20) + 'px';
+                                        }, 200);
+                                    };
+
+                                    // Trigger onload
+                                    iframe.src = 'about:blank';
+                                })();
+                            </script>
                         @elseif($email->body_text)
                             <div class="whitespace-pre-wrap">{{ $email->body_text }}</div>
                         @else
@@ -231,6 +259,125 @@
     </div>
 
     <script>
+        // ==========================================
+        // COMPONENTE ALPINE.JS: ÁRBOL DE CARPETAS
+        // ==========================================
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('foldersTree', () => ({
+                folders: [],
+                loading: true,
+                selectedFolderId: null,
+                expandedFolders: {},
+
+                init() {
+                    this.loadFolders();
+                },
+
+                async loadFolders() {
+                    try {
+                        const response = await fetch('/email-folders/tree', {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+
+                        if (!response.ok) throw new Error('Error al cargar carpetas');
+
+                        const data = await response.json();
+                        this.folders = data.folders || [];
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.folders = [];
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async selectFolder(folderId) {
+                    window.location.href = `/emails?folder=${folderId}`;
+                },
+
+                toggleFolder(folderId) {
+                    this.expandedFolders[folderId] = !this.expandedFolders[folderId];
+                },
+
+                isFolderExpanded(folderId) {
+                    return this.expandedFolders[folderId] || false;
+                },
+
+                getFolderIconEmoji(icon) {
+                    const emojis = {
+                        folder: '📁',
+                        star: '⭐',
+                        briefcase: '💼',
+                        user: '👤',
+                        archive: '📦',
+                        heart: '❤️',
+                        flag: '🚩',
+                        check: '✅',
+                        clock: '⏰',
+                        document: '📄'
+                    };
+                    return emojis[icon] || '📁';
+                },
+
+                renderFolderRecursive(folder, depth) {
+                    const hasChildren = folder.children && folder.children.length > 0;
+                    const isExpanded = this.isFolderExpanded(folder.id);
+                    const isSelected = this.selectedFolderId === folder.id;
+                    const indentClass = depth > 0 ? `ml-${depth * 4}` : '';
+
+                    let html = `
+                        <div class="${indentClass}">
+                            <div @click="selectFolder(${folder.id})"
+                                class="flex items-center gap-2 px-2 py-1.5 rounded-md mb-1 cursor-pointer group relative ${isSelected ? 'bg-purple-50 text-purple-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}">
+                    `;
+
+                    // Chevron si tiene hijos
+                    if (hasChildren) {
+                        html += `
+                            <button @click.stop="toggleFolder(${folder.id})" class="flex-shrink-0">
+                                <svg class="w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+                        `;
+                    } else {
+                        html += `<span class="w-3"></span>`;
+                    }
+
+                    // Ícono y nombre
+                    html += `
+                        <span style="color: ${folder.color || '#6B7280'}" class="text-sm flex-shrink-0">${this.getFolderIconEmoji(folder.icon)}</span>
+                        <span class="flex-1 truncate text-sm">${folder.name}</span>
+                        <span class="text-xs text-gray-400 font-medium">${folder.emails_count || 0}</span>
+                    `;
+
+                    html += `</div>`;
+
+                    // Renderizar hijos recursivamente
+                    if (hasChildren && isExpanded) {
+                        for (const child of folder.children) {
+                            html += this.renderFolderRecursive(child, depth + 1);
+                        }
+                    }
+
+                    html += `</div>`;
+
+                    return html;
+                },
+
+                openCreateFolderModal() {
+                    window.dispatchEvent(new CustomEvent('open-folder-modal'));
+                },
+
+                openFolderMenu(folderId) {
+                    console.log('Abrir menú para carpeta:', folderId);
+                }
+            }));
+        });
+
         function toggleStar(emailId) {
             fetch(`/emails/${emailId}/toggle-star`, {
                 method: 'POST',
@@ -283,6 +430,9 @@
             }
         }
     </script>
+
+    <!-- Portal para dropdowns (fuera del flujo con overflow) -->
+    <div id="dropdowns-portal" class="fixed" style="z-index: 99999;"></div>
 
 </body>
 

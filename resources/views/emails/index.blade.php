@@ -54,6 +54,43 @@
             border-left: 3px solid #6366f1;
         }
 
+        /* Ocultar imágenes y otros elementos HTML en el listado de emails */
+        .email-item img,
+        .email-item iframe,
+        .email-item video,
+        .email-item object,
+        .email-item embed {
+            display: none !important;
+            max-height: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
+
+        /* CRÍTICO: Forzar que elementos flex respeten el ancho del contenedor */
+        .email-item .flex-1 {
+            min-width: 0 !important;
+            max-width: 100% !important;
+        }
+
+        /* Asegurar que TODOS los elementos con truncate funcionen */
+        .email-item .truncate {
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+
+        /* Prevenir que badges expandan el contenedor */
+        .email-item [class*="inline-flex"] {
+            flex-shrink: 0 !important;
+        }
+
+        /* Romper palabras y URLs largas */
+        .email-item p,
+        .email-item span {
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+        }
+
         .priority-high {
             border-left-color: #ef4444 !important;
         }
@@ -140,47 +177,9 @@
             transition: font-size 0.2s ease, line-height 0.2s ease;
         }
 
-        /* Email seleccionado (vista previa activa) */
-        .email-item.email-selected {
-            background-color: #ede9fe !important;
-            border-left: 4px solid #7c3aed !important;
-            box-shadow: inset 0 0 0 1px #c4b5fd;
-        }
-
-        .email-item.email-selected:hover {
-            background-color: #ddd6fe !important;
-        }
-
-        /* Tooltip para doble click */
+        /* Email item (click para abrir) */
         .email-item {
             position: relative;
-        }
-
-        .email-item::after {
-            content: '💡 Doble click para abrir completo';
-            position: absolute;
-            bottom: -30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 11px;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-            z-index: 1000;
-        }
-
-        .email-item:hover::after {
-            opacity: 0.9;
-            transition-delay: 1s;
-        }
-
-        .email-item.email-selected::after {
-            content: '💡 Doble click o usa el botón ↗️';
         }
 
         /* Ocultar elementos con x-cloak hasta que Alpine.js esté listo */
@@ -210,119 +209,7 @@
 <body class="antialiased bg-[#fafafa] font-['Inter'] text-[#1f2937]" x-data="emailApp()">
 
     <script>
-        // Registrar componente Alpine.js para vista previa de emails
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('emailPreview', () => ({
-                selectedEmailId: null,
-                email: {},
-                loading: false,
-
-                async loadEmail(emailId) {
-                    this.loading = true;
-                    this.selectedEmailId = emailId;
-
-                    try {
-                        const response = await fetch(`/emails/api/${emailId}`, {
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json'
-                            }
-                        });
-
-                        if (!response.ok) {
-                            console.error('Error al cargar email:', response.status);
-                            return;
-                        }
-
-                        const data = await response.json();
-                        this.email = data.email;
-
-                    } catch (error) {
-                        console.error('Error en AJAX:', error);
-                    } finally {
-                        this.loading = false;
-                    }
-                },
-
-                async toggleStar() {
-                    try {
-                        const response = await fetch(`/emails/${this.email.id}/toggle-star`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                            }
-                        });
-
-                        if (response.ok) {
-                            const data = await response.json();
-                            this.email.is_starred = data.is_starred;
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                    }
-                },
-
-                async archiveEmail() {
-                    if (!confirm('¿Archivar este email?')) return;
-
-                    try {
-                        const response = await fetch(`/emails/${this.email.id}/archive`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                            }
-                        });
-
-                        if (response.ok) {
-                            window.location.reload();
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                    }
-                },
-
-                async deleteEmail() {
-                    if (!confirm('¿Eliminar este email?')) return;
-
-                    try {
-                        const response = await fetch(`/emails/${this.email.id}`, {
-                            method: 'DELETE',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                            }
-                        });
-
-                        if (response.ok) {
-                            window.location.reload();
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                    }
-                },
-
-                formatDate(dateString) {
-                    const date = new Date(dateString);
-                    return date.toLocaleString('es-ES', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-                },
-
-                formatFileSize(bytes) {
-                    if (bytes === 0) return '0 Bytes';
-                    const k = 1024;
-                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-                    const i = Math.floor(Math.log(bytes) / Math.log(k));
-                    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-                }
-            }));
-        });
+        // Ya no se necesita el componente emailPreview porque los emails se abren en página completa
     </script>
 
     <div class="flex min-h-screen">
@@ -503,14 +390,9 @@
 
             <!-- Email Content Area -->
             <div class="flex h-[calc(100vh-56px)]">
-                <!-- Email List -->
-                <div class="w-full lg:w-2/5 border-r border-gray-200 overflow-y-auto bg-white">
+                <!-- Email List (Full Width) -->
+                <div class="w-full overflow-y-auto overflow-x-hidden bg-white">
                     @include('emails.partials.email-list')
-                </div>
-
-                <!-- Email Detail / Preview -->
-                <div class="hidden lg:block lg:w-3/5 overflow-y-auto bg-white">
-                    @include('emails.partials.email-detail')
                 </div>
             </div>
         </main>
@@ -821,7 +703,7 @@
                           
                           <div class="flex items-center gap-2">
                               <p class="text-xs text-gray-500 truncate flex-1">
-                                  ${email.excerpt || ''}
+                                  ${cleanExcerpt(email.excerpt)}
                               </p>
                           </div>
                           
@@ -900,6 +782,26 @@
             if (diffDays < 7) return `${diffDays}d`;
 
             return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+        }
+
+        // Función helper para limpiar y limitar excerpt
+        function cleanExcerpt(excerpt) {
+            if (!excerpt) return '';
+
+            // Remover HTML tags
+            const div = document.createElement('div');
+            div.innerHTML = excerpt;
+            let text = div.textContent || div.innerText || '';
+
+            // Remover espacios múltiples y saltos de línea
+            text = text.replace(/\s+/g, ' ').trim();
+
+            // Limitar a 80 caracteres
+            if (text.length > 80) {
+                text = text.substring(0, 80) + '...';
+            }
+
+            return text;
         }
 
         function startAutoRefresh() {
@@ -1098,57 +1000,7 @@
             overlay.classList.toggle('hidden');
         }
 
-        // Función global para cargar email en vista previa
-        let currentSelectedEmailId = null;
-        let clickTimeout = null;
-
-        function handleEmailClick(emailId, event) {
-            // Prevenir que se dispare también el doble click
-            if (clickTimeout !== null) {
-                return;
-            }
-
-            // Esperar 300ms para distinguir entre click simple y doble click
-            clickTimeout = setTimeout(() => {
-                loadEmailPreview(emailId);
-                clickTimeout = null;
-            }, 300);
-        }
-
-        function openEmailFullPage(emailId) {
-            // Cancelar el timeout del click simple
-            if (clickTimeout !== null) {
-                clearTimeout(clickTimeout);
-                clickTimeout = null;
-            }
-
-            // Abrir página completa
-            window.location.href = `/emails/${emailId}`;
-        }
-
-        function loadEmailPreview(emailId) {
-            // Remover highlight del anterior
-            if (currentSelectedEmailId) {
-                const prevEmail = document.getElementById(`email-${currentSelectedEmailId}`);
-                if (prevEmail) {
-                    prevEmail.classList.remove('email-selected');
-                }
-            }
-
-            // Agregar highlight al nuevo
-            const emailElement = document.getElementById(`email-${emailId}`);
-            if (emailElement) {
-                emailElement.classList.add('email-selected');
-            }
-
-            // Guardar el ID actual
-            currentSelectedEmailId = emailId;
-
-            // Disparar evento Alpine.js
-            window.dispatchEvent(new CustomEvent('load-email', {
-                detail: { emailId: emailId }
-            }));
-        }
+        // Las funciones de preview ya no son necesarias - los emails se abren directamente en página completa
 
         // Función para verificar si necesita configurar Vera
         function checkVeraOnboarding() {
@@ -1197,6 +1049,7 @@
                 folders: [],
                 loading: true,
                 selectedFolderId: null,
+                expandedFolders: {},
 
                 init() {
                     this.loadFolders();
@@ -1256,6 +1109,71 @@
                     }
                 },
 
+                toggleFolder(folderId) {
+                    this.expandedFolders[folderId] = !this.expandedFolders[folderId];
+                },
+
+                isFolderExpanded(folderId) {
+                    return this.expandedFolders[folderId] || false;
+                },
+
+                renderFolderRecursive(folder, depth) {
+                    const hasChildren = folder.children && folder.children.length > 0;
+                    const isExpanded = this.isFolderExpanded(folder.id);
+                    const isSelected = this.selectedFolderId === folder.id;
+                    const indentClass = depth > 0 ? `ml-${depth * 4}` : '';
+
+                    let html = `
+                        <div class="${indentClass}">
+                            <div @click="selectFolder(${folder.id})"
+                                class="flex items-center gap-2 px-2 py-1.5 rounded-md mb-1 cursor-pointer group relative ${isSelected ? 'bg-purple-50 text-purple-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}">
+                    `;
+
+                    // Chevron si tiene hijos
+                    if (hasChildren) {
+                        html += `
+                            <button @click.stop="toggleFolder(${folder.id})" class="flex-shrink-0">
+                                <svg class="w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+                        `;
+                    } else {
+                        html += `<span class="w-3"></span>`;
+                    }
+
+                    // Ícono y nombre
+                    html += `
+                        <span style="color: ${folder.color || '#6B7280'}" class="text-sm flex-shrink-0">${this.getFolderIconEmoji(folder.icon)}</span>
+                        <span class="flex-1 truncate text-sm">${folder.name}</span>
+                        <span class="text-xs text-gray-400 font-medium">${folder.emails_count || 0}</span>
+                    `;
+
+                    // Botón menú para carpetas no del sistema
+                    if (!folder.is_system_folder) {
+                        html += `
+                            <button @click.stop="openFolderMenu(${folder.id})" class="opacity-0 group-hover:opacity-100 transition-opacity">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
+                                </svg>
+                            </button>
+                        `;
+                    }
+
+                    html += `</div>`;
+
+                    // Renderizar hijos recursivamente
+                    if (hasChildren && isExpanded) {
+                        for (const child of folder.children) {
+                            html += this.renderFolderRecursive(child, depth + 1);
+                        }
+                    }
+
+                    html += `</div>`;
+
+                    return html;
+                },
+
                 getFolderIcon(icon) {
                     const icons = {
                         folder: '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>',
@@ -1265,6 +1183,22 @@
                         archive: '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z"/><path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>'
                     };
                     return icons[icon] || icons.folder;
+                },
+
+                getFolderIconEmoji(icon) {
+                    const emojis = {
+                        folder: '📁',
+                        star: '⭐',
+                        briefcase: '💼',
+                        user: '👤',
+                        archive: '📦',
+                        heart: '❤️',
+                        flag: '🚩',
+                        check: '✅',
+                        clock: '⏰',
+                        document: '📄'
+                    };
+                    return emojis[icon] || '📁';
                 },
 
                 openCreateFolderModal() {
@@ -1362,54 +1296,7 @@
             }, 3000);
         }
 
-        // Atajos de teclado: Flechas arriba/abajo para navegar entre emails
-        document.addEventListener('keydown', (event) => {
-            // Solo activar si no estamos en un input/textarea
-            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-                return;
-            }
-
-            // Obtener todos los emails visibles
-            const emailItems = Array.from(document.querySelectorAll('.email-item'));
-            if (emailItems.length === 0) return;
-
-            // Encontrar el email actualmente seleccionado
-            let currentIndex = emailItems.findIndex(item => item.classList.contains('email-selected'));
-
-            // Si no hay ninguno seleccionado, empezar desde el primero
-            if (currentIndex === -1 && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
-                currentIndex = 0;
-                const firstEmailId = emailItems[0].getAttribute('data-email-id');
-                if (firstEmailId) {
-                    loadEmailPreview(parseInt(firstEmailId));
-                    emailItems[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-                return;
-            }
-
-            // Navegar con flechas
-            if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                const nextIndex = Math.min(currentIndex + 1, emailItems.length - 1);
-                if (nextIndex !== currentIndex) {
-                    const nextEmailId = emailItems[nextIndex].getAttribute('data-email-id');
-                    if (nextEmailId) {
-                        loadEmailPreview(parseInt(nextEmailId));
-                        emailItems[nextIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                }
-            } else if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                const prevIndex = Math.max(currentIndex - 1, 0);
-                if (prevIndex !== currentIndex) {
-                    const prevEmailId = emailItems[prevIndex].getAttribute('data-email-id');
-                    if (prevEmailId) {
-                        loadEmailPreview(parseInt(prevEmailId));
-                        emailItems[prevIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                }
-            }
-        });
+        // Atajos de teclado deshabilitados - los emails se abren en página completa
     </script>
 
     <!-- Modal Crear/Editar Carpeta -->

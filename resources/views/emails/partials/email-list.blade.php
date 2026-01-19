@@ -12,15 +12,15 @@
          @scroll="closeAllDropdowns()">
         @forelse($emails as $email)
             <div id="email-{{ $email->id }}"
-                class="email-item group border-b border-gray-100 cursor-pointer relative
+                class="email-item group border-b border-gray-100 cursor-pointer relative overflow-hidden
                   density-comfortable
                             {{ !$email->is_read ? 'unread' : '' }}
                             {{ $email->priority === 'high' ? 'priority-high' : '' }}
                             {{ $email->priority === 'urgent' ? 'priority-urgent' : '' }}"
+                style="max-width: 100%;"
                 x-data="{ workflowOpen: false, folderMenuOpen: false }"
                 @close-dropdowns.window="workflowOpen = false; folderMenuOpen = false"
-                onclick="handleEmailClick({{ $email->id }}, event)"
-                ondblclick="openEmailFullPage({{ $email->id }})"
+                onclick="window.location.href='{{ route('emails.show', $email) }}'"
                 data-email-id="{{ $email->id }}"
                 data-email-url="{{ route('emails.show', $email) }}">
 
@@ -240,7 +240,7 @@
                         <!-- Excerpt & Tags -->
                         <div class="flex items-center gap-2">
                             <p class="text-xs text-gray-500 truncate flex-1">
-                                {{ $email->excerpt }}
+                                {{ Str::limit(strip_tags($email->excerpt), 80) }}
                             </p>
                         </div>
 
