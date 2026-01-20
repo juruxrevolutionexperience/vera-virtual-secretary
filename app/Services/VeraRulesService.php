@@ -38,10 +38,13 @@ class VeraRulesService
             'summary' => '', // Se generará después
             'confidence' => 0.7, // Reglas son ~70% confiables
             'method' => 'rules',
+            'suggested_workflow_status' => '', // Se calculará después  
         ];
 
         // Generar resumen basado en reglas
         $analysis['summary'] = $this->generateSummary($email, $analysis);
+        // Determinar workflow_status automáticamente  
+        $analysis['suggested_workflow_status'] = $this->determineWorkflowStatus($email, $analysis);
 
         Log::info('✅ Análisis con reglas completado', [
             'email_id' => $email->id,
@@ -67,10 +70,20 @@ class VeraRulesService
 
         // 1. PROMOCIONES - alta prioridad de detección
         $promoIndicators = [
-            'unsubscribe', 'darse de baja', 'cancelar suscripción',
-            'promoción', 'oferta', 'descuento', 'rebaja', '% off',
-            'compra ahora', 'ofertas', 'black friday', 'cyber monday',
-            'últimas unidades', 'stock limitado'
+            'unsubscribe',
+            'darse de baja',
+            'cancelar suscripción',
+            'promoción',
+            'oferta',
+            'descuento',
+            'rebaja',
+            '% off',
+            'compra ahora',
+            'ofertas',
+            'black friday',
+            'cyber monday',
+            'últimas unidades',
+            'stock limitado'
         ];
 
         foreach ($promoIndicators as $indicator) {
@@ -81,8 +94,14 @@ class VeraRulesService
 
         // 2. NEWSLETTERS
         $newsletterIndicators = [
-            'newsletter', 'noreply', 'no-reply', 'info@', 'news@',
-            'boletin', 'boletín', 'suscripción'
+            'newsletter',
+            'noreply',
+            'no-reply',
+            'info@',
+            'news@',
+            'boletin',
+            'boletín',
+            'suscripción'
         ];
 
         foreach ($newsletterIndicators as $indicator) {
@@ -93,8 +112,13 @@ class VeraRulesService
 
         // 3. REDES SOCIALES
         $socialDomains = [
-            'linkedin.com', 'facebook.com', 'twitter.com', 'x.com',
-            'instagram.com', 'tiktok.com', 'youtube.com'
+            'linkedin.com',
+            'facebook.com',
+            'twitter.com',
+            'x.com',
+            'instagram.com',
+            'tiktok.com',
+            'youtube.com'
         ];
 
         foreach ($socialDomains as $domain) {
@@ -107,8 +131,14 @@ class VeraRulesService
         // Si el from_email tiene un dominio que no es común (gmail, outlook, etc)
         // probablemente es trabajo
         $personalDomains = [
-            'gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com',
-            'icloud.com', 'live.com', 'proton.me', 'protonmail.com'
+            'gmail.com',
+            'hotmail.com',
+            'outlook.com',
+            'yahoo.com',
+            'icloud.com',
+            'live.com',
+            'proton.me',
+            'protonmail.com'
         ];
 
         $isPersonalDomain = false;
@@ -121,8 +151,16 @@ class VeraRulesService
 
         // Si tiene palabras de trabajo y NO es dominio personal
         $workKeywords = [
-            'proyecto', 'reunión', 'meeting', 'deadline', 'entrega',
-            'informe', 'reporte', 'propuesta', 'contrato', 'factura'
+            'proyecto',
+            'reunión',
+            'meeting',
+            'deadline',
+            'entrega',
+            'informe',
+            'reporte',
+            'propuesta',
+            'contrato',
+            'factura'
         ];
 
         if (!$isPersonalDomain) {
@@ -150,8 +188,15 @@ class VeraRulesService
 
         // 1. URGENTE - palabras clave críticas
         $urgentKeywords = [
-            'urgente', 'urgent', 'asap', 'inmediato', 'ahora mismo',
-            'cuanto antes', 'crítico', 'emergencia', 'emergency'
+            'urgente',
+            'urgent',
+            'asap',
+            'inmediato',
+            'ahora mismo',
+            'cuanto antes',
+            'crítico',
+            'emergencia',
+            'emergency'
         ];
 
         foreach ($urgentKeywords as $keyword) {
@@ -162,9 +207,20 @@ class VeraRulesService
 
         // 2. ALTA - indicadores de importancia
         $highPriorityIndicators = [
-            'importante', 'important', 'deadline', 'fecha límite',
-            'hoy', 'today', 'mañana', 'tomorrow', 'esta semana',
-            'reunión', 'meeting', 'junta', 'llamada', 'call'
+            'importante',
+            'important',
+            'deadline',
+            'fecha límite',
+            'hoy',
+            'today',
+            'mañana',
+            'tomorrow',
+            'esta semana',
+            'reunión',
+            'meeting',
+            'junta',
+            'llamada',
+            'call'
         ];
 
         foreach ($highPriorityIndicators as $indicator) {
@@ -206,10 +262,25 @@ class VeraRulesService
 
         // 2. NEGATIVO - problemas, quejas, errores
         $negativeWords = [
-            'problema', 'error', 'mal', 'no funciona', 'roto', 'broken',
-            'fallo', 'ayuda', 'help', 'issue', 'queja', 'complaint',
-            'molesto', 'frustrado', 'decepcionado', 'insatisfecho',
-            'cancelar', 'devolver', 'reembolso'
+            'problema',
+            'error',
+            'mal',
+            'no funciona',
+            'roto',
+            'broken',
+            'fallo',
+            'ayuda',
+            'help',
+            'issue',
+            'queja',
+            'complaint',
+            'molesto',
+            'frustrado',
+            'decepcionado',
+            'insatisfecho',
+            'cancelar',
+            'devolver',
+            'reembolso'
         ];
 
         $negativeCount = 0;
@@ -225,10 +296,25 @@ class VeraRulesService
 
         // 3. POSITIVO - agradecimientos, felicitaciones
         $positiveWords = [
-            'gracias', 'thank', 'excelente', 'excellent', 'perfecto', 'perfect',
-            'genial', 'great', 'fantástico', 'fantastic', 'felicidades',
-            'congratulations', 'bien hecho', 'love', 'encanta', 'increíble',
-            'amazing', 'wonderful', 'maravilloso'
+            'gracias',
+            'thank',
+            'excelente',
+            'excellent',
+            'perfecto',
+            'perfect',
+            'genial',
+            'great',
+            'fantástico',
+            'fantastic',
+            'felicidades',
+            'congratulations',
+            'bien hecho',
+            'love',
+            'encanta',
+            'increíble',
+            'amazing',
+            'wonderful',
+            'maravilloso'
         ];
 
         $positiveCount = 0;
@@ -256,7 +342,7 @@ class VeraRulesService
     {
         $sentiment = $this->detectSentiment($email);
 
-        return match($sentiment) {
+        return match ($sentiment) {
             'urgent' => 0.2,    // Urgente = negativo
             'negative' => 0.3,  // Negativo
             'neutral' => 0.5,   // Neutral
@@ -359,7 +445,7 @@ class VeraRulesService
         $priority = $analysis['priority'];
 
         // Construir resumen según categoría
-        $summary = match($category) {
+        $summary = match ($category) {
             'promotional' => "Promoción de {$from}",
             'newsletter' => "Newsletter de {$from}",
             'social' => "Notificación de red social de {$from}",
@@ -461,5 +547,72 @@ class VeraRulesService
             ],
             'confidence_score' => 0.7, // 70% confiable
         ];
+    }
+    /**                                                                                                                                                             
+     * Determinar workflow_status automáticamente                                                                                                                   
+     *                                                                                                                                                              
+     * @param Email $email                                                                                                                                          
+     * @param array $analysis                                                                                                                                       
+     * @return string workflow_status sugerido                                                                                                                      
+     */
+    public function determineWorkflowStatus(Email $email, array $analysis): string
+    {
+        $category = $analysis['category'];
+        $priority = $analysis['priority'];
+        $action = $analysis['action_required'];
+        $sentiment = $analysis['sentiment_label'];
+
+        // REGLA 1: Emails urgentes que requieren respuesta                                                                                                         
+        if ($priority === 'urgent' && $action === 'reply') {
+            return 'pending_response';
+        }
+
+        // REGLA 2: Emails urgentes sin acción clara                                                                                                                
+        if ($priority === 'urgent') {
+            return 'pending_validation';
+        }
+
+        // REGLA 3: Emails importantes que requieren respuesta                                                                                                      
+        if ($priority === 'high' && $action === 'reply') {
+            return 'pending_response';
+        }
+
+        // REGLA 4: Emails de trabajo importantes sin responder                                                                                                     
+        if ($category === 'work' && $priority === 'high' && !$email->is_read) {
+            return 'pending_validation';
+        }
+
+        // REGLA 5: Emails negativos/problemas que necesitan revisión                                                                                               
+        if ($sentiment === 'negative') {
+            return 'in_review';
+        }
+
+        // REGLA 6: Emails que deben archivarse                                                                                                                     
+        if ($action === 'archive') {
+            return 'no_action_needed';
+        }
+
+        // REGLA 7: Promociones y newsletters (AUNQUE no estén leídos)                                                                                              
+        if (in_array($category, ['promotional', 'newsletter', 'social'])) {
+            return 'no_action_needed';
+        }
+
+        // REGLA 8: Emails que necesitan programarse                                                                                                                
+        if ($action === 'schedule') {
+            return 'pending_response';
+        }
+
+        // REGLA 9: Emails ya leídos sin acción requerida                                                                                                           
+        if ($email->is_read && $action === 'none') {
+            return 'no_action_needed';
+        }
+
+        // REGLA 10 (FALLBACK): Emails sin leer que no entraron en ninguna categoría específica                                                                     
+        if (!$email->is_read) {
+            return 'unread';
+        }
+
+        // REGLA 11 (ÚLTIMO FALLBACK): Emails leídos sin clasificación específica                                                                                   
+        return 'no_action_needed';
     }
 }

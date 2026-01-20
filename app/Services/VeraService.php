@@ -346,12 +346,12 @@ SYSTEM;
         ];
     }
 
-    /**
-     * Guardar análisis en el email
-     *
-     * @param Email $email
-     * @param array $analysis
-     * @return void
+    /**                                                                                                                                                             
+     * Guardar análisis en el email                                                                                                                                 
+     *                                                                                                                                                              
+     * @param Email $email                                                                                                                                          
+     * @param array $analysis                                                                                                                                       
+     * @return void                                                                                                                                                 
      */
     public function saveAnalysisToEmail(Email $email, array $analysis): void
     {
@@ -360,19 +360,37 @@ SYSTEM;
             'vera_sentiment_score' => $analysis['sentiment_score'],
             'vera_tags' => $analysis['topics'],
             'vera_action_required' => $analysis['action_required'],
+            'category' => $analysis['category'] ?? $email->category, // 🆕 Guardar categoría de Vera                                                                    
             'vera_processed' => true,
             'vera_processed_at' => now(),
         ]);
 
-        // Actualizar prioridad si es alta o urgente
+        // Actualizar prioridad si es alta o urgente                                                                                                                
         if (in_array($analysis['priority'], ['urgent', 'high'])) {
             $email->update(['priority' => $analysis['priority']]);
+        }
+
+        // 🆕 NUEVO: Aplicar workflow_status automáticamente si Vera lo sugiere                                                                                     
+        if (isset($analysis['suggested_workflow_status']) && !empty($analysis['suggested_workflow_status'])) {
+            $suggestedStatus = $analysis['suggested_workflow_status'];
+
+            // Solo aplicar si el email está en estado 'unread' (no sobrescribir cambios manuales)                                                                  
+            if (!$email->workflow_status || $email->workflow_status === 'unread') {
+                $email->setWorkflowStatus($suggestedStatus);
+
+                Log::info('🤖 Vera aplicó workflow_status automático', [
+                    'email_id' => $email->id,
+                    'workflow_status' => $suggestedStatus,
+                    'reason' => "Basado en análisis: priority={$analysis['priority']}, action={$analysis['action_required']}"
+                ]);
+            }
         }
 
         Log::info('💾 Análisis guardado en email', [
             'email_id' => $email->id,
             'method' => $analysis['method'] ?? 'unknown',
-            'summary' => $analysis['summary']
+            'summary' => $analysis['summary'],
+            'workflow_status' => $email->workflow_status ?? 'none'
         ]);
     }
 

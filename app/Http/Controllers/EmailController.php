@@ -489,4 +489,37 @@ class EmailController extends Controller
             'stats'
         ));
     }
+    
+    /**                                                                                                                                        
+     * Update workflow status of an email                                                                                                      
+     */
+    public function updateWorkflowStatus(Request $request, Email $email)
+    {
+        // Verificar que el email pertenece al usuario autenticado                                                                             
+        if ($email->user_id !== Auth::id()) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        // Validar el nuevo estado                                                                                                             
+        $request->validate([
+            'status' =>
+                'required|in:unread,pending_validation,pending_response,in_progress,in_review,approved,completed,archived,no_action_needed'
+        ]);
+
+        try {
+            // Cambiar el estado usando el servicio                                                                                            
+            $workflowService = app(\App\Services\EmailWorkflowService::class);
+            $updatedEmail = $workflowService->changeWorkflowStatus($email, $request->status);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estado actualizado correctamente',
+                'workflow_status' => $updatedEmail->workflow_status
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error al actualizar el estado: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

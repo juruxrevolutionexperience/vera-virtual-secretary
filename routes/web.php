@@ -130,6 +130,9 @@ Route::middleware(['auth'])->prefix('emails')->name('emails.')->group(function (
 
     // Vista principal de emails
     Route::get('/', [EmailController::class, 'index'])->name('index');
+    
+    Route::patch('/{email}/workflow-status', [EmailController::class, 'updateWorkflowStatus'])->name('update-workflow-status');
+
     // Ver un email específico
     Route::get('/{email}', [EmailController::class, 'show'])->name('show');
 

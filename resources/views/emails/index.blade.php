@@ -15,7 +15,9 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
-        [x-cloak] { display: none !important; }
+        [x-cloak] {
+            display: none !important;
+        }
 
         ::-webkit-scrollbar {
             width: 6px;
@@ -282,13 +284,13 @@
                         <!-- Header -->
                         <div class="text-center mb-8">
                             <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full
-                                                                                  mb-4 shadow-lg">
+                                                                                      mb-4 shadow-lg">
                                 <!-- Animated envelope icon -->
                                 <svg class="w-10 h-10 text-white animate-pulse" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5
-                                                                                  19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                                                      19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
                             </div>
                             <h2 class="text-3xl font-bold text-gray-900 mb-2">Sincronizando tu bandeja de entrada</h2>
@@ -304,7 +306,7 @@
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
                                 <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-500 ease-out
-                                                                                  shadow-lg"
+                                                                                      shadow-lg"
                                     :style="'width: ' + progressPercentage + '%'" x-show="progressPercentage > 0"
                                     x-transition:enter="transition ease-out duration-300"
                                     x-transition:enter-start="opacity-0 transform scale-x-0"
@@ -343,8 +345,8 @@
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2
-                                                                                   2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0
-                                                                                  01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                                                                       2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0
+                                                                                      01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                         </svg>
                                     </div>
                                 </div>
@@ -362,7 +364,7 @@
                                                 stroke-width="4"></circle>
                                             <path class="opacity-75" fill="currentColor"
                                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962
-                                                                                  7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                                                                      7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                                             </path>
                                         </svg>
                                     </div>
@@ -375,7 +377,7 @@
                             <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9
-                                                                                  9 0 0118 0z" />
+                                                                                      9 0 0118 0z" />
                             </svg>
                             <div class="flex-1">
                                 <p class="text-sm text-blue-800 font-medium">Esto puede tardar unos minutos</p>
@@ -1035,7 +1037,7 @@
         }
 
         // Verificar onboarding cuando carga la página (si no está sincronizando)
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             @if($hasEmailAccounts && !$syncingAccount)
                 checkVeraOnboarding();
             @endif
@@ -1217,8 +1219,8 @@
         // ==========================================
         async function changeWorkflowStatus(emailId, newStatus) {
             try {
-                const response = await fetch(`/email-workflow/${emailId}/change-status`, {
-                    method: 'POST',
+                const response = await fetch(`/emails/${emailId}/workflow-status`, {
+                    method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -1300,22 +1302,18 @@
     </script>
 
     <!-- Modal Crear/Editar Carpeta -->
-    <div x-data="folderModal()"
-         @open-folder-modal.window="openModal()"
-         x-show="isOpen"
-         x-cloak
-         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div x-data="folderModal()" @open-folder-modal.window="openModal()" x-show="isOpen" x-cloak
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
 
-        <div @click.away="closeModal()"
-             x-show="isOpen"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 transform scale-95"
-             x-transition:enter-end="opacity-100 transform scale-100"
-             class="bg-white rounded-lg shadow-xl w-full max-w-md">
+        <div @click.away="closeModal()" x-show="isOpen" x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform scale-95"
+            x-transition:enter-end="opacity-100 transform scale-100"
+            class="bg-white rounded-lg shadow-xl w-full max-w-md">
 
             <!-- Header -->
             <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900" x-text="folderId ? 'Editar Carpeta' : 'Nueva Carpeta'"></h3>
+                <h3 class="text-lg font-semibold text-gray-900" x-text="folderId ? 'Editar Carpeta' : 'Nueva Carpeta'">
+                </h3>
             </div>
 
             <!-- Body -->
@@ -1325,11 +1323,9 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Nombre *
                     </label>
-                    <input type="text"
-                           x-model="formData.name"
-                           required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                           placeholder="Ej: Proyectos 2026">
+                    <input type="text" x-model="formData.name" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Ej: Proyectos 2026">
                 </div>
 
                 <!-- Carpeta Padre -->
@@ -1338,7 +1334,7 @@
                         Carpeta Padre
                     </label>
                     <select x-model="formData.parent_folder_id"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                         <option value="">-- Carpeta raíz --</option>
                         <template x-for="folder in allFolders" :key="folder.id">
                             <option :value="folder.id" x-text="folder.full_path"></option>
@@ -1352,13 +1348,10 @@
                         Color
                     </label>
                     <div class="flex gap-2">
-                        <input type="color"
-                               x-model="formData.color"
-                               class="w-16 h-10 rounded cursor-pointer border border-gray-300">
-                        <input type="text"
-                               x-model="formData.color"
-                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                               readonly>
+                        <input type="color" x-model="formData.color"
+                            class="w-16 h-10 rounded cursor-pointer border border-gray-300">
+                        <input type="text" x-model="formData.color"
+                            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                     </div>
                 </div>
 
@@ -1369,10 +1362,9 @@
                     </label>
                     <div class="grid grid-cols-5 gap-2">
                         <template x-for="iconOption in iconOptions" :key="iconOption.value">
-                            <button type="button"
-                                    @click="formData.icon = iconOption.value"
-                                    :class="formData.icon === iconOption.value ? 'bg-purple-100 border-purple-500' : 'bg-white border-gray-300'"
-                                    class="p-3 border-2 rounded-lg hover:bg-gray-50 transition-colors text-2xl">
+                            <button type="button" @click="formData.icon = iconOption.value"
+                                :class="formData.icon === iconOption.value ? 'bg-purple-100 border-purple-500' : 'bg-white border-gray-300'"
+                                class="p-3 border-2 rounded-lg hover:bg-gray-50 transition-colors text-2xl">
                                 <span x-text="iconOption.emoji"></span>
                             </button>
                         </template>
@@ -1384,22 +1376,19 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Descripción (opcional)
                     </label>
-                    <textarea x-model="formData.description"
-                              rows="2"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                              placeholder="Añade una descripción..."></textarea>
+                    <textarea x-model="formData.description" rows="2"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        placeholder="Añade una descripción..."></textarea>
                 </div>
 
                 <!-- Botones -->
                 <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                    <button type="button"
-                            @click="closeModal()"
-                            class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <button type="button" @click="closeModal()"
+                        class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
                         Cancelar
                     </button>
-                    <button type="submit"
-                            :disabled="submitting"
-                            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    <button type="submit" :disabled="submitting"
+                        class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                         <span x-show="!submitting">Guardar</span>
                         <span x-show="submitting">Guardando...</span>
                     </button>
