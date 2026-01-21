@@ -37,46 +37,6 @@
         </form>
     </div>
 
-    <!-- Selector de densidad visual con iconos -->
-    <div class="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-1"
-        x-data="{ density: localStorage.getItem('email-density') || 'comfortable' }">
-
-        <!-- Botón Compacta -->
-        <button @click="density = 'compact'; localStorage.setItem('email-density', 'compact'); location.reload()"
-            :class="density === 'compact' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:text-gray-700'"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all font-medium text-xs"
-            title="Vista compacta">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            <span>Compacta</span>
-        </button>
-
-        <!-- Botón Cómoda -->
-        <button
-            @click="density = 'comfortable'; localStorage.setItem('email-density', 'comfortable'); location.reload()"
-            :class="density === 'comfortable' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:text-gray-700'"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all font-medium text-xs"
-            title="Vista cómoda (recomendada)">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-            <span>Cómoda</span>
-        </button>
-
-        <!-- Botón Espaciosa -->
-        <button @click="density = 'spacious'; localStorage.setItem('email-density', 'spacious'); location.reload()"
-            :class="density === 'spacious' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:text-gray-700'"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all font-medium text-xs"
-            title="Vista espaciosa">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
-            </svg>
-            <span>Espaciosa</span>
-        </button>
-    </div>
-
     <!-- Actions -->
     <div class="flex items-center gap-2">
         <!-- Bulk Actions (shown when emails are selected) -->

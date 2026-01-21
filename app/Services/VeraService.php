@@ -212,6 +212,7 @@ Analiza el siguiente email y devuelve un JSON con esta estructura EXACTA:
 
 {
   "summary": "Resumen corto en español (máximo 150 caracteres)",
+  "category": "promotional|newsletter|social|work|personal|transactional",
   "sentiment_score": 0.0 a 1.0 (0=muy negativo, 0.5=neutral, 1=muy positivo),
   "sentiment_label": "positive|neutral|negative|urgent",
   "priority": "low|normal|high|urgent",
@@ -308,6 +309,7 @@ SYSTEM;
             // Validar y normalizar datos
             return [
                 'summary' => $data['summary'] ?? '',
+                'category' => $data['category'] ?? 'personal',
                 'sentiment_score' => (float) ($data['sentiment_score'] ?? 0.5),
                 'sentiment_label' => $data['sentiment_label'] ?? 'neutral',
                 'priority' => $data['priority'] ?? 'normal',
@@ -336,6 +338,7 @@ SYSTEM;
     {
         return [
             'summary' => '',
+            'category' => 'personal',
             'sentiment_score' => 0.5,
             'sentiment_label' => 'neutral',
             'priority' => 'normal',
@@ -355,12 +358,22 @@ SYSTEM;
      */
     public function saveAnalysisToEmail(Email $email, array $analysis): void
     {
+        $categoryToSave = $analysis['category'] ?? $email->category;
+
+        Log::info('💾 Guardando categoría en email', [
+            'email_id' => $email->id,
+            'category_from_analysis' => $analysis['category'] ?? 'NO DEFINIDA',
+            'category_current_email' => $email->category,
+            'category_to_save' => $categoryToSave,
+            'method' => $analysis['method'] ?? 'unknown'
+        ]);
+
         $email->update([
             'vera_summary' => $analysis['summary'],
             'vera_sentiment_score' => $analysis['sentiment_score'],
             'vera_tags' => $analysis['topics'],
             'vera_action_required' => $analysis['action_required'],
-            'category' => $analysis['category'] ?? $email->category, // 🆕 Guardar categoría de Vera                                                                    
+            'category' => $categoryToSave,
             'vera_processed' => true,
             'vera_processed_at' => now(),
         ]);

@@ -16,6 +16,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'email_density',
         // === campos de billing añadidos a la tabla users ===
         'is_paid',
         'stripe_customer_id',

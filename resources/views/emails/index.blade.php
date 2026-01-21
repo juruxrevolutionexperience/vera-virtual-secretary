@@ -284,13 +284,13 @@
                         <!-- Header -->
                         <div class="text-center mb-8">
                             <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full
-                                                                                      mb-4 shadow-lg">
+                                                                                                          mb-4 shadow-lg">
                                 <!-- Animated envelope icon -->
                                 <svg class="w-10 h-10 text-white animate-pulse" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5
-                                                                                      19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                                                                          19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
                             </div>
                             <h2 class="text-3xl font-bold text-gray-900 mb-2">Sincronizando tu bandeja de entrada</h2>
@@ -306,7 +306,7 @@
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
                                 <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-500 ease-out
-                                                                                      shadow-lg"
+                                                                                                          shadow-lg"
                                     :style="'width: ' + progressPercentage + '%'" x-show="progressPercentage > 0"
                                     x-transition:enter="transition ease-out duration-300"
                                     x-transition:enter-start="opacity-0 transform scale-x-0"
@@ -345,8 +345,8 @@
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2
-                                                                                       2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0
-                                                                                      01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                                                                                           2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0
+                                                                                                          01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                         </svg>
                                     </div>
                                 </div>
@@ -364,7 +364,7 @@
                                                 stroke-width="4"></circle>
                                             <path class="opacity-75" fill="currentColor"
                                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962
-                                                                                      7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                                                                                          7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                                             </path>
                                         </svg>
                                     </div>
@@ -377,7 +377,7 @@
                             <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9
-                                                                                      9 0 0118 0z" />
+                                                                                                          9 0 0118 0z" />
                             </svg>
                             <div class="flex-1">
                                 <p class="text-sm text-blue-800 font-medium">Esto puede tardar unos minutos</p>
@@ -923,6 +923,8 @@
 
         function emailApp() {
             return {
+                currentStatusFilter: '',
+                allEmails: [], // Guardará todos los emails cargados     
                 selectedEmails: [],
                 showBulkActions: false,
                 currentFilter: '{{ request()->filter ?? "all" }}',
@@ -991,7 +993,79 @@
                     } catch (error) {
                         console.error('Error:', error);
                     }
-                }
+                },
+
+                // === FUNCIONES DE FILTRADO POR ESTADO ===                                                                                        
+                filterByStatus(status) {
+                    this.currentStatusFilter = status;
+
+                    const allEmailItems = document.querySelectorAll('.email-item');
+
+                    if (status === '') {
+                        // Mostrar todos                                                                                                           
+                        allEmailItems.forEach(item => {
+                            item.style.display = '';
+                        });
+                    } else {
+                        // Filtrar por estado                                                                                                      
+                        allEmailItems.forEach(item => {
+                            const emailId = item.getAttribute('data-email-id');
+                            const emailData = this.getEmailDataById(emailId);
+
+                            if (emailData && emailData.workflow_status === status) {
+                                item.style.display = '';
+                            } else {
+                                item.style.display = 'none';
+                            }
+                        });
+                    }
+
+                    console.log(`✅ Filtro aplicado: ${status || 'Todos'}`);
+                },
+
+                getEmailDataById(emailId) {
+                    // Buscar en los emails cargados                                                                                               
+                    const emailElement = document.querySelector(`#email-${emailId}`);
+                    if (!emailElement) return null;
+
+                    // Extraer workflow_status del badge                                                                                           
+                    const badgeText = emailElement.querySelector('[class*="bg-"][class*="text-"]')?.textContent || '';
+
+                    // Mapear texto del badge a workflow_status                                                                                    
+                    const statusMap = {
+                        '📬 Sin leer': 'unread',
+                        '⏳ Pendiente': 'pending_validation',
+                        '✉️ Responder': 'pending_response',
+                        '🔄 En curso': 'in_progress',
+                        '👁️ Revisión': 'in_review',
+                        '✔️ Completado': 'completed',
+                        '➖ Sin acción': 'no_action_needed',
+                    };
+
+                    return {
+                        workflow_status: statusMap[badgeText.trim()] || 'unread'
+                    };
+                },
+
+                getStatusCount(status) {
+                    const allEmailItems = document.querySelectorAll('.email-item');
+                    let count = 0;
+
+                    allEmailItems.forEach(item => {
+                        const emailId = item.getAttribute('data-email-id');
+                        const emailData = this.getEmailDataById(emailId);
+
+                        if (emailData && emailData.workflow_status === status) {
+                            count++;
+                        }
+                    });
+
+                    return count;
+                },
+
+                getTotalEmails() {
+                    return document.querySelectorAll('.email-item').length;
+                },
             }
         }
 

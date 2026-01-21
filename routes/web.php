@@ -130,7 +130,7 @@ Route::middleware(['auth'])->prefix('emails')->name('emails.')->group(function (
 
     // Vista principal de emails
     Route::get('/', [EmailController::class, 'index'])->name('index');
-    
+
     Route::patch('/{email}/workflow-status', [EmailController::class, 'updateWorkflowStatus'])->name('update-workflow-status');
 
     // Ver un email específico
@@ -324,6 +324,13 @@ Route::middleware(['auth'])->prefix('settings')->name('settings.')->group(functi
     Route::get('/notifications', [VeraNotificationController::class, 'index'])->name('notifications');
     Route::get('/notifications/data', [VeraNotificationController::class, 'data'])->name('notifications.data');
     Route::patch('/notifications', [VeraNotificationController::class, 'update'])->name('notifications.update');
+
+    // Configuración de Apariencia (Densidad visual)                                                                                       
+    Route::get('/appearance', [\App\Http\Controllers\Settings\AppearanceController::class, 'index'])->name('appearance');
+    Route::post('/appearance/density', [
+        \App\Http\Controllers\Settings\AppearanceController::class,
+        'updateDensity'
+    ])->name('appearance.density');
 });
 
 // ========================================
@@ -512,7 +519,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // RGPD / PRIVACIDAD
-    Route::prefix('privacy')->name('privacy.')->group(function () {
+    Route::prefix('gdpr')->name('gdpr.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Security\GDPRController::class, 'index'])->name('index');
         Route::post('/export', [\App\Http\Controllers\Security\GDPRController::class, 'requestExport'])->name('export');
         Route::post('/delete', [\App\Http\Controllers\Security\GDPRController::class, 'requestDeletion'])->name('delete');

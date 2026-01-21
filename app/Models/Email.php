@@ -33,6 +33,7 @@ class Email extends Model
         'snippet',  // ← NUEVO: Preview del email (primeros 250 caracteres)
         'body_html',  // Por ahora lo mantenemos, luego lo quitaremos
         'body_text',  // Por ahora lo mantenemos, luego lo quitaremos
+        'category',  // Categoría detectada por Vera
         'priority',
         'is_read',
         'is_starred',

@@ -5,23 +5,107 @@
             class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer">
         <span class="text-xs text-gray-500 font-medium">Seleccionar todos</span>
     </div>
+    <!-- Filtros por Estado - Inline con Scroll Horizontal -->
+    <div class="px-4 py-3 border-b border-gray-200 bg-white">
+        <div class="flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pb-1"
+            style="scrollbar-width: thin;">
+
+            <!-- Botón: Todos -->
+            <button @click="filterByStatus('')" :class="currentStatusFilter === '' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white text-gray-600           
+  border-gray-300 hover:bg-gray-50'" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border transition-all whitespace-nowrap       
+  flex-shrink-0">
+                <span class="mr-1.5">📋</span>
+                <span>Todos</span>
+                <span class="ml-1.5 bg-gray-100 px-1.5 rounded-full text-[10px]" x-text="getTotalEmails()"></span>
+            </button>
+
+            <!-- Botón: Sin leer -->
+            <button @click="filterByStatus('unread')" :class="currentStatusFilter === 'unread' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white text-gray-600     
+  border-gray-300 hover:bg-gray-50'" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border transition-all whitespace-nowrap       
+  flex-shrink-0">
+                <span class="mr-1.5">📬</span>
+                <span>Sin leer</span>
+                <span class="ml-1.5 bg-blue-100 px-1.5 rounded-full text-[10px]"
+                    x-text="getStatusCount('unread')"></span>
+            </button>
+
+            <!-- Botón: Pendiente validación -->
+            <button @click="filterByStatus('pending_validation')" :class="currentStatusFilter === 'pending_validation' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white       
+  text-gray-600 border-gray-300 hover:bg-gray-50'" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border transition-all whitespace-nowrap       
+  flex-shrink-0">
+                <span class="mr-1.5">⏳</span>
+                <span>Pendientes</span>
+                <span class="ml-1.5 bg-yellow-100 px-1.5 rounded-full text-[10px]"
+                    x-text="getStatusCount('pending_validation')"></span>
+            </button>
+
+            <!-- Botón: Requiere respuesta -->
+            <button @click="filterByStatus('pending_response')" :class="currentStatusFilter === 'pending_response' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white         
+  text-gray-600 border-gray-300 hover:bg-gray-50'" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border transition-all whitespace-nowrap       
+  flex-shrink-0">
+                <span class="mr-1.5">✉️</span>
+                <span>Responder</span>
+                <span class="ml-1.5 bg-orange-100 px-1.5 rounded-full text-[10px]"
+                    x-text="getStatusCount('pending_response')"></span>
+            </button>
+
+            <!-- Botón: En curso -->
+            <button @click="filterByStatus('in_progress')" :class="currentStatusFilter === 'in_progress' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white text-gray-600
+   border-gray-300 hover:bg-gray-50'" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border transition-all whitespace-nowrap       
+  flex-shrink-0">
+                <span class="mr-1.5">🔄</span>
+                <span>En curso</span>
+                <span class="ml-1.5 bg-purple-100 px-1.5 rounded-full text-[10px]"
+                    x-text="getStatusCount('in_progress')"></span>
+            </button>
+
+            <!-- Botón: En revisión -->
+            <button @click="filterByStatus('in_review')" :class="currentStatusFilter === 'in_review' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white text-gray-600  
+  border-gray-300 hover:bg-gray-50'" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border transition-all whitespace-nowrap       
+  flex-shrink-0">
+                <span class="mr-1.5">👁️</span>
+                <span>Revisión</span>
+                <span class="ml-1.5 bg-indigo-100 px-1.5 rounded-full text-[10px]"
+                    x-text="getStatusCount('in_review')"></span>
+            </button>
+
+            <!-- Botón: Completado -->
+            <button @click="filterByStatus('completed')" :class="currentStatusFilter === 'completed' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white text-gray-600  
+  border-gray-300 hover:bg-gray-50'" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border transition-all whitespace-nowrap       
+  flex-shrink-0">
+                <span class="mr-1.5">✔️</span>
+                <span>Completado</span>
+                <span class="ml-1.5 bg-emerald-100 px-1.5 rounded-full text-[10px]"
+                    x-text="getStatusCount('completed')"></span>
+            </button>
+
+            <!-- Botón: Sin acción necesaria -->
+            <button @click="filterByStatus('no_action_needed')" :class="currentStatusFilter === 'no_action_needed' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white         
+  text-gray-600 border-gray-300 hover:bg-gray-50'" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border transition-all whitespace-nowrap       
+  flex-shrink-0">
+                <span class="mr-1.5">➖</span>
+                <span>Sin acción</span>
+                <span class="ml-1.5 bg-slate-100 px-1.5 rounded-full text-[10px]"
+                    x-text="getStatusCount('no_action_needed')"></span>
+            </button>
+
+        </div>
+    </div>
+
 
     <!-- Email List -->
     <div id="emails-container" class="flex-1 overflow-y-auto"
-         x-data="{ closeAllDropdowns: () => { window.dispatchEvent(new Event('close-dropdowns')); } }"
-         @scroll="closeAllDropdowns()">
+        x-data="{ closeAllDropdowns: () => { window.dispatchEvent(new Event('close-dropdowns')); } }"
+        @scroll="closeAllDropdowns()">
         @forelse($emails as $email)
-            <div id="email-{{ $email->id }}"
-                class="email-item group border-b border-gray-100 cursor-pointer relative overflow-hidden
-                  density-comfortable
-                            {{ !$email->is_read ? 'unread' : '' }}
-                            {{ $email->priority === 'high' ? 'priority-high' : '' }}
-                            {{ $email->priority === 'urgent' ? 'priority-urgent' : '' }}"
-                style="max-width: 100%;"
+            <div id="email-{{ $email->id }}" class="email-item group border-b border-gray-100 cursor-pointer relative overflow-hidden
+                      density-comfortable
+                                {{ !$email->is_read ? 'unread' : '' }}
+                                {{ $email->priority === 'high' ? 'priority-high' : '' }}
+                                {{ $email->priority === 'urgent' ? 'priority-urgent' : '' }}" style="max-width: 100%;"
                 x-data="{ workflowOpen: false, folderMenuOpen: false }"
                 @close-dropdowns.window="workflowOpen = false; folderMenuOpen = false"
-                onclick="window.location.href='{{ route('emails.show', $email) }}'"
-                data-email-id="{{ $email->id }}"
+                onclick="window.location.href='{{ route('emails.show', $email) }}'" data-email-id="{{ $email->id }}"
                 data-email-url="{{ route('emails.show', $email) }}">
 
                 <div class="flex items-start gap-3">
@@ -81,9 +165,8 @@
                                 @endphp
                                 @if($hasVeraResponse)
                                     <a href="{{ route('vera.responses') }}"
-                                       class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 transition"
-                                       title="Vera generó una respuesta para este email"
-                                       onclick="event.stopPropagation()">
+                                        class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 transition"
+                                        title="Vera generó una respuesta para este email" onclick="event.stopPropagation()">
                                         🤖 Vera Respondió
                                     </a>
                                 @endif
@@ -128,53 +211,61 @@
                             @endphp
 
                             <div class="relative" x-data="{ dropdownStyle: {} }" x-ref="workflowContainer">
-                                <button @click.stop="workflowOpen = !workflowOpen; if(workflowOpen) { const rect = $el.getBoundingClientRect(); dropdownStyle = { top: rect.bottom + 4 + 'px', left: rect.left + 'px' }; }"
+                                <button
+                                    @click.stop="workflowOpen = !workflowOpen; if(workflowOpen) { const rect = $el.getBoundingClientRect(); dropdownStyle = { top: rect.bottom + 4 + 'px', left: rect.left + 'px' }; }"
                                     x-ref="workflowButton"
                                     class="inline-flex items-center text-[10px] px-2 py-1 rounded-full font-medium {{ $workflowColors[$email->workflow_status] ?? 'bg-gray-100 text-gray-600' }} hover:opacity-80 transition-opacity">
                                     {{ $workflowLabels[$email->workflow_status] ?? ucfirst($email->workflow_status) }}
                                     <svg class="w-2.5 h-2.5 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                        <path fill-rule="evenodd"
+                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                            clip-rule="evenodd" />
                                     </svg>
                                 </button>
 
                                 <!-- Dropdown de workflow usando TELEPORT al portal -->
                                 <template x-teleport="#dropdowns-portal">
-                                    <div x-show="workflowOpen"
-                                         @click.away="workflowOpen = false"
-                                         x-transition:enter="transition ease-out duration-100"
-                                         x-transition:enter-start="opacity-0 scale-95"
-                                         x-transition:enter-end="opacity-100 scale-100"
-                                         class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200"
-                                         :style="{ top: dropdownStyle.top, left: dropdownStyle.left, zIndex: 99999 }"
-                                         x-cloak>
+                                    <div x-show="workflowOpen" @click.away="workflowOpen = false"
+                                        x-transition:enter="transition ease-out duration-100"
+                                        x-transition:enter-start="opacity-0 scale-95"
+                                        x-transition:enter-end="opacity-100 scale-100"
+                                        class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200"
+                                        :style="{ top: dropdownStyle.top, left: dropdownStyle.left, zIndex: 99999 }"
+                                        x-cloak>
                                         <div class="py-1">
-                                            <button @click.stop="changeWorkflowStatus({{ $email->id }}, 'pending_validation'); workflowOpen = false"
+                                            <button
+                                                @click.stop="changeWorkflowStatus({{ $email->id }}, 'pending_validation'); workflowOpen = false"
                                                 class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
                                                 <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
                                                 ⏳ Pendiente validación
                                             </button>
-                                            <button @click.stop="changeWorkflowStatus({{ $email->id }}, 'pending_response'); workflowOpen = false"
+                                            <button
+                                                @click.stop="changeWorkflowStatus({{ $email->id }}, 'pending_response'); workflowOpen = false"
                                                 class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
                                                 <span class="w-2 h-2 rounded-full bg-orange-500"></span>
                                                 ✉️ Requiere respuesta
                                             </button>
-                                            <button @click.stop="changeWorkflowStatus({{ $email->id }}, 'in_progress'); workflowOpen = false"
+                                            <button
+                                                @click.stop="changeWorkflowStatus({{ $email->id }}, 'in_progress'); workflowOpen = false"
                                                 class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
                                                 <span class="w-2 h-2 rounded-full bg-purple-500"></span>
                                                 🔄 En curso
                                             </button>
-                                            <button @click.stop="changeWorkflowStatus({{ $email->id }}, 'in_review'); workflowOpen = false"
+                                            <button
+                                                @click.stop="changeWorkflowStatus({{ $email->id }}, 'in_review'); workflowOpen = false"
                                                 class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
                                                 <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
                                                 👁️ En revisión
                                             </button>
-                                            <button @click.stop="changeWorkflowStatus({{ $email->id }}, 'completed'); workflowOpen = false"
+                                            <button
+                                                @click.stop="changeWorkflowStatus({{ $email->id }}, 'completed'); workflowOpen = false"
                                                 class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
                                                 <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                                                 ✔️ Completado
                                             </button>
                                             <div class="border-t border-gray-200 my-1"></div>
-                                            <button @click.stop="changeWorkflowStatus({{ $email->id }}, 'no_action_needed'); workflowOpen = false"
+                                            <button
+                                                @click.stop="changeWorkflowStatus({{ $email->id }}, 'no_action_needed'); workflowOpen = false"
                                                 class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
                                                 <span class="w-2 h-2 rounded-full bg-slate-500"></span>
                                                 ➖ Sin acción necesaria
@@ -188,30 +279,31 @@
                             <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <!-- Mover a carpeta -->
                                 <div class="relative" x-data="{ folderDropdownStyle: {} }" x-ref="folderContainer">
-                                    <button @click.stop="folderMenuOpen = !folderMenuOpen; if(folderMenuOpen) { const rect = $el.getBoundingClientRect(); folderDropdownStyle = { top: rect.bottom + 4 + 'px', left: rect.left + 'px' }; }"
-                                        x-ref="folderButton"
-                                        class="p-1 hover:bg-gray-200 rounded transition-colors"
+                                    <button
+                                        @click.stop="folderMenuOpen = !folderMenuOpen; if(folderMenuOpen) { const rect = $el.getBoundingClientRect(); folderDropdownStyle = { top: rect.bottom + 4 + 'px', left: rect.left + 'px' }; }"
+                                        x-ref="folderButton" class="p-1 hover:bg-gray-200 rounded transition-colors"
                                         title="Mover a carpeta">
-                                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                                         </svg>
                                     </button>
 
                                     <!-- Dropdown de carpetas usando TELEPORT al portal -->
                                     <template x-teleport="#dropdowns-portal">
-                                        <div x-show="folderMenuOpen"
-                                             @click.away="folderMenuOpen = false"
-                                             x-transition
-                                             class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-64 overflow-y-auto"
-                                             :style="{ top: folderDropdownStyle.top, left: folderDropdownStyle.left, zIndex: 99999 }"
-                                             x-cloak>
+                                        <div x-show="folderMenuOpen" @click.away="folderMenuOpen = false" x-transition
+                                            class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-64 overflow-y-auto"
+                                            :style="{ top: folderDropdownStyle.top, left: folderDropdownStyle.left, zIndex: 99999 }"
+                                            x-cloak>
                                             <div class="py-1" x-data="{ folders: [] }" x-init="
-                                                fetch('/email-folders/tree')
-                                                    .then(r => r.json())
-                                                    .then(data => folders = data.folders || [])
-                                            ">
+                                                    fetch('/email-folders/tree')
+                                                        .then(r => r.json())
+                                                        .then(data => folders = data.folders || [])
+                                                ">
                                                 <template x-for="folder in folders" :key="folder.id">
-                                                    <button @click.stop="moveEmailToFolder({{ $email->id }}, folder.id); folderMenuOpen = false"
+                                                    <button
+                                                        @click.stop="moveEmailToFolder({{ $email->id }}, folder.id); folderMenuOpen = false"
                                                         class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
                                                         <span x-text="folder.name"></span>
                                                     </button>
@@ -261,7 +353,7 @@
                             @if(in_array($email->priority, ['high', 'urgent']))
                                 <span
                                     class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium
-                                                            {{ $email->priority === 'urgent' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700' }}">
+                                                                    {{ $email->priority === 'urgent' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700' }}">
                                     @if($email->priority === 'urgent')
                                         ⚠️ Urgente
                                     @else
