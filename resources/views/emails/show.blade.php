@@ -434,6 +434,12 @@
     <!-- Portal para dropdowns (fuera del flujo con overflow) -->
     <div id="dropdowns-portal" class="fixed" style="z-index: 99999;"></div>
 
+    <!-- Command Palette Global (Ctrl+K) -->
+    @include('components.command-palette')
+
+    <!-- Scripts adicionales -->
+    @stack('scripts')
+
 </body>
 
 </html>

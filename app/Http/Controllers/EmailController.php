@@ -57,6 +57,13 @@ class EmailController extends Controller
             $query->where('email_category_id', $request->category);
         }
 
+        // Filtro por carpeta
+        if ($request->has('folder') && $request->folder && is_numeric($request->folder)) {
+            $query->whereHas('folders', function ($q) use ($request) {
+                $q->where('email_folders.id', $request->folder);
+            });
+        }
+
         // Filtros de estado (unread, starred, archived)
         if ($request->has('filter')) {
             switch ($request->filter) {
@@ -72,12 +79,65 @@ class EmailController extends Controller
             }
         }
 
-        // Búsqueda
+        // Búsqueda                                                                                                                        
         if ($request->has('search') && $request->search) {
             $query->search($request->search);
         }
 
-        // Paginación
+        // ============================================                                                                                    
+        // NUEVOS FILTROS DE BÚSQUEDA AVANZADA                                                                                             
+        // ============================================                                                                                    
+
+        // Filtro por campo específico de búsqueda                                                                                         
+        if ($request->has('search') && $request->search && $request->has('search_field')) {
+            // Eliminar el scope genérico anterior                                                                                         
+            $query->getQuery()->wheres = array_filter($query->getQuery()->wheres, function ($where) {
+                return !isset($where['query']) || strpos($where['query'], 'subject') === false;
+            });
+
+            // Aplicar búsqueda específica                                                                                                 
+            switch ($request->search_field) {
+                case 'subject':
+                    $query->bySubject($request->search);
+                    break;
+                case 'from':
+                    $query->byFrom($request->search);
+                    break;
+                case 'content':
+                    $query->byContent($request->search);
+                    break;
+                default:
+                    // Si no se especifica, usar búsqueda general (ya aplicada arriba)                                                     
+                    break;
+            }
+        }
+
+        // Filtros de fecha                                                                                                                
+        if ($request->has('date_filter')) {
+            switch ($request->date_filter) {
+                case 'today':
+                    $query->today();
+                    break;
+                case 'this_week':
+                    $query->thisWeek();
+                    break;
+                case 'this_month':
+                    $query->thisMonth();
+                    break;
+            }
+        }
+
+        // Rango de fechas personalizado                                                                                                   
+        if ($request->has('date_from') && $request->has('date_to')) {
+            $query->dateRange($request->date_from, $request->date_to);
+        }
+
+        // Filtro de emails con adjuntos                                                                                                   
+        if ($request->has('has_attachments') && $request->has_attachments == '1') {
+            $query->withAttachments();
+        }
+
+        // Paginación                                                                                                                      
         $emails = $query->paginate(20);
 
         // Estadísticas - Query optimizada con una sola consulta (solo emails recibidos)
@@ -336,12 +396,93 @@ class EmailController extends Controller
             }
         }
 
-        // Búsqueda
+
+        // Búsqueda                                                                                                                        
         if ($request->has('search') && $request->search) {
             $query->search($request->search);
         }
 
-        // Paginación
+        // ============================================                                                                                    
+        // NUEVOS FILTROS DE BÚSQUEDA AVANZADA (AJAX)                                                                                      
+        // ============================================                                                                                    
+
+        // Filtro por campo específico de búsqueda                                                                                         
+        if ($request->has('search') && $request->search && $request->has('search_field')) {
+            // Aplicar búsqueda específica según el campo                                                                                  
+            $query = Email::where('user_id', $user->id)
+                ->where('status', 'received')
+                ->with('category')
+                ->orderBy('received_at', 'desc');
+
+            // Reaplicar filtros anteriores                                                                                                
+            if ($request->has('category') && $request->category && is_numeric($request->category)) {
+                $query->where('email_category_id', $request->category);
+            }
+
+            if ($request->has('filter')) {
+                switch ($request->filter) {
+                    case 'unread':
+                        $query->unread();
+                        break;
+                    case 'starred':
+                        $query->starred();
+                        break;
+                    case 'archived':
+                        $query->archived();
+                        break;
+                }
+            }
+
+            // Aplicar búsqueda específica                                                                                                 
+            switch ($request->search_field) {
+                case 'subject':
+                    $query->bySubject($request->search);
+                    break;
+                case 'from':
+                    $query->byFrom($request->search);
+                    break;
+                case 'content':
+                    $query->byContent($request->search);
+                    break;
+                default:
+                    $query->search($request->search);
+                    break;
+            }
+        }
+
+        // Filtros de fecha                                                                                                                
+        if ($request->has('date_filter')) {
+            switch ($request->date_filter) {
+                case 'today':
+                    $query->today();
+                    break;
+                case 'this_week':
+                    $query->thisWeek();
+                    break;
+                case 'this_month':
+                    $query->thisMonth();
+                    break;
+            }
+        }
+
+        // Rango de fechas personalizado                                                                                                   
+        if ($request->has('date_from') && $request->has('date_to')) {
+            $query->dateRange($request->date_from, $request->date_to);
+        }
+
+        // Filtro de emails con adjuntos                                                                                                   
+        if ($request->has('has_attachments') && $request->has_attachments == '1') {
+            $query->withAttachments();
+        }
+
+        // Filtro por carpeta (moverlo aquí si no está)                                                                                    
+        if ($request->has('folder') && $request->folder && is_numeric($request->folder)) {
+            $query->whereHas('folders', function ($q) use ($request) {
+                $q->where('email_folders.id', $request->folder);
+            });
+        }
+
+        // Paginación                                                                                                                      
         $emails = $query->paginate(20);
 
         // Estadísticas (solo emails recibidos)
@@ -415,6 +556,13 @@ class EmailController extends Controller
             ->with('category')
             ->orderBy('deleted_at_custom', 'desc');
 
+        // Filtro por carpeta
+        if ($request->has('folder') && $request->folder && is_numeric($request->folder)) {
+            $query->whereHas('folders', function ($q) use ($request) {
+                $q->where('email_folders.id', $request->folder);
+            });
+        }
+
         // Búsqueda
         if ($request->has('search') && $request->search) {
             $query->search($request->search);
@@ -463,6 +611,13 @@ class EmailController extends Controller
             ->with('category')
             ->orderBy('updated_at', 'desc');
 
+        // Filtro por carpeta
+        if ($request->has('folder') && $request->folder && is_numeric($request->folder)) {
+            $query->whereHas('folders', function ($q) use ($request) {
+                $q->where('email_folders.id', $request->folder);
+            });
+        }
+
         // Búsqueda
         if ($request->has('search') && $request->search) {
             $query->search($request->search);
@@ -489,7 +644,7 @@ class EmailController extends Controller
             'stats'
         ));
     }
-    
+
     /**                                                                                                                                        
      * Update workflow status of an email                                                                                                      
      */
@@ -521,5 +676,186 @@ class EmailController extends Controller
                 'error' => 'Error al actualizar el estado: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Command Palette: Búsqueda rápida de emails en tiempo real
+     */
+    public function commandPaletteSearch(Request $request)
+    {
+        $user = Auth::user();
+        $search = $request->input('q', '');
+
+        if (strlen($search) < 2) {
+            return response()->json([
+                'success' => true,
+                'emails' => []
+            ]);
+        }
+
+        // Buscar emails (máximo 5 resultados)
+        $emails = Email::where('user_id', $user->id)
+            ->where('status', 'received')
+            ->where('is_deleted', false)
+            ->where('is_draft', false)
+            ->where(function($q) use ($search) {
+                $q->where('subject', 'like', "%{$search}%")
+                  ->orWhere('from_name', 'like', "%{$search}%")
+                  ->orWhere('from_email', 'like', "%{$search}%")
+                  ->orWhere('body_text', 'like', "%{$search}%");
+            })
+            ->orderBy('received_at', 'desc')
+            ->limit(5)
+            ->get(['id', 'subject', 'from_name', 'from_email', 'received_at', 'is_read']);
+
+        return response()->json([
+            'success' => true,
+            'emails' => $emails->map(function($email) {
+                return [
+                    'id' => $email->id,
+                    'subject' => $email->subject,
+                    'from' => $email->from_name ?: $email->from_email,
+                    'received_at' => $email->received_at->diffForHumans(),
+                    'is_read' => $email->is_read,
+                ];
+            })
+        ]);
+    }
+
+    /**
+     * Command Palette: Obtener contadores para filtros
+     */
+    public function commandPaletteStats(Request $request)
+    {
+        $user = Auth::user();
+
+        $baseQuery = Email::where('user_id', $user->id)
+            ->where('status', 'received')
+            ->where('is_deleted', false)
+            ->where('is_draft', false);
+
+        $stats = [
+            'today' => (clone $baseQuery)->today()->count(),
+            'this_week' => (clone $baseQuery)->thisWeek()->count(),
+            'this_month' => (clone $baseQuery)->thisMonth()->count(),
+            'with_attachments' => (clone $baseQuery)->withAttachments()->count(),
+            'unread' => (clone $baseQuery)->unread()->count(),
+            'starred' => (clone $baseQuery)->starred()->count(),
+            'total' => (clone $baseQuery)->count(),
+            'drafts' => Email::where('user_id', $user->id)
+                ->where('is_draft', true)
+                ->where('is_deleted', false)
+                ->count(),
+            'trash' => Email::where('user_id', $user->id)
+                ->where('is_deleted', true)
+                ->count(),
+        ];
+
+        return response()->json([
+            'success' => true,
+            'stats' => $stats
+        ]);
+    }
+
+    /**
+     * Command Palette: Aplicar filtros via AJAX (sin recargar página)
+     */
+    public function commandPaletteFilter(Request $request)
+    {
+        $user = Auth::user();
+
+        // Query base
+        $query = Email::where('user_id', $user->id)
+            ->where('status', 'received')
+            ->where('is_deleted', false)
+            ->where('is_draft', false)
+            ->with('category')
+            ->orderBy('received_at', 'desc');
+
+        // Aplicar filtros dinámicamente
+        if ($request->has('date_filter')) {
+            switch ($request->date_filter) {
+                case 'today':
+                    $query->today();
+                    break;
+                case 'this_week':
+                    $query->thisWeek();
+                    break;
+                case 'this_month':
+                    $query->thisMonth();
+                    break;
+            }
+        }
+
+        if ($request->has('has_attachments') && $request->has_attachments == '1') {
+            $query->withAttachments();
+        }
+
+        if ($request->has('filter')) {
+            switch ($request->filter) {
+                case 'unread':
+                    $query->unread();
+                    break;
+                case 'starred':
+                    $query->starred();
+                    break;
+                case 'archived':
+                    $query->archived();
+                    break;
+            }
+        }
+
+        if ($request->has('search') && $request->search) {
+            if ($request->has('search_field')) {
+                switch ($request->search_field) {
+                    case 'subject':
+                        $query->bySubject($request->search);
+                        break;
+                    case 'from':
+                        $query->byFrom($request->search);
+                        break;
+                    case 'content':
+                        $query->byContent($request->search);
+                        break;
+                    default:
+                        $query->search($request->search);
+                        break;
+                }
+            } else {
+                $query->search($request->search);
+            }
+        }
+
+        // Paginación
+        $emails = $query->paginate(20);
+
+        // Transformar emails
+        $transformedEmails = $emails->map(function ($email) {
+            return [
+                'id' => $email->id,
+                'from_name' => $email->from_name,
+                'from_email' => $email->from_email,
+                'subject' => $email->subject,
+                'excerpt' => $email->excerpt,
+                'category' => $email->category,
+                'received_at' => $email->received_at,
+                'is_read' => $email->is_read,
+                'is_starred' => $email->is_starred,
+                'has_attachments' => $email->has_attachments,
+                'attachments_count' => $email->attachments_count ?? 0,
+                'workflow_status' => $email->workflow_status ?? 'unread',
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'emails' => $transformedEmails,
+            'pagination' => [
+                'current_page' => $emails->currentPage(),
+                'last_page' => $emails->lastPage(),
+                'per_page' => $emails->perPage(),
+                'total' => $emails->total(),
+            ]
+        ]);
     }
 }

@@ -283,14 +283,15 @@
                     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                         <!-- Header -->
                         <div class="text-center mb-8">
-                            <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full
-                                                                                                          mb-4 shadow-lg">
+                            <div
+                                class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full
+                                                                                                                      mb-4 shadow-lg">
                                 <!-- Animated envelope icon -->
                                 <svg class="w-10 h-10 text-white animate-pulse" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5
-                                                                                                          19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                                                                                      19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
                             </div>
                             <h2 class="text-3xl font-bold text-gray-900 mb-2">Sincronizando tu bandeja de entrada</h2>
@@ -306,7 +307,7 @@
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
                                 <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-500 ease-out
-                                                                                                          shadow-lg"
+                                                                                                                      shadow-lg"
                                     :style="'width: ' + progressPercentage + '%'" x-show="progressPercentage > 0"
                                     x-transition:enter="transition ease-out duration-300"
                                     x-transition:enter-start="opacity-0 transform scale-x-0"
@@ -345,8 +346,8 @@
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2
-                                                                                                           2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0
-                                                                                                          01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                                                                                                       2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0
+                                                                                                                      01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                         </svg>
                                     </div>
                                 </div>
@@ -364,7 +365,7 @@
                                                 stroke-width="4"></circle>
                                             <path class="opacity-75" fill="currentColor"
                                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962
-                                                                                                          7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                                                                                                      7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                                             </path>
                                         </svg>
                                     </div>
@@ -376,8 +377,9 @@
                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start space-x-3">
                             <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9
-                                                                                                          9 0 0118 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9
+                                                                                                                      9 0 0118 0z" />
                             </svg>
                             <div class="flex-1">
                                 <p class="text-sm text-blue-800 font-medium">Esto puede tardar unos minutos</p>
@@ -495,10 +497,10 @@
             const label = workflowLabels[status] || status;
 
             return `
-                <div class="relative" x-data="{ dropdownStyle: {} }" x-ref="workflowContainer">
+                <div class="relative mr-20" x-data="{ dropdownStyle: {} }" x-ref="workflowContainer">
                     <button @click.stop="workflowOpen = !workflowOpen; if(workflowOpen) { const rect = $el.getBoundingClientRect(); dropdownStyle = { top: rect.bottom + 4 + 'px', left: rect.left + 'px' }; }"
                         x-ref="workflowButton"
-                        class="inline-flex items-center text-[10px] px-2 py-1 rounded-full font-medium ${colorClass} hover:opacity-80 transition-opacity">
+                        class="inline-flex items-center text-xs px-3 py-1.5 rounded-full font-medium ${colorClass} hover:opacity-80 transition-opacity">
                         ${label}
                         <svg class="w-2.5 h-2.5 ml-1" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
@@ -558,44 +560,108 @@
         // ==========================================
         function getQuickActionsHtml(email) {
             return `
-                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <!-- Mover a carpeta -->
-                    <div class="relative" x-data="{ folderDropdownStyle: {} }" x-ref="folderContainer">
-                        <button @click.stop="folderMenuOpen = !folderMenuOpen; if(folderMenuOpen) { const rect = $el.getBoundingClientRect(); folderDropdownStyle = { top: rect.bottom + 4 + 'px', left: rect.left + 'px' }; }"
-                            x-ref="folderButton"
-                            class="p-1 hover:bg-gray-200 rounded transition-colors"
-                            title="Mover a carpeta">
-                            <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                            </svg>
-                        </button>
-
-                        <template x-teleport="#dropdowns-portal">
-                            <div x-show="folderMenuOpen"
-                                 @click.away="folderMenuOpen = false"
-                                 x-transition
-                                 class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-64 overflow-y-auto"
-                                 :style="{ top: folderDropdownStyle.top, left: folderDropdownStyle.left, zIndex: 99999 }"
-                                 x-cloak>
-                                <div class="py-1" x-data="{ folders: [] }" x-init="
-                                    fetch('/email-folders/tree')
-                                        .then(r => r.json())
-                                        .then(data => folders = data.folders || [])
-                                ">
-                                    <template x-for="folder in folders" :key="folder.id">
-                                        <button @click.stop="moveEmailToFolder(${email.id}, folder.id); folderMenuOpen = false"
-                                            class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2">
-                                            <span x-text="folder.name"></span>
-                                        </button>
-                                    </template>
-                                    <template x-if="folders.length === 0">
-                                        <p class="px-3 py-2 text-xs text-gray-400">No hay carpetas</p>
-                                    </template>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-
+                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-20">
+    <!-- Mover a carpeta -->                                                                                                                   
+  <div class="relative" x-data="{ folderDropdownStyle: {} }" x-ref="folderContainer">                                                        
+      <button                                                                                                                                
+          @click.stop="folderMenuOpen = !folderMenuOpen; if(folderMenuOpen) { const rect = $el.getBoundingClientRect(); folderDropdownStyle =
+   { top: rect.bottom + 4 + 'px', right: (window.innerWidth - rect.right) + 'px' }; }"                                                       
+          x-ref="folderButton" class="p-1 hover:bg-gray-200 rounded transition-colors"                                                       
+          title="Mover a carpeta">                                                                                                           
+          <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor"                                                           
+              viewBox="0 0 24 24">                                                                                                           
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"                                                          
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />                                           
+          </svg>                                                                                                                             
+      </button>                                                                                                                              
+                                                                                                                                             
+      <!-- Dropdown de carpetas usando TELEPORT al portal -->                                                                                
+      <template x-teleport="#dropdowns-portal">                                                                                              
+          <div x-show="folderMenuOpen" @click.away="folderMenuOpen = false" x-transition                                                     
+              class="fixed w-64 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-72 overflow-y-auto"                              
+              :style="{ top: folderDropdownStyle.top, right: folderDropdownStyle.right, zIndex: 99999 }"                                     
+              x-cloak>                                                                                                                       
+              <div class="py-1" x-data="{                                                                                                    
+                  folders: [],                                                                                                               
+                  flatFolders: [],                                                                                                           
+                                                                                                                                             
+                  iconMap: {                                                                                                                 
+                      'folder': '📁',                                                                                                        
+                      'star': '⭐',                                                                                                          
+                      'briefcase': '💼',                                                                                                     
+                      'user': '👤',                                                                                                          
+                      'archive': '🗄️',                                                                                                       
+                      'inbox': '📥',                                                                                                         
+                      'sent': '📤',                                                                                                          
+                      'trash': '🗑️',                                                                                                         
+                      'flag': '🚩',                                                                                                          
+                      'check': '✅',                                                                                                         
+                      'heart': '❤️',                                                                                                         
+                      'bookmark': '🔖',                                                                                                      
+                      'calendar': '📅',                                                                                                      
+                      'document': '📄',                                                                                                      
+                      'file': '📋',                                                                                                          
+                      'chart': '📊',                                                                                                         
+                      'gift': '🎁',                                                                                                          
+                      'home': '🏠',                                                                                                          
+                      'lock': '🔒',                                                                                                          
+                      'bell': '🔔'                                                                                                           
+                  },                                                                                                                         
+                                                                                                                                             
+                  getIcon(iconName) {                                                                                                        
+                      if (iconName && iconName.length > 1 && /\\p{Emoji}/u.test(iconName)) {                                                 
+                          return iconName;                                                                                                   
+                      }                                                                                                                      
+                      return this.iconMap[iconName] || '📁';                                                                                 
+                  },                                                                                                                         
+                                                                                                                                             
+                  flattenFolders(folders, level = 0) {                                                                                       
+                      let result = [];                                                                                                       
+                      folders.forEach(folder => {                                                                                            
+                          result.push({                                                                                                      
+                              id: folder.id,                                                                                                 
+                              name: folder.name,                                                                                             
+                              icon: this.getIcon(folder.icon),                                                                               
+                              color: folder.color || '#6b7280',                                                                              
+                              level: level,                                                                                                  
+                              indentStyle: level > 0 ? 'padding-left: ' + (level * 20) + 'px;' : '',                                         
+                              showLine: level > 0                                                                                            
+                          });                                                                                                                
+                                                                                                                                             
+                          if (folder.children && folder.children.length > 0) {                                                               
+                              result = result.concat(this.flattenFolders(folder.children, level + 1));                                       
+                          }                                                                                                                  
+                      });                                                                                                                    
+                      return result;                                                                                                         
+                  }                                                                                                                          
+              }" x-init="                                                                                                                    
+                  fetch('/email-folders/tree')                                                                                               
+                      .then(r => r.json())                                                                                                   
+                      .then(data => {                                                                                                        
+                          folders = data.folders || [];                                                                                      
+                          flatFolders = flattenFolders(folders);                                                                             
+                      })                                                                                                                     
+              ">                                                                                                                             
+                  <template x-for="folder in flatFolders" :key="folder.id">                                                                  
+                      <button                                                                                                                
+                          @click.stop="moveEmailToFolder(${email.id}, folder.id); folderMenuOpen = false"                                    
+                          class="w-full text-left px-3 py-2 text-sm hover:bg-purple-50 flex items-center gap-2 transition-colors border-l-2  
+  border-transparent hover:border-purple-400"                                                                                                
+                          :style="folder.indentStyle">                                                                                       
+                          <template x-if="folder.showLine">                                                                                  
+                              <span class="text-gray-300 text-xs font-mono">└─</span>                                                        
+                          </template>                                                                                                        
+                          <span x-text="folder.icon" class="text-base flex-shrink-0"></span>                                                 
+                          <span x-text="folder.name" class="truncate font-medium text-gray-700"></span>                                      
+                      </button>                                                                                                              
+                  </template>                                                                                                                
+                  <template x-if="flatFolders.length === 0">                                                                                 
+                      <p class="px-3 py-2 text-xs text-gray-400 text-center">No hay carpetas disponibles</p>                                 
+                  </template>                                                                                                                
+              </div>                                                                                                                         
+          </div>                                                                                                                             
+      </template>                                                                                                                            
+  </div>
                     <!-- Estrella -->
                     <button @click.stop="performAction(${email.id}, 'toggle-star')"
                         class="p-1 hover:bg-gray-200 rounded transition-colors"
@@ -1126,6 +1192,9 @@
                 loading: true,
                 selectedFolderId: null,
                 expandedFolders: {},
+                contextMenuOpen: false,
+                contextMenuFolderId: null,
+                contextMenuPosition: { x: 0, y: 0 },
 
                 init() {
                     this.loadFolders();
@@ -1228,7 +1297,7 @@
                     // Botón menú para carpetas no del sistema
                     if (!folder.is_system_folder) {
                         html += `
-                            <button @click.stop="openFolderMenu(${folder.id})" class="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button @click.stop="openFolderMenu(${folder.id}, $event)" class="opacity-0 group-hover:opacity-100 transition-opacity">
                                 <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
                                 </svg>
@@ -1281,9 +1350,105 @@
                     window.dispatchEvent(new CustomEvent('open-folder-modal'));
                 },
 
-                openFolderMenu(folderId) {
-                    // TODO: Implementar menú contextual
-                    console.log('Abrir menú para carpeta:', folderId);
+                openFolderMenu(folderId, event) {
+                    event.stopPropagation();
+
+                    // Si ya está abierto para esta carpeta, cerrarlo
+                    if (this.contextMenuFolderId === folderId && this.contextMenuOpen) {
+                        this.closeContextMenu();
+                        return;
+                    }
+
+                    // Abrir menú para esta carpeta
+                    this.contextMenuFolderId = folderId;
+                    this.contextMenuOpen = true;
+
+                    // Posicionar el menú cerca del botón
+                    const rect = event.target.closest('button').getBoundingClientRect();
+                    this.contextMenuPosition = {
+                        x: rect.right - 150,
+                        y: rect.bottom + 5
+                    };
+                },
+
+                closeContextMenu() {
+                    this.contextMenuOpen = false;
+                    this.contextMenuFolderId = null;
+                },
+
+                async editFolder(folderId) {
+                    this.closeContextMenu();
+
+                    try {
+                        const response = await fetch(`/email-folders/${folderId}`, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+
+                        if (!response.ok) throw new Error('Error al cargar carpeta');
+
+                        const data = await response.json();
+
+                        // Disparar evento para abrir el modal en modo edición
+                        window.dispatchEvent(new CustomEvent('edit-folder-modal', {
+                            detail: data.folder
+                        }));
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Error al cargar los datos de la carpeta');
+                    }
+                },
+
+                async deleteFolder(folderId) {
+                    this.closeContextMenu();
+
+                    const folder = this.findFolderById(folderId, this.folders);
+                    if (!folder) return;
+
+                    const confirmed = confirm(`¿Eliminar la carpeta "${folder.name}"?\n\nLos emails NO se eliminarán, solo se quitarán de esta carpeta.`);
+                    if (!confirmed) return;
+
+                    try {
+                        const response = await fetch(`/email-folders/${folderId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                reassign_emails: false
+                            })
+                        });
+
+                        if (!response.ok) throw new Error('Error al eliminar carpeta');
+
+                        const data = await response.json();
+                        console.log('✅ Carpeta eliminada:', data);
+
+                        // Recargar árbol de carpetas
+                        await this.loadFolders();
+
+                        // Mensaje de éxito
+                        alert('Carpeta eliminada correctamente');
+                    } catch (error) {
+                        console.error('❌ Error al eliminar carpeta:', error);
+                        alert('Error al eliminar la carpeta. Por favor, inténtalo de nuevo.');
+                    }
+                },
+
+                findFolderById(folderId, folders) {
+                    for (const folder of folders) {
+                        if (folder.id === folderId) return folder;
+                        if (folder.children && folder.children.length > 0) {
+                            const found = this.findFolderById(folderId, folder.children);
+                            if (found) return found;
+                        }
+                    }
+                    return null;
                 }
             }));
         });
@@ -1376,7 +1541,8 @@
     </script>
 
     <!-- Modal Crear/Editar Carpeta -->
-    <div x-data="folderModal()" @open-folder-modal.window="openModal()" x-show="isOpen" x-cloak
+    <div x-data="folderModal()" @open-folder-modal.window="openModal()"
+        @edit-folder-modal.window="openModal($event.detail.id)" x-show="isOpen" x-cloak
         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
 
         <div @click.away="closeModal()" x-show="isOpen" x-transition:enter="transition ease-out duration-300"
@@ -1607,6 +1773,12 @@
             }));
         });
     </script>
+
+    <!-- Command Palette Global (Ctrl+K) -->
+    @include('components.command-palette')
+
+    <!-- Scripts adicionales -->
+    @stack('scripts')
 
 </body>
 

@@ -109,7 +109,180 @@ function toggleSidebar() {
     sidebar.classList.toggle('hidden');
     overlay.classList.toggle('hidden');
 }
+
+// Componente Alpine.js para carpetas
+document.addEventListener('alpine:init', () => {
+    Alpine.data('foldersTree', () => ({
+        folders: [],
+        loading: true,
+        selectedFolderId: null,
+        expandedFolders: {},
+        contextMenuOpen: false,
+        contextMenuFolderId: null,
+        contextMenuPosition: { x: 0, y: 0 },
+
+        init() {
+            this.loadFolders();
+        },
+
+        async loadFolders() {
+            try {
+                const response = await fetch('/email-folders/tree', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                if (!response.ok) throw new Error('Error al cargar carpetas');
+                const data = await response.json();
+                this.folders = data.folders || [];
+            } catch (error) {
+                console.error('Error:', error);
+                this.folders = [];
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async selectFolder(folderId) {
+            window.location.href = `/emails/drafts?folder=${folderId}`;
+        },
+
+        toggleFolder(folderId) {
+            this.expandedFolders[folderId] = !this.expandedFolders[folderId];
+        },
+
+        isFolderExpanded(folderId) {
+            return this.expandedFolders[folderId] || false;
+        },
+
+        renderFolderRecursive(folder, depth) {
+            const hasChildren = folder.children && folder.children.length > 0;
+            const isExpanded = this.isFolderExpanded(folder.id);
+            const isSelected = this.selectedFolderId === folder.id;
+            const indentClass = depth > 0 ? `ml-${depth * 4}` : '';
+
+            let html = `
+                <div class="${indentClass}">
+                    <div @click="selectFolder(${folder.id})"
+                        class="flex items-center gap-2 px-2 py-1.5 rounded-md mb-1 cursor-pointer group relative ${isSelected ? 'bg-purple-50 text-purple-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}">
+            `;
+
+            if (hasChildren) {
+                html += `
+                    <button @click.stop="toggleFolder(${folder.id})" class="flex-shrink-0">
+                        <svg class="w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                `;
+            } else {
+                html += `<span class="w-3"></span>`;
+            }
+
+            html += `
+                <span style="color: ${folder.color || '#6B7280'}" class="text-sm flex-shrink-0">${this.getFolderIconEmoji(folder.icon)}</span>
+                <span class="flex-1 truncate text-sm">${folder.name}</span>
+                <span class="text-xs text-gray-400 font-medium">${folder.emails_count || 0}</span>
+            `;
+
+            if (!folder.is_system_folder) {
+                html += `
+                    <button @click.stop="openFolderMenu(${folder.id}, $event)" class="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
+                        </svg>
+                    </button>
+                `;
+            }
+
+            html += `</div>`;
+
+            if (hasChildren && isExpanded) {
+                for (const child of folder.children) {
+                    html += this.renderFolderRecursive(child, depth + 1);
+                }
+            }
+
+            html += `</div>`;
+            return html;
+        },
+
+        getFolderIconEmoji(icon) {
+            const emojis = { folder: '📁', star: '⭐', briefcase: '💼', user: '👤', archive: '📦', heart: '❤️', flag: '🚩', check: '✅', clock: '⏰', document: '📄' };
+            return emojis[icon] || '📁';
+        },
+
+        openCreateFolderModal() {
+            window.location.href = '/emails';
+        },
+
+        openFolderMenu(folderId, event) {
+            event.stopPropagation();
+            if (this.contextMenuFolderId === folderId && this.contextMenuOpen) {
+                this.closeContextMenu();
+                return;
+            }
+            this.contextMenuFolderId = folderId;
+            this.contextMenuOpen = true;
+            const rect = event.target.closest('button').getBoundingClientRect();
+            this.contextMenuPosition = { x: rect.right - 150, y: rect.bottom + 5 };
+        },
+
+        closeContextMenu() {
+            this.contextMenuOpen = false;
+            this.contextMenuFolderId = null;
+        },
+
+        async editFolder(folderId) {
+            window.location.href = '/emails';
+        },
+
+        async deleteFolder(folderId) {
+            this.closeContextMenu();
+            const folder = this.findFolderById(folderId, this.folders);
+            if (!folder) return;
+            const confirmed = confirm(`¿Eliminar la carpeta "${folder.name}"?\n\nLos emails NO se eliminarán, solo se quitarán de esta carpeta.`);
+            if (!confirmed) return;
+            try {
+                const response = await fetch(`/email-folders/${folderId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ reassign_emails: false })
+                });
+                if (!response.ok) throw new Error('Error al eliminar carpeta');
+                await this.loadFolders();
+                alert('Carpeta eliminada correctamente');
+            } catch (error) {
+                console.error('❌ Error:', error);
+                alert('Error al eliminar la carpeta');
+            }
+        },
+
+        findFolderById(folderId, folders) {
+            for (const folder of folders) {
+                if (folder.id === folderId) return folder;
+                if (folder.children && folder.children.length > 0) {
+                    const found = this.findFolderById(folderId, folder.children);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+    }));
+});
 </script>
+
+<!-- Command Palette Global (Ctrl+K) -->
+@include('components.command-palette')
+
+<!-- Scripts adicionales -->
+@stack('scripts')
 
 </body>
 </html>

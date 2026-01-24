@@ -350,7 +350,62 @@ class Email extends Model
             ->where('is_draft', false);
     }
 
-    // ==========================================
+    // Filtrar emails de hoy                                                                                                                   
+    public function scopeToday($query)
+    {
+        return $query->whereDate('received_at', today());
+    }
+
+    // Filtrar emails de esta semana                                                                                                           
+    public function scopeThisWeek($query)
+    {
+        return $query->whereBetween('received_at', [
+            now()->startOfWeek(),
+            now()->endOfWeek()
+        ]);
+    }
+
+    // Filtrar emails de este mes                                                                                                              
+    public function scopeThisMonth($query)
+    {
+        return $query->whereMonth('received_at', now()->month)
+            ->whereYear('received_at', now()->year);
+    }
+
+    // Filtrar por rango de fechas personalizado                                                                                               
+    public function scopeDateRange($query, $from, $to)
+    {
+        return $query->whereBetween('received_at', [$from, $to]);
+    }
+
+    // Filtrar emails con adjuntos                                                                                                             
+    public function scopeWithAttachments($query)
+    {
+        return $query->where('has_attachments', true);
+    }
+
+    // Buscar solo en el asunto                                                                                                                
+    public function scopeBySubject($query, $search)
+    {
+        return $query->where('subject', 'like', "%{$search}%");
+    }
+
+    // Buscar solo en el remitente                                                                                                             
+    public function scopeByFrom($query, $search)
+    {
+        return $query->where(function ($q) use ($search) {
+            $q->where('from_email', 'like', "%{$search}%")
+                ->orWhere('from_name', 'like', "%{$search}%");
+        });
+    }
+
+    // Buscar solo en el contenido                                                                                                             
+    public function scopeByContent($query, $search)
+    {
+        return $query->where('body_text', 'like', "%{$search}%");
+    }
+
+    // =========================================
     // MÉTODOS DE WORKFLOW
     // ==========================================
 
@@ -360,9 +415,15 @@ class Email extends Model
     public function setWorkflowStatus(string $status): void
     {
         $validStatuses = [
-            'unread', 'pending_validation', 'pending_response',
-            'in_progress', 'in_review', 'approved', 'completed',
-            'archived', 'no_action_needed'
+            'unread',
+            'pending_validation',
+            'pending_response',
+            'in_progress',
+            'in_review',
+            'approved',
+            'completed',
+            'archived',
+            'no_action_needed'
         ];
 
         if (!in_array($status, $validStatuses)) {
@@ -510,8 +571,8 @@ class Email extends Model
     public function isOverdue(): bool
     {
         return $this->due_date &&
-               $this->due_date < now() &&
-               !in_array($this->workflow_status, ['completed', 'archived']);
+            $this->due_date < now() &&
+            !in_array($this->workflow_status, ['completed', 'archived']);
     }
 
     /**
@@ -547,10 +608,10 @@ class Email extends Model
     {
         return $query->whereHas('shares', function ($q) use ($userId) {
             $q->where('shared_with', $userId)
-              ->where(function ($subQ) {
-                  $subQ->whereNull('expires_at')
-                       ->orWhere('expires_at', '>', now());
-              });
+                ->where(function ($subQ) {
+                    $subQ->whereNull('expires_at')
+                        ->orWhere('expires_at', '>', now());
+                });
         });
     }
 
@@ -571,7 +632,7 @@ class Email extends Model
             ->where('shared_with', $user->id)
             ->where(function ($q) {
                 $q->whereNull('expires_at')
-                  ->orWhere('expires_at', '>', now());
+                    ->orWhere('expires_at', '>', now());
             })
             ->exists();
     }

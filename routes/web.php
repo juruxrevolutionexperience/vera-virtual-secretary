@@ -124,6 +124,11 @@ Route::middleware(['auth'])->prefix('emails')->name('emails.')->group(function (
     // API endpoint para obtener un email individual (vista previa)
     Route::get('/api/{email}', [EmailController::class, 'apiShow'])->name('api.show');
 
+    // Command Palette API endpoints
+    Route::get('/api/command-palette/search', [EmailController::class, 'commandPaletteSearch'])->name('api.command-palette.search');
+    Route::get('/api/command-palette/stats', [EmailController::class, 'commandPaletteStats'])->name('api.command-palette.stats');
+    Route::post('/api/command-palette/filter', [EmailController::class, 'commandPaletteFilter'])->name('api.command-palette.filter');
+
     // Vistas especiales (antes de rutas dinámicas)
     Route::get('/trash', [EmailController::class, 'trash'])->name('trash');
     Route::get('/drafts', [EmailController::class, 'drafts'])->name('drafts');
