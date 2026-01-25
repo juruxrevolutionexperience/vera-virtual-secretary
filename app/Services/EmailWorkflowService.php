@@ -111,14 +111,23 @@ class EmailWorkflowService
     /**
      * Establecer fecha de vencimiento
      */
-    public function setDueDate(Email $email, \DateTimeInterface $dueDate): Email
+    public function setDueDate(Email $email, ?\DateTimeInterface $dueDate): Email
     {
-        $email->setDueDate($dueDate);
+        if ($dueDate === null) {
+            // Quitar la fecha de vencimiento
+            $email->update(['due_date' => null]);
 
-        Log::info('📅 Fecha de vencimiento establecida', [
-            'email_id' => $email->id,
-            'due_date' => $dueDate->format('Y-m-d H:i:s'),
-        ]);
+            Log::info('📅 Fecha de vencimiento eliminada', [
+                'email_id' => $email->id,
+            ]);
+        } else {
+            $email->setDueDate($dueDate);
+
+            Log::info('📅 Fecha de vencimiento establecida', [
+                'email_id' => $email->id,
+                'due_date' => $dueDate->format('Y-m-d H:i:s'),
+            ]);
+        }
 
         return $email->fresh();
     }

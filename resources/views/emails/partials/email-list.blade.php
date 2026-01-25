@@ -4,6 +4,79 @@
         <input type="checkbox" @click="selectAllEmails()"
             class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer">
         <span class="text-xs text-gray-500 font-medium">Seleccionar todos</span>
+
+        <!-- Bulk Actions Bar (aparece cuando hay selección) -->
+        <div x-show="selectedEmails.length > 0" x-transition class="flex-1 flex items-center justify-end gap-2">
+            <span class="text-xs text-gray-600 font-medium" x-text="`${selectedEmails.length} seleccionado(s)`"></span>
+
+            <!-- Establecer Due Date masivo -->
+            <div class="relative" x-data="{ bulkDueDateOpen: false }">
+                <button @click.stop="bulkDueDateOpen = !bulkDueDateOpen"
+                    class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Fecha límite
+                </button>
+
+                <!-- Dropdown -->
+                <div x-show="bulkDueDateOpen" @click.away="bulkDueDateOpen = false"
+                    x-transition
+                    class="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-200 z-50">
+                    <div class="py-1">
+                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Establecer fecha límite</div>
+                        <button @click="bulkSetDueDate('today'); bulkDueDateOpen = false"
+                            class="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 flex items-center gap-2">
+                            <span>📅</span> Hoy
+                        </button>
+                        <button @click="bulkSetDueDate('tomorrow'); bulkDueDateOpen = false"
+                            class="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 flex items-center gap-2">
+                            <span>📅</span> Mañana
+                        </button>
+                        <button @click="bulkSetDueDate('3days'); bulkDueDateOpen = false"
+                            class="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 flex items-center gap-2">
+                            <span>📅</span> En 3 días
+                        </button>
+                        <button @click="bulkSetDueDate('nextweek'); bulkDueDateOpen = false"
+                            class="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 flex items-center gap-2">
+                            <span>📅</span> Próxima semana
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Snooze masivo -->
+            <div class="relative" x-data="{ bulkSnoozeOpen: false }">
+                <button @click.stop="bulkSnoozeOpen = !bulkSnoozeOpen"
+                    class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-md transition-colors gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Posponer
+                </button>
+
+                <!-- Dropdown -->
+                <div x-show="bulkSnoozeOpen" @click.away="bulkSnoozeOpen = false"
+                    x-transition
+                    class="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-200 z-50">
+                    <div class="py-1">
+                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Posponer emails</div>
+                        <button @click="bulkSnooze('1hour'); bulkSnoozeOpen = false"
+                            class="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 flex items-center gap-2">
+                            <span>⏰</span> 1 hora
+                        </button>
+                        <button @click="bulkSnooze('3hours'); bulkSnoozeOpen = false"
+                            class="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 flex items-center gap-2">
+                            <span>⏰</span> 3 horas
+                        </button>
+                        <button @click="bulkSnooze('tomorrow9am'); bulkSnoozeOpen = false"
+                            class="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 flex items-center gap-2">
+                            <span>⏰</span> Mañana 9:00 AM
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     <!-- Filtros por Estado - Inline con Scroll Horizontal -->
     <div class="px-4 py-3 border-b border-gray-200 bg-white">
@@ -277,6 +350,73 @@
 
                                     <!-- Quick Actions -->
                                     <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-20">
+                                        <!-- Due Date -->
+                                        <div class="relative" x-data="{ dueDateOpen: false, dueDateDropdownStyle: {} }" x-ref="dueDateContainer">
+                                            <button @click.stop="dueDateOpen = !dueDateOpen; if(dueDateOpen) { const rect = $el.getBoundingClientRect(); dueDateDropdownStyle = { top: rect.bottom + 4 + 'px', right: (window.innerWidth - rect.right) + 'px' }; }" x-ref="dueDateButton"
+                                                class="p-1 hover:bg-gray-200 rounded transition-colors" title="Establecer fecha límite">
+                                                <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </button>
+
+                                            <!-- Dropdown de Due Date usando TELEPORT -->
+                                            <template x-teleport="#dropdowns-portal">
+                                                <div x-show="dueDateOpen" @click.away="dueDateOpen = false"
+                                                    x-transition:enter="transition ease-out duration-100"
+                                                    x-transition:enter-start="opacity-0 scale-95"
+                                                    x-transition:enter-end="opacity-100 scale-100"
+                                                    class="fixed w-56 bg-white rounded-lg shadow-2xl border border-gray-200"
+                                                    :style="{ top: dueDateDropdownStyle.top, right: dueDateDropdownStyle.right, zIndex: 99999 }"
+                                                    x-cloak>
+                                                    <div class="py-1">
+                                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Establecer fecha límite</div>
+
+                                                        <!-- Opciones rápidas -->
+                                                        <button @click.stop="setDueDate({{ $email->id }}, 'today'); dueDateOpen = false"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 flex items-center gap-2 transition-colors">
+                                                            <span class="text-purple-600">📅</span>
+                                                            <span class="font-medium">Hoy</span>
+                                                        </button>
+                                                        <button @click.stop="setDueDate({{ $email->id }}, 'tomorrow'); dueDateOpen = false"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 flex items-center gap-2 transition-colors">
+                                                            <span class="text-blue-600">📅</span>
+                                                            <span class="font-medium">Mañana</span>
+                                                        </button>
+                                                        <button @click.stop="setDueDate({{ $email->id }}, '3days'); dueDateOpen = false"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 flex items-center gap-2 transition-colors">
+                                                            <span class="text-green-600">📅</span>
+                                                            <span class="font-medium">En 3 días</span>
+                                                        </button>
+                                                        <button @click.stop="setDueDate({{ $email->id }}, 'nextweek'); dueDateOpen = false"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 flex items-center gap-2 transition-colors">
+                                                            <span class="text-orange-600">📅</span>
+                                                            <span class="font-medium">Próxima semana</span>
+                                                        </button>
+
+                                                        <div class="border-t border-gray-200 my-1"></div>
+
+                                                        <!-- Selector personalizado -->
+                                                        <div class="px-3 py-2">
+                                                            <label class="text-xs text-gray-500 font-medium block mb-1">Fecha personalizada</label>
+                                                            <input type="date"
+                                                                @change="setDueDateCustom({{ $email->id }}, $event.target.value); dueDateOpen = false"
+                                                                :min="new Date().toISOString().split('T')[0]"
+                                                                class="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-purple-500 focus:border-purple-500">
+                                                        </div>
+
+                                                        @if($email->due_date)
+                                                        <div class="border-t border-gray-200 my-1"></div>
+                                                        <button @click.stop="removeDueDate({{ $email->id }}); dueDateOpen = false"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-red-50 flex items-center gap-2 text-red-600 transition-colors">
+                                                            <span>❌</span>
+                                                            <span class="font-medium">Quitar fecha límite</span>
+                                                        </button>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+
                                         <!-- Mover a carpeta -->
                                         <div class="relative" x-data="{ folderDropdownStyle: {} }" x-ref="folderContainer">
                                             <button @click.stop="folderMenuOpen = !folderMenuOpen; if(folderMenuOpen) { const rect = $el.getBoundingClientRect(); folderDropdownStyle =
@@ -389,6 +529,78 @@
                                             </template>
                                         </div>
 
+                                        <!-- Snooze -->
+                                        <div class="relative" x-data="{ snoozeOpen: false, snoozeDropdownStyle: {} }" x-ref="snoozeContainer">
+                                            <button @click.stop="snoozeOpen = !snoozeOpen; if(snoozeOpen) { const rect = $el.getBoundingClientRect(); snoozeDropdownStyle = { top: rect.bottom + 4 + 'px', right: (window.innerWidth - rect.right) + 'px' }; }" x-ref="snoozeButton"
+                                                class="p-1 hover:bg-gray-200 rounded transition-colors" title="Posponer">
+                                                <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                            </button>
+
+                                            <!-- Dropdown de Snooze usando TELEPORT -->
+                                            <template x-teleport="#dropdowns-portal">
+                                                <div x-show="snoozeOpen" @click.away="snoozeOpen = false"
+                                                    x-transition:enter="transition ease-out duration-100"
+                                                    x-transition:enter-start="opacity-0 scale-95"
+                                                    x-transition:enter-end="opacity-100 scale-100"
+                                                    class="fixed w-56 bg-white rounded-lg shadow-2xl border border-gray-200"
+                                                    :style="{ top: snoozeDropdownStyle.top, right: snoozeDropdownStyle.right, zIndex: 99999 }"
+                                                    x-cloak>
+                                                    <div class="py-1">
+                                                        <div class="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Posponer email</div>
+
+                                                        <!-- Opciones rápidas -->
+                                                        <button @click.stop="snoozeEmail({{ $email->id }}, '1hour'); snoozeOpen = false"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 flex items-center gap-2 transition-colors">
+                                                            <span class="text-blue-600">⏰</span>
+                                                            <span class="font-medium">1 hora</span>
+                                                        </button>
+                                                        <button @click.stop="snoozeEmail({{ $email->id }}, '3hours'); snoozeOpen = false"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 flex items-center gap-2 transition-colors">
+                                                            <span class="text-blue-600">⏰</span>
+                                                            <span class="font-medium">3 horas</span>
+                                                        </button>
+                                                        <button @click.stop="snoozeEmail({{ $email->id }}, 'tomorrow9am'); snoozeOpen = false"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 flex items-center gap-2 transition-colors">
+                                                            <span class="text-indigo-600">⏰</span>
+                                                            <span class="font-medium">Mañana 9:00 AM</span>
+                                                        </button>
+                                                        <button @click.stop="snoozeEmail({{ $email->id }}, '3days'); snoozeOpen = false"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 flex items-center gap-2 transition-colors">
+                                                            <span class="text-purple-600">⏰</span>
+                                                            <span class="font-medium">En 3 días</span>
+                                                        </button>
+                                                        <button @click.stop="snoozeEmail({{ $email->id }}, '1week'); snoozeOpen = false"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 flex items-center gap-2 transition-colors">
+                                                            <span class="text-orange-600">⏰</span>
+                                                            <span class="font-medium">En 1 semana</span>
+                                                        </button>
+
+                                                        <div class="border-t border-gray-200 my-1"></div>
+
+                                                        <!-- Selector personalizado -->
+                                                        <div class="px-3 py-2">
+                                                            <label class="text-xs text-gray-500 font-medium block mb-1">Fecha y hora personalizada</label>
+                                                            <input type="datetime-local"
+                                                                @change="snoozeEmailCustom({{ $email->id }}, $event.target.value); snoozeOpen = false"
+                                                                :min="new Date().toISOString().slice(0, 16)"
+                                                                class="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                                        </div>
+
+                                                        @if($email->isSnoozed())
+                                                        <div class="border-t border-gray-200 my-1"></div>
+                                                        <button @click.stop="wakeupEmail({{ $email->id }}); snoozeOpen = false"
+                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-red-50 flex items-center gap-2 text-red-600 transition-colors">
+                                                            <span>❌</span>
+                                                            <span class="font-medium">Despertar ahora</span>
+                                                        </button>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+
                                         <!-- Estrella -->
                                         <button @click.stop="performAction({{ $email->id }}, 'toggle-star')"
                                             class="p-1 hover:bg-gray-200 rounded transition-colors"
@@ -432,6 +644,28 @@
                                             @else
                                                 🔔 Alta
                                             @endif
+                                        </span>
+                                    @endif
+
+                                    <!-- Due Date Badges -->
+                                    @if($email->isOverdue())
+                                        <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-100 text-red-700 animate-pulse" title="Venció: {{ formatDueDateFull($email->due_date) }}">
+                                            🚨 Vencido: {{ formatDueDateBadge($email->due_date) }}
+                                        </span>
+                                    @elseif($email->due_date && $email->due_date > now() && $email->due_date <= now()->addHours(24))
+                                        <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700" title="Vence: {{ formatDueDateFull($email->due_date) }}">
+                                            ⏰ Vence: {{ formatDueDateBadge($email->due_date) }}
+                                        </span>
+                                    @elseif($email->due_date)
+                                        <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-700" title="Vence: {{ formatDueDateFull($email->due_date) }}">
+                                            📅 {{ formatDueDateBadge($email->due_date) }}
+                                        </span>
+                                    @endif
+
+                                    <!-- Snooze Badge -->
+                                    @if($email->isSnoozed())
+                                        <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700" title="Pospuesto hasta: {{ formatDueDateFull($email->snoozed_until) }}">
+                                            💤 Hasta: {{ formatDueDateBadge($email->snoozed_until) }}
                                         </span>
                                     @endif
 

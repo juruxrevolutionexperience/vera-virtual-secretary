@@ -17,6 +17,7 @@ class User extends Authenticatable
         'email',
         'password',
         'email_density',
+        'timezone', // Timezone del usuario
         // === campos de billing añadidos a la tabla users ===
         'is_paid',
         'stripe_customer_id',

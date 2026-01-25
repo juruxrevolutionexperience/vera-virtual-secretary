@@ -110,6 +110,22 @@
             transform: translateX(2px);
         }
 
+        /* Animación para alertas de due dates */
+        @keyframes slide-in {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .animate-slide-in {
+            animation: slide-in 0.3s ease-out forwards;
+        }
+
         /* Densidades de vista */
         .email-item.density-compact {
             padding: 8px 16px !important;
@@ -413,6 +429,65 @@
     <div id="dropdowns-portal" class="fixed" style="z-index: 99999;"></div>
 
     <script>
+        // ==========================================
+        // NOTIFICACIONES DE DUE DATES AL CARGAR
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar si hay emails vencidos o próximos a vencer
+            @if(isset($stats['overdue']) && $stats['overdue'] > 0)
+                showDueDateAlert(
+                    '🚨 Tienes {{ $stats['overdue'] }} email(s) vencido(s)',
+                    'error',
+                    true
+                );
+            @elseif(isset($stats['due_today']) && $stats['due_today'] > 0)
+                showDueDateAlert(
+                    '⏰ Tienes {{ $stats['due_today'] }} email(s) que vencen hoy',
+                    'warning',
+                    false
+                );
+            @endif
+        });
+
+        // Función para mostrar alertas de due dates
+        function showDueDateAlert(message, type = 'warning', persistent = false) {
+            const bgColor = type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-orange-500' : 'bg-blue-500';
+            const borderColor = type === 'error' ? 'border-red-600' : type === 'warning' ? 'border-orange-600' : 'border-blue-600';
+
+            const alert = document.createElement('div');
+            alert.className = `fixed top-4 right-4 ${bgColor} ${borderColor} border-l-4 text-white px-6 py-4 rounded-lg shadow-2xl z-50 max-w-md animate-slide-in`;
+            alert.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <div class="flex-1">
+                        <p class="font-semibold text-sm">${message}</p>
+                        <a href="/emails?filter=${type === 'error' ? 'overdue' : 'due_today'}"
+                           class="text-xs underline hover:no-underline mt-1 inline-block">
+                            Ver emails →
+                        </a>
+                    </div>
+                    ${!persistent ? `
+                        <button onclick="this.parentElement.parentElement.remove()"
+                                class="text-white hover:text-gray-200 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+
+            document.body.appendChild(alert);
+
+            // Auto-cerrar después de 8 segundos si no es persistente
+            if (!persistent) {
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    alert.style.transform = 'translateX(100%)';
+                    setTimeout(() => alert.remove(), 300);
+                }, 8000);
+            }
+        }
+
         // Auto-refresh de emails cada 2 minutos (SIN reload visible)
         let autoRefreshInterval = null;
         let autoRefreshEnabled = {{ $hasEmailAccounts ? 'true' : 'false' }};
@@ -1515,6 +1590,387 @@
             } catch (error) {
                 console.error('❌ Error al mover email a carpeta:', error);
                 alert('Error al mover el email. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: ESTABLECER DUE DATE (OPCIONES RÁPIDAS)
+        // ==========================================
+        async function setDueDate(emailId, preset) {
+            try {
+                // Calcular la fecha según el preset
+                const now = new Date();
+                let dueDate;
+
+                switch(preset) {
+                    case 'today':
+                        dueDate = new Date(now.setHours(23, 59, 59, 999));
+                        break;
+                    case 'tomorrow':
+                        dueDate = new Date(now.setDate(now.getDate() + 1));
+                        dueDate.setHours(23, 59, 59, 999);
+                        break;
+                    case '3days':
+                        dueDate = new Date(now.setDate(now.getDate() + 3));
+                        dueDate.setHours(23, 59, 59, 999);
+                        break;
+                    case 'nextweek':
+                        dueDate = new Date(now.setDate(now.getDate() + 7));
+                        dueDate.setHours(23, 59, 59, 999);
+                        break;
+                    default:
+                        throw new Error('Preset inválido');
+                }
+
+                // Formatear fecha para la API (ISO 8601)
+                const dueDateISO = dueDate.toISOString();
+
+                const response = await fetch(`/email-workflow/${emailId}/set-due-date`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ due_date: dueDateISO })
+                });
+
+                if (!response.ok) throw new Error('Error al establecer fecha límite');
+
+                const data = await response.json();
+                console.log('✅ Fecha límite establecida:', data);
+
+                showNotification('Fecha límite establecida correctamente', 'success');
+
+                // Recargar para ver el badge
+                setTimeout(() => window.location.reload(), 1000);
+
+            } catch (error) {
+                console.error('❌ Error al establecer fecha límite:', error);
+                alert('Error al establecer la fecha límite. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: ESTABLECER DUE DATE PERSONALIZADA
+        // ==========================================
+        async function setDueDateCustom(emailId, dateString) {
+            try {
+                if (!dateString) return;
+
+                // Convertir a fecha con hora 23:59:59
+                const dueDate = new Date(dateString);
+                dueDate.setHours(23, 59, 59, 999);
+                const dueDateISO = dueDate.toISOString();
+
+                const response = await fetch(`/email-workflow/${emailId}/set-due-date`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ due_date: dueDateISO })
+                });
+
+                if (!response.ok) throw new Error('Error al establecer fecha límite');
+
+                const data = await response.json();
+                console.log('✅ Fecha límite personalizada establecida:', data);
+
+                showNotification('Fecha límite establecida correctamente', 'success');
+
+                // Recargar para ver el badge
+                setTimeout(() => window.location.reload(), 1000);
+
+            } catch (error) {
+                console.error('❌ Error al establecer fecha límite personalizada:', error);
+                alert('Error al establecer la fecha límite. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: QUITAR DUE DATE
+        // ==========================================
+        async function removeDueDate(emailId) {
+            try {
+                // Usar una fecha muy lejana en el pasado o null
+                const response = await fetch(`/email-workflow/${emailId}/set-due-date`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ due_date: null })
+                });
+
+                if (!response.ok) throw new Error('Error al quitar fecha límite');
+
+                const data = await response.json();
+                console.log('✅ Fecha límite eliminada:', data);
+
+                showNotification('Fecha límite eliminada', 'success');
+
+                // Recargar para ver el cambio
+                setTimeout(() => window.location.reload(), 1000);
+
+            } catch (error) {
+                console.error('❌ Error al quitar fecha límite:', error);
+                alert('Error al quitar la fecha límite. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: SNOOZE EMAIL (OPCIONES RÁPIDAS)
+        // ==========================================
+        async function snoozeEmail(emailId, preset) {
+            try {
+                // Calcular la fecha según el preset
+                const now = new Date();
+                let snoozeDate;
+
+                switch(preset) {
+                    case '1hour':
+                        snoozeDate = new Date(now.getTime() + 1 * 60 * 60 * 1000);
+                        break;
+                    case '3hours':
+                        snoozeDate = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+                        break;
+                    case 'tomorrow9am':
+                        snoozeDate = new Date(now);
+                        snoozeDate.setDate(snoozeDate.getDate() + 1);
+                        snoozeDate.setHours(9, 0, 0, 0);
+                        break;
+                    case '3days':
+                        snoozeDate = new Date(now);
+                        snoozeDate.setDate(snoozeDate.getDate() + 3);
+                        snoozeDate.setHours(9, 0, 0, 0);
+                        break;
+                    case '1week':
+                        snoozeDate = new Date(now);
+                        snoozeDate.setDate(snoozeDate.getDate() + 7);
+                        snoozeDate.setHours(9, 0, 0, 0);
+                        break;
+                    default:
+                        throw new Error('Preset inválido');
+                }
+
+                // Formatear fecha para la API (ISO 8601)
+                const snoozeDateISO = snoozeDate.toISOString();
+
+                const response = await fetch(`/email-workflow/${emailId}/snooze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ snoozed_until: snoozeDateISO })
+                });
+
+                if (!response.ok) throw new Error('Error al posponer email');
+
+                const data = await response.json();
+                console.log('✅ Email pospuesto:', data);
+
+                showNotification('Email pospuesto correctamente', 'success');
+
+                // Recargar para ver el badge
+                setTimeout(() => window.location.reload(), 1000);
+
+            } catch (error) {
+                console.error('❌ Error al posponer email:', error);
+                alert('Error al posponer el email. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: SNOOZE EMAIL PERSONALIZADO
+        // ==========================================
+        async function snoozeEmailCustom(emailId, dateTimeString) {
+            try {
+                if (!dateTimeString) return;
+
+                // Convertir a ISO 8601
+                const snoozeDate = new Date(dateTimeString);
+                const snoozeDateISO = snoozeDate.toISOString();
+
+                const response = await fetch(`/email-workflow/${emailId}/snooze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ snoozed_until: snoozeDateISO })
+                });
+
+                if (!response.ok) throw new Error('Error al posponer email');
+
+                const data = await response.json();
+                console.log('✅ Email pospuesto (personalizado):', data);
+
+                showNotification('Email pospuesto correctamente', 'success');
+
+                // Recargar para ver el badge
+                setTimeout(() => window.location.reload(), 1000);
+
+            } catch (error) {
+                console.error('❌ Error al posponer email:', error);
+                alert('Error al posponer el email. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: DESPERTAR EMAIL (QUITAR SNOOZE)
+        // ==========================================
+        async function wakeupEmail(emailId) {
+            try {
+                const response = await fetch(`/email-workflow/${emailId}/wakeup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) throw new Error('Error al despertar email');
+
+                const data = await response.json();
+                console.log('✅ Email despertado:', data);
+
+                showNotification('Email despertado correctamente', 'success');
+
+                // Recargar para ver el cambio
+                setTimeout(() => window.location.reload(), 1000);
+
+            } catch (error) {
+                console.error('❌ Error al despertar email:', error);
+                alert('Error al despertar el email. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: BULK SET DUE DATE
+        // ==========================================
+        async function bulkSetDueDate(preset) {
+            const selectedIds = Alpine.store ? Alpine.store('emails')?.selectedEmails : [];
+            if (!selectedIds || selectedIds.length === 0) {
+                alert('No hay emails seleccionados');
+                return;
+            }
+
+            try {
+                // Calcular fecha según preset (igual que setDueDate individual)
+                const now = new Date();
+                let dueDate;
+
+                switch(preset) {
+                    case 'today':
+                        dueDate = new Date(now.setHours(23, 59, 59, 999));
+                        break;
+                    case 'tomorrow':
+                        dueDate = new Date(now.setDate(now.getDate() + 1));
+                        dueDate.setHours(23, 59, 59, 999);
+                        break;
+                    case '3days':
+                        dueDate = new Date(now.setDate(now.getDate() + 3));
+                        dueDate.setHours(23, 59, 59, 999);
+                        break;
+                    case 'nextweek':
+                        dueDate = new Date(now.setDate(now.getDate() + 7));
+                        dueDate.setHours(23, 59, 59, 999);
+                        break;
+                    default:
+                        throw new Error('Preset inválido');
+                }
+
+                const dueDateISO = dueDate.toISOString();
+
+                // Establecer due date para cada email seleccionado
+                const promises = selectedIds.map(emailId =>
+                    fetch(`/email-workflow/${emailId}/set-due-date`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ due_date: dueDateISO })
+                    })
+                );
+
+                await Promise.all(promises);
+
+                showNotification(`Fecha límite establecida en ${selectedIds.length} email(s)`, 'success');
+
+                // Recargar
+                setTimeout(() => window.location.reload(), 1000);
+
+            } catch (error) {
+                console.error('❌ Error en bulk set due date:', error);
+                alert('Error al establecer fecha límite. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: BULK SNOOZE
+        // ==========================================
+        async function bulkSnooze(preset) {
+            const selectedIds = Alpine.store ? Alpine.store('emails')?.selectedEmails : [];
+            if (!selectedIds || selectedIds.length === 0) {
+                alert('No hay emails seleccionados');
+                return;
+            }
+
+            try {
+                // Calcular fecha según preset (igual que snoozeEmail individual)
+                const now = new Date();
+                let snoozeDate;
+
+                switch(preset) {
+                    case '1hour':
+                        snoozeDate = new Date(now.getTime() + 1 * 60 * 60 * 1000);
+                        break;
+                    case '3hours':
+                        snoozeDate = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+                        break;
+                    case 'tomorrow9am':
+                        snoozeDate = new Date(now);
+                        snoozeDate.setDate(snoozeDate.getDate() + 1);
+                        snoozeDate.setHours(9, 0, 0, 0);
+                        break;
+                    default:
+                        throw new Error('Preset inválido');
+                }
+
+                const snoozeDateISO = snoozeDate.toISOString();
+
+                // Posponer cada email seleccionado
+                const promises = selectedIds.map(emailId =>
+                    fetch(`/email-workflow/${emailId}/snooze`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ snoozed_until: snoozeDateISO })
+                    })
+                );
+
+                await Promise.all(promises);
+
+                showNotification(`${selectedIds.length} email(s) pospuesto(s)`, 'success');
+
+                // Recargar
+                setTimeout(() => window.location.reload(), 1000);
+
+            } catch (error) {
+                console.error('❌ Error en bulk snooze:', error);
+                alert('Error al posponer emails. Por favor, inténtalo de nuevo.');
             }
         }
 

@@ -48,8 +48,10 @@ class EmailController extends Controller
         // Query base de emails - Solo cargar category para la lista
         $query = Email::where('user_id', $user->id)
             ->where('status', 'received') // Solo emails recibidos en inbox
-            ->with('category')
-            ->orderBy('received_at', 'desc');
+            ->with('category');
+
+        // Ordenamiento por defecto (se sobreescribirá si hay filtro de due date)
+        $defaultOrder = true;
 
         // Filtros
         // Filtro por categoría (solo IDs numéricos desde sidebar)
@@ -64,7 +66,8 @@ class EmailController extends Controller
             });
         }
 
-        // Filtros de estado (unread, starred, archived)
+        // Filtros de estado (unread, starred, archived, due dates, snoozed)
+        $customOrder = false;
         if ($request->has('filter')) {
             switch ($request->filter) {
                 case 'unread':
@@ -76,7 +79,38 @@ class EmailController extends Controller
                 case 'archived':
                     $query->archived();
                     break;
+                case 'overdue':
+                    $query->overdue()->orderBy('due_date', 'asc'); // Más urgente primero
+                    $customOrder = true;
+                    break;
+                case 'due_today':
+                    $query->whereNotNull('due_date')
+                        ->whereDate('due_date', today())
+                        ->where('workflow_status', '!=', 'completed')
+                        ->where('workflow_status', '!=', 'archived')
+                        ->orderBy('due_date', 'asc'); // Más urgente primero
+                    $customOrder = true;
+                    break;
+                case 'due_this_week':
+                    $query->whereNotNull('due_date')
+                        ->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])
+                        ->where('workflow_status', '!=', 'completed')
+                        ->where('workflow_status', '!=', 'archived')
+                        ->orderBy('due_date', 'asc'); // Más urgente primero
+                    $customOrder = true;
+                    break;
+                case 'snoozed':
+                    $query->snoozed()->orderBy('snoozed_until', 'asc'); // Próximo a despertar primero
+                    $customOrder = true;
+                    break;
             }
+        }
+
+        // Aplicar ordenamiento por defecto solo si no hay orden personalizado
+        if (!$customOrder && !isset($defaultOrder)) {
+            $query->orderBy('received_at', 'desc');
+        } elseif (isset($defaultOrder) && $defaultOrder && !$customOrder) {
+            $query->orderBy('received_at', 'desc');
         }
 
         // Búsqueda                                                                                                                        
@@ -150,12 +184,34 @@ class EmailController extends Controller
             ')
             ->first();
 
+        // Estadísticas de fechas límite y snooze
+        $baseQuery = Email::where('user_id', $user->id)->where('status', 'received');
+
+        $overdue = (clone $baseQuery)->overdue()->count();
+        $dueToday = (clone $baseQuery)
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', today())
+            ->where('workflow_status', '!=', 'completed')
+            ->where('workflow_status', '!=', 'archived')
+            ->count();
+        $dueThisWeek = (clone $baseQuery)
+            ->whereNotNull('due_date')
+            ->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])
+            ->where('workflow_status', '!=', 'completed')
+            ->where('workflow_status', '!=', 'archived')
+            ->count();
+        $snoozed = (clone $baseQuery)->snoozed()->count();
+
         // Convertir a array para compatibilidad con sidebar
         $stats = [
             'total' => $statsObj->total ?? 0,
             'unread' => $statsObj->unread ?? 0,
             'starred' => $statsObj->starred ?? 0,
             'urgent' => 0, // Campo no disponible en DB
+            'overdue' => $overdue,
+            'due_today' => $dueToday,
+            'due_this_week' => $dueThisWeek,
+            'snoozed' => $snoozed,
         ];
 
         return view('emails.index', compact('emails', 'categories', 'stats', 'hasEmailAccounts', 'syncingAccount'));
@@ -186,7 +242,7 @@ class EmailController extends Controller
             ->get();
 
         // Estadísticas para el sidebar
-        $stats = Email::where('user_id', Auth::id())
+        $statsObj = Email::where('user_id', Auth::id())
             ->selectRaw('
                 COUNT(*) as total,
                 SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as unread,
@@ -194,7 +250,22 @@ class EmailController extends Controller
             ')
             ->first();
 
-        $stats->urgent = 0; // Campo no disponible en DB
+        $baseQuery = Email::where('user_id', Auth::id())->where('status', 'received');
+        $overdue = (clone $baseQuery)->overdue()->count();
+        $dueToday = (clone $baseQuery)->whereNotNull('due_date')->whereDate('due_date', today())->where('workflow_status', '!=', 'completed')->where('workflow_status', '!=', 'archived')->count();
+        $dueThisWeek = (clone $baseQuery)->whereNotNull('due_date')->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])->where('workflow_status', '!=', 'completed')->where('workflow_status', '!=', 'archived')->count();
+        $snoozed = (clone $baseQuery)->snoozed()->count();
+
+        $stats = [
+            'total' => $statsObj->total ?? 0,
+            'unread' => $statsObj->unread ?? 0,
+            'starred' => $statsObj->starred ?? 0,
+            'urgent' => 0,
+            'overdue' => $overdue,
+            'due_today' => $dueToday,
+            'due_this_week' => $dueThisWeek,
+            'snoozed' => $snoozed,
+        ];
 
         return view('emails.show', compact('email', 'categories', 'stats'));
     }
@@ -381,7 +452,8 @@ class EmailController extends Controller
             $query->where('email_category_id', $request->category);
         }
 
-        // Filtros de estado (unread, starred, archived)
+        // Filtros de estado (unread, starred, archived, due dates, snoozed)
+        $customOrder = false;
         if ($request->has('filter')) {
             switch ($request->filter) {
                 case 'unread':
@@ -393,7 +465,38 @@ class EmailController extends Controller
                 case 'archived':
                     $query->archived();
                     break;
+                case 'overdue':
+                    $query->overdue()->orderBy('due_date', 'asc'); // Más urgente primero
+                    $customOrder = true;
+                    break;
+                case 'due_today':
+                    $query->whereNotNull('due_date')
+                        ->whereDate('due_date', today())
+                        ->where('workflow_status', '!=', 'completed')
+                        ->where('workflow_status', '!=', 'archived')
+                        ->orderBy('due_date', 'asc'); // Más urgente primero
+                    $customOrder = true;
+                    break;
+                case 'due_this_week':
+                    $query->whereNotNull('due_date')
+                        ->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])
+                        ->where('workflow_status', '!=', 'completed')
+                        ->where('workflow_status', '!=', 'archived')
+                        ->orderBy('due_date', 'asc'); // Más urgente primero
+                    $customOrder = true;
+                    break;
+                case 'snoozed':
+                    $query->snoozed()->orderBy('snoozed_until', 'asc'); // Próximo a despertar primero
+                    $customOrder = true;
+                    break;
             }
+        }
+
+        // Aplicar ordenamiento por defecto solo si no hay orden personalizado
+        if (!$customOrder && !isset($defaultOrder)) {
+            $query->orderBy('received_at', 'desc');
+        } elseif (isset($defaultOrder) && $defaultOrder && !$customOrder) {
+            $query->orderBy('received_at', 'desc');
         }
 
 

@@ -191,14 +191,15 @@ class EmailWorkflowController extends Controller
         }
 
         $validated = $request->validate([
-            'due_date' => 'required|date|after:now',
+            'due_date' => 'nullable|date|after:now',
         ]);
 
-        $email = $this->workflowService->setDueDate($email, new \DateTime($validated['due_date']));
+        $dueDate = $validated['due_date'] ? new \DateTime($validated['due_date']) : null;
+        $email = $this->workflowService->setDueDate($email, $dueDate);
 
         return response()->json([
             'success' => true,
-            'message' => 'Fecha de vencimiento establecida',
+            'message' => $dueDate ? 'Fecha de vencimiento establecida' : 'Fecha de vencimiento eliminada',
             'email' => $email,
         ]);
     }
