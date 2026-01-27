@@ -433,26 +433,48 @@
         // NOTIFICACIONES DE DUE DATES AL CARGAR
         // ==========================================
         document.addEventListener('DOMContentLoaded', function() {
-            // Verificar si hay emails vencidos o próximos a vencer
-            @if(isset($stats['overdue']) && $stats['overdue'] > 0)
-                showDueDateAlert(
-                    '🚨 Tienes {{ $stats['overdue'] }} email(s) vencido(s)',
+            // Inicializar stats del servidor (para evitar notificaciones duplicadas)
+            const overdue = {{ $stats['overdue'] ?? 0 }};
+            const dueToday = {{ $stats['due_today'] ?? 0 }};
+
+            // Establecer estado inicial
+            lastNotifiedStats = { overdue, due_today: dueToday };
+
+            // Mostrar notificación inicial si hay emails vencidos o que vencen hoy
+            if (overdue > 0 && dueToday > 0) {
+                currentNotificationAlert = showDueDateAlert(
+                    `🚨 Tienes ${overdue} email(s) vencido(s) y ${dueToday} que vencen hoy`,
                     'error',
-                    true
+                    'manual'
                 );
-            @elseif(isset($stats['due_today']) && $stats['due_today'] > 0)
-                showDueDateAlert(
-                    '⏰ Tienes {{ $stats['due_today'] }} email(s) que vencen hoy',
+            } else if (overdue > 0) {
+                currentNotificationAlert = showDueDateAlert(
+                    `🚨 Tienes ${overdue} email(s) vencido(s)`,
+                    'error',
+                    'manual'
+                );
+            } else if (dueToday > 0) {
+                currentNotificationAlert = showDueDateAlert(
+                    `⏰ Tienes ${dueToday} email(s) que vencen hoy`,
                     'warning',
                     false
                 );
-            @endif
+            }
         });
 
         // Función para mostrar alertas de due dates
+        // persistent: false = auto-cierra en 8s, true = no se cierra, 'manual' = solo cierra con botón X
         function showDueDateAlert(message, type = 'warning', persistent = false) {
             const bgColor = type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-orange-500' : 'bg-blue-500';
             const borderColor = type === 'error' ? 'border-red-600' : type === 'warning' ? 'border-orange-600' : 'border-blue-600';
+
+            // Determinar el enlace según el mensaje
+            let filterLink = '/emails?filter=overdue';
+            if (message.includes('vencido') && message.includes('vencen hoy')) {
+                filterLink = '/emails?filter=overdue'; // Priorizar vencidos si hay ambos
+            } else if (message.includes('vencen hoy')) {
+                filterLink = '/emails?filter=due_today';
+            }
 
             const alert = document.createElement('div');
             alert.className = `fixed top-4 right-4 ${bgColor} ${borderColor} border-l-4 text-white px-6 py-4 rounded-lg shadow-2xl z-50 max-w-md animate-slide-in`;
@@ -460,12 +482,25 @@
                 <div class="flex items-start gap-3">
                     <div class="flex-1">
                         <p class="font-semibold text-sm">${message}</p>
-                        <a href="/emails?filter=${type === 'error' ? 'overdue' : 'due_today'}"
-                           class="text-xs underline hover:no-underline mt-1 inline-block">
-                            Ver emails →
-                        </a>
+                        <div class="flex gap-2 mt-2">
+                            ${message.includes('vencido') && message.includes('vencen hoy') ? `
+                                <a href="/emails?filter=overdue"
+                                   class="text-xs underline hover:no-underline">
+                                    Ver vencidos →
+                                </a>
+                                <a href="/emails?filter=due_today"
+                                   class="text-xs underline hover:no-underline">
+                                    Ver hoy →
+                                </a>
+                            ` : `
+                                <a href="${filterLink}"
+                                   class="text-xs underline hover:no-underline">
+                                    Ver emails →
+                                </a>
+                            `}
+                        </div>
                     </div>
-                    ${!persistent ? `
+                    ${persistent !== true ? `
                         <button onclick="this.parentElement.parentElement.remove()"
                                 class="text-white hover:text-gray-200 transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -478,14 +513,17 @@
 
             document.body.appendChild(alert);
 
-            // Auto-cerrar después de 8 segundos si no es persistente
-            if (!persistent) {
+            // Auto-cerrar después de 8 segundos si no es persistente (ni true ni 'manual')
+            if (persistent === false) {
                 setTimeout(() => {
                     alert.style.opacity = '0';
                     alert.style.transform = 'translateX(100%)';
                     setTimeout(() => alert.remove(), 300);
                 }, 8000);
             }
+
+            // Retornar referencia al elemento para poder cerrarlo/actualizarlo después
+            return alert;
         }
 
         // Auto-refresh de emails cada 2 minutos (SIN reload visible)
@@ -529,6 +567,9 @@
 
                 // Actualizar estadísticas si existen
                 updateStats(data.stats);
+
+                // Actualizar estadísticas del sidebar (due dates, snooze)
+                updateSidebarStats();
 
                 console.log('✅ Emails actualizados:', data.emails.length);
 
@@ -1594,6 +1635,291 @@
         }
 
         // ==========================================
+        // FUNCIÓN: ACTUALIZAR OPCIONES DE DROPDOWNS DINÁMICAMENTE
+        // ==========================================
+        function updateDropdownOptions(emailId, dueDateData) {
+            console.log(`🔄 Actualizando opciones de dropdown para email ${emailId}`, dueDateData);
+
+            // Buscar dropdowns globalmente (están teleportados fuera del email row)
+            const dueDateDropdowns = document.querySelectorAll(`.due-date-dropdown[data-email-id="${emailId}"]`);
+            console.log(`📍 Due date dropdowns encontrados:`, dueDateDropdowns.length);
+
+            dueDateDropdowns.forEach((dueDateDropdown, index) => {
+                console.log(`📍 Procesando due date dropdown ${index + 1}/${dueDateDropdowns.length}`);
+                // Buscar si existe el botón "Quitar fecha límite"
+                let removeButton = dueDateDropdown.querySelector('.remove-due-date-btn');
+                console.log(`📍 Botón "Quitar fecha" existente:`, !!removeButton);
+                console.log(`📍 Due date actual:`, dueDateData.dueDate);
+
+                if (dueDateData.dueDate && !removeButton) {
+                    // Hay due date pero no existe el botón - añadirlo
+                    console.log(`➕ Intentando añadir botón "Quitar fecha límite"...`);
+                    const separator = dueDateDropdown.querySelector('.due-date-separator');
+                    console.log(`📍 Separador encontrado:`, !!separator);
+                    if (separator && separator.parentNode) {
+                        removeButton = document.createElement('div');
+                        removeButton.className = 'remove-due-date-btn';
+                        removeButton.innerHTML = `
+                            <div class="border-t border-gray-200 my-1"></div>
+                            <button onclick="removeDueDate(${emailId})"
+                                class="w-full text-left px-3 py-2 text-xs hover:bg-red-50 flex items-center gap-2 text-red-600 transition-colors">
+                                <span>❌</span>
+                                <span class="font-medium">Quitar fecha límite</span>
+                            </button>
+                        `;
+                        // Insertar después del datetime input (que viene después del separator)
+                        const customDateContainer = separator.nextElementSibling;
+                        if (customDateContainer && customDateContainer.nextSibling) {
+                            customDateContainer.parentNode.insertBefore(removeButton, customDateContainer.nextSibling);
+                        } else {
+                            separator.parentNode.appendChild(removeButton);
+                        }
+                        console.log('✅ Añadido botón "Quitar fecha límite"');
+                    }
+                } else if (!dueDateData.dueDate && removeButton) {
+                    // No hay due date pero existe el botón - quitarlo
+                    removeButton.remove();
+                    console.log('✅ Eliminado botón "Quitar fecha límite"');
+                }
+            });
+
+            // Actualizar dropdown de Snooze (buscar globalmente, están teleportados)
+            const snoozeDropdowns = document.querySelectorAll(`.snooze-dropdown[data-email-id="${emailId}"]`);
+            console.log(`📍 Snooze dropdowns encontrados:`, snoozeDropdowns.length);
+
+            snoozeDropdowns.forEach((snoozeDropdown, index) => {
+                console.log(`📍 Procesando snooze dropdown ${index + 1}/${snoozeDropdowns.length}`);
+                // Buscar si existe el botón "Despertar ahora"
+                let wakeupButton = snoozeDropdown.querySelector('.wakeup-btn');
+                console.log(`📍 Botón "Despertar ahora" existente:`, !!wakeupButton);
+                console.log(`📍 Email snoozed:`, dueDateData.isSnoozed);
+
+                if (dueDateData.isSnoozed && !wakeupButton) {
+                    // Está snoozed pero no existe el botón - añadirlo
+                    console.log(`➕ Intentando añadir botón "Despertar ahora"...`);
+                    const separator = snoozeDropdown.querySelector('.snooze-separator');
+                    console.log(`📍 Separador encontrado:`, !!separator);
+                    if (separator && separator.parentNode) {
+                        wakeupButton = document.createElement('div');
+                        wakeupButton.className = 'wakeup-btn';
+                        wakeupButton.innerHTML = `
+                            <div class="border-t border-gray-200 my-1"></div>
+                            <button onclick="wakeupEmail(${emailId})"
+                                class="w-full text-left px-3 py-2 text-xs hover:bg-red-50 flex items-center gap-2 text-red-600 transition-colors">
+                                <span>❌</span>
+                                <span class="font-medium">Despertar ahora</span>
+                            </button>
+                        `;
+                        // Insertar después del datetime input
+                        const customDateContainer = separator.nextElementSibling;
+                        if (customDateContainer && customDateContainer.nextSibling) {
+                            customDateContainer.parentNode.insertBefore(wakeupButton, customDateContainer.nextSibling);
+                        } else {
+                            separator.parentNode.appendChild(wakeupButton);
+                        }
+                        console.log('✅ Añadido botón "Despertar ahora"');
+                    }
+                } else if (!dueDateData.isSnoozed && wakeupButton) {
+                    // No está snoozed pero existe el botón - quitarlo
+                    wakeupButton.remove();
+                    console.log('✅ Eliminado botón "Despertar ahora"');
+                }
+            });
+        }
+
+        // ==========================================
+        // FUNCIÓN: VERIFICAR Y MOSTRAR NOTIFICACIONES DE DUE DATES
+        // ==========================================
+        let lastNotifiedStats = { overdue: 0, due_today: 0 }; // Guardar último estado notificado
+        let currentNotificationAlert = null; // Referencia a la alerta actual
+
+        function checkAndShowDueDateNotifications(stats) {
+            const overdue = stats.overdue || 0;
+            const dueToday = stats.due_today || 0;
+
+            // Verificar si las estadísticas han cambiado desde la última notificación
+            const hasChanged =
+                overdue !== lastNotifiedStats.overdue ||
+                dueToday !== lastNotifiedStats.due_today;
+
+            // Solo mostrar notificación si hay algo QUE NOTIFICAR y ha cambiado
+            if (!hasChanged || (overdue === 0 && dueToday === 0)) {
+                return;
+            }
+
+            // Cerrar notificación anterior si existe
+            if (currentNotificationAlert) {
+                currentNotificationAlert.remove();
+                currentNotificationAlert = null;
+            }
+
+            // Actualizar último estado
+            lastNotifiedStats = { overdue, due_today: dueToday };
+
+            // Mostrar nueva notificación
+            if (overdue > 0 && dueToday > 0) {
+                currentNotificationAlert = showDueDateAlert(
+                    `🚨 Tienes ${overdue} email(s) vencido(s) y ${dueToday} que vencen hoy`,
+                    'error',
+                    'manual'
+                );
+            } else if (overdue > 0) {
+                currentNotificationAlert = showDueDateAlert(
+                    `🚨 Tienes ${overdue} email(s) vencido(s)`,
+                    'error',
+                    'manual'
+                );
+            } else if (dueToday > 0) {
+                currentNotificationAlert = showDueDateAlert(
+                    `⏰ Tienes ${dueToday} email(s) que vencen hoy`,
+                    'warning',
+                    false
+                );
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: ACTUALIZAR ESTADÍSTICAS DEL SIDEBAR SIN RELOAD
+        // ==========================================
+        async function updateSidebarStats() {
+            try {
+                console.log('🔄 Actualizando estadísticas del sidebar...');
+
+                const response = await fetch('/emails/api/stats', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    console.error('❌ Error obteniendo stats:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('📊 Stats recibidas:', data.stats);
+
+                // Actualizar contadores en sidebar
+                const overdueEl = document.querySelector('[data-filter="overdue"] .badge-count');
+                const dueTodayEl = document.querySelector('[data-filter="due_today"] .badge-count');
+                const dueWeekEl = document.querySelector('[data-filter="due_this_week"] .badge-count');
+                const snoozedEl = document.querySelector('[data-filter="snoozed"] .badge-count');
+
+                // Actualizar "Vencidos"
+                if (overdueEl) {
+                    if (data.stats.overdue > 0) {
+                        overdueEl.textContent = data.stats.overdue;
+                        overdueEl.classList.remove('hidden');
+                        console.log(`✅ Vencidos: ${data.stats.overdue}`);
+                    } else {
+                        overdueEl.classList.add('hidden');
+                    }
+                }
+
+                // Actualizar "Vencen hoy"
+                if (dueTodayEl) {
+                    if (data.stats.due_today > 0) {
+                        dueTodayEl.textContent = data.stats.due_today;
+                        dueTodayEl.classList.remove('hidden');
+                        console.log(`✅ Vencen hoy: ${data.stats.due_today}`);
+                    } else {
+                        dueTodayEl.classList.add('hidden');
+                    }
+                }
+
+                // Actualizar "Vencen esta semana"
+                if (dueWeekEl) {
+                    if (data.stats.due_this_week > 0) {
+                        dueWeekEl.textContent = data.stats.due_this_week;
+                        dueWeekEl.classList.remove('hidden');
+                        console.log(`✅ Vencen esta semana: ${data.stats.due_this_week}`);
+                    } else {
+                        dueWeekEl.classList.add('hidden');
+                    }
+                }
+
+                // Actualizar "Pospuestos"
+                if (snoozedEl) {
+                    if (data.stats.snoozed > 0) {
+                        snoozedEl.textContent = data.stats.snoozed;
+                        snoozedEl.classList.remove('hidden');
+                        console.log(`✅ Pospuestos: ${data.stats.snoozed}`);
+                    } else {
+                        snoozedEl.classList.add('hidden');
+                    }
+                }
+
+                console.log('✅ Sidebar actualizado correctamente');
+
+                // Verificar si hay que mostrar notificaciones de due dates
+                checkAndShowDueDateNotifications(data.stats);
+
+            } catch (error) {
+                console.error('❌ Error actualizando stats del sidebar:', error);
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: ACTUALIZAR BADGES DINÁMICAMENTE SIN RELOAD
+        // ==========================================
+        function updateEmailBadges(emailId, dueDateData) {
+            console.log(`🔄 Iniciando actualización de badges para email ${emailId}`, dueDateData);
+
+            // Encontrar el email en el DOM
+            const emailRow = document.querySelector(`[data-email-id="${emailId}"]`);
+            if (!emailRow) {
+                console.warn(`❌ No se encontró el email con ID ${emailId} en el DOM`);
+                return;
+            }
+            console.log(`✅ Email encontrado en DOM:`, emailRow);
+
+            // Encontrar el contenedor de badges
+            const badgesContainer = emailRow.querySelector('.email-badges');
+            if (!badgesContainer) {
+                console.warn(`❌ No se encontró el contenedor .email-badges para el email ${emailId}`);
+                console.log(`🔍 HTML del email:`, emailRow.innerHTML.substring(0, 500));
+                return;
+            }
+            console.log(`✅ Contenedor de badges encontrado:`, badgesContainer);
+
+            // Reconstruir badges HTML según los datos recibidos
+            let badgesHtml = '';
+
+            // Badge de Due Date
+            if (dueDateData.isOverdue) {
+                badgesHtml += `<span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-100 text-red-700 animate-pulse" title="Venció: ${dueDateData.dueDateFull || ''}">
+                    🚨 Vencido: ${dueDateData.dueDateShort || ''}
+                </span>`;
+                console.log('📍 Badge añadido: VENCIDO');
+            } else if (dueDateData.isDueSoon) {
+                badgesHtml += `<span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700" title="Vence: ${dueDateData.dueDateFull || ''}">
+                    ⏰ Vence: ${dueDateData.dueDateShort || ''}
+                </span>`;
+                console.log('📍 Badge añadido: VENCE PRONTO');
+            } else if (dueDateData.dueDate) {
+                badgesHtml += `<span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-700" title="Vence: ${dueDateData.dueDateFull || ''}">
+                    📅 ${dueDateData.dueDateShort || ''}
+                </span>`;
+                console.log('📍 Badge añadido: DUE DATE normal');
+            }
+
+            // Badge de Snooze
+            if (dueDateData.isSnoozed) {
+                badgesHtml += `<span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700" title="Pospuesto hasta: ${dueDateData.snoozedUntilFull || ''}">
+                    💤 Hasta: ${dueDateData.snoozedUntilShort || ''}
+                </span>`;
+                console.log('📍 Badge añadido: SNOOZED');
+            }
+
+            console.log(`📝 HTML generado para badges:`, badgesHtml);
+
+            // Actualizar el DOM
+            badgesContainer.innerHTML = badgesHtml;
+            console.log(`✅ Badges actualizados correctamente para email ${emailId}`);
+        }
+
+        // ==========================================
         // FUNCIÓN: ESTABLECER DUE DATE (OPCIONES RÁPIDAS)
         // ==========================================
         async function setDueDate(emailId, preset) {
@@ -1642,8 +1968,35 @@
 
                 showNotification('Fecha límite establecida correctamente', 'success');
 
-                // Recargar para ver el badge
-                setTimeout(() => window.location.reload(), 1000);
+                // Actualizar badges sin reload - obtener datos actualizados del backend
+                const emailResponse = await fetch(`/emails/api/${emailId}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (emailResponse.ok) {
+                    const emailData = await emailResponse.json();
+                    console.log('📧 Datos del email recibidos:', emailData.email);
+                    const dueDateInfo = {
+                        isOverdue: emailData.email.isOverdue,
+                        isDueSoon: emailData.email.isDueSoon,
+                        dueDate: emailData.email.due_date,
+                        dueDateShort: emailData.email.due_date_short,
+                        dueDateFull: emailData.email.due_date_full,
+                        isSnoozed: emailData.email.isSnoozed,
+                        snoozedUntilShort: emailData.email.snoozed_until_short,
+                        snoozedUntilFull: emailData.email.snoozed_until_full,
+                    };
+                    updateEmailBadges(emailId, dueDateInfo);
+                    // Actualizar opciones de los dropdowns
+                    updateDropdownOptions(emailId, dueDateInfo);
+                    // Actualizar estadísticas del sidebar
+                    updateSidebarStats();
+                } else {
+                    console.error('❌ Error obteniendo datos del email:', emailResponse.status);
+                }
 
             } catch (error) {
                 console.error('❌ Error al establecer fecha límite:', error);
@@ -1680,8 +2033,35 @@
 
                 showNotification('Fecha límite establecida correctamente', 'success');
 
-                // Recargar para ver el badge
-                setTimeout(() => window.location.reload(), 1000);
+                // Actualizar badges sin reload - obtener datos actualizados del backend
+                const emailResponse = await fetch(`/emails/api/${emailId}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (emailResponse.ok) {
+                    const emailData = await emailResponse.json();
+                    console.log('📧 Datos del email recibidos:', emailData.email);
+                    const dueDateInfo = {
+                        isOverdue: emailData.email.isOverdue,
+                        isDueSoon: emailData.email.isDueSoon,
+                        dueDate: emailData.email.due_date,
+                        dueDateShort: emailData.email.due_date_short,
+                        dueDateFull: emailData.email.due_date_full,
+                        isSnoozed: emailData.email.isSnoozed,
+                        snoozedUntilShort: emailData.email.snoozed_until_short,
+                        snoozedUntilFull: emailData.email.snoozed_until_full,
+                    };
+                    updateEmailBadges(emailId, dueDateInfo);
+                    // Actualizar opciones de los dropdowns
+                    updateDropdownOptions(emailId, dueDateInfo);
+                    // Actualizar estadísticas del sidebar
+                    updateSidebarStats();
+                } else {
+                    console.error('❌ Error obteniendo datos del email:', emailResponse.status);
+                }
 
             } catch (error) {
                 console.error('❌ Error al establecer fecha límite personalizada:', error);
@@ -1712,8 +2092,44 @@
 
                 showNotification('Fecha límite eliminada', 'success');
 
-                // Recargar para ver el cambio
-                setTimeout(() => window.location.reload(), 1000);
+                // Actualizar badges sin reload - obtener datos actualizados del backend
+                const emailResponse = await fetch(`/emails/api/${emailId}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (emailResponse.ok) {
+                    const emailData = await emailResponse.json();
+                    console.log('📧 Datos del email recibidos:', emailData.email);
+                    const dueDateInfo = {
+                        isOverdue: emailData.email.isOverdue,
+                        isDueSoon: emailData.email.isDueSoon,
+                        dueDate: emailData.email.due_date,
+                        dueDateShort: emailData.email.due_date_short,
+                        dueDateFull: emailData.email.due_date_full,
+                        isSnoozed: emailData.email.isSnoozed,
+                        snoozedUntilShort: emailData.email.snoozed_until_short,
+                        snoozedUntilFull: emailData.email.snoozed_until_full,
+                    };
+                    updateEmailBadges(emailId, dueDateInfo);
+                    // Actualizar opciones de los dropdowns
+                    updateDropdownOptions(emailId, dueDateInfo);
+                    // Actualizar estadísticas del sidebar
+                    updateSidebarStats();
+
+                    // Cerrar el dropdown con un pequeño delay
+                    setTimeout(() => {
+                        const dropdown = document.querySelector(`.due-date-dropdown[data-email-id="${emailId}"]`);
+                        if (dropdown) {
+                            // Simular click fuera para cerrar el dropdown
+                            document.body.click();
+                        }
+                    }, 100);
+                } else {
+                    console.error('❌ Error obteniendo datos del email:', emailResponse.status);
+                }
 
             } catch (error) {
                 console.error('❌ Error al quitar fecha límite:', error);
@@ -1776,8 +2192,35 @@
 
                 showNotification('Email pospuesto correctamente', 'success');
 
-                // Recargar para ver el badge
-                setTimeout(() => window.location.reload(), 1000);
+                // Actualizar badges sin reload - obtener datos actualizados del backend
+                const emailResponse = await fetch(`/emails/api/${emailId}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (emailResponse.ok) {
+                    const emailData = await emailResponse.json();
+                    console.log('📧 Datos del email recibidos:', emailData.email);
+                    const dueDateInfo = {
+                        isOverdue: emailData.email.isOverdue,
+                        isDueSoon: emailData.email.isDueSoon,
+                        dueDate: emailData.email.due_date,
+                        dueDateShort: emailData.email.due_date_short,
+                        dueDateFull: emailData.email.due_date_full,
+                        isSnoozed: emailData.email.isSnoozed,
+                        snoozedUntilShort: emailData.email.snoozed_until_short,
+                        snoozedUntilFull: emailData.email.snoozed_until_full,
+                    };
+                    updateEmailBadges(emailId, dueDateInfo);
+                    // Actualizar opciones de los dropdowns
+                    updateDropdownOptions(emailId, dueDateInfo);
+                    // Actualizar estadísticas del sidebar
+                    updateSidebarStats();
+                } else {
+                    console.error('❌ Error obteniendo datos del email:', emailResponse.status);
+                }
 
             } catch (error) {
                 console.error('❌ Error al posponer email:', error);
@@ -1813,8 +2256,35 @@
 
                 showNotification('Email pospuesto correctamente', 'success');
 
-                // Recargar para ver el badge
-                setTimeout(() => window.location.reload(), 1000);
+                // Actualizar badges sin reload - obtener datos actualizados del backend
+                const emailResponse = await fetch(`/emails/api/${emailId}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (emailResponse.ok) {
+                    const emailData = await emailResponse.json();
+                    console.log('📧 Datos del email recibidos:', emailData.email);
+                    const dueDateInfo = {
+                        isOverdue: emailData.email.isOverdue,
+                        isDueSoon: emailData.email.isDueSoon,
+                        dueDate: emailData.email.due_date,
+                        dueDateShort: emailData.email.due_date_short,
+                        dueDateFull: emailData.email.due_date_full,
+                        isSnoozed: emailData.email.isSnoozed,
+                        snoozedUntilShort: emailData.email.snoozed_until_short,
+                        snoozedUntilFull: emailData.email.snoozed_until_full,
+                    };
+                    updateEmailBadges(emailId, dueDateInfo);
+                    // Actualizar opciones de los dropdowns
+                    updateDropdownOptions(emailId, dueDateInfo);
+                    // Actualizar estadísticas del sidebar
+                    updateSidebarStats();
+                } else {
+                    console.error('❌ Error obteniendo datos del email:', emailResponse.status);
+                }
 
             } catch (error) {
                 console.error('❌ Error al posponer email:', error);
@@ -1843,8 +2313,44 @@
 
                 showNotification('Email despertado correctamente', 'success');
 
-                // Recargar para ver el cambio
-                setTimeout(() => window.location.reload(), 1000);
+                // Actualizar badges sin reload - obtener datos actualizados del backend
+                const emailResponse = await fetch(`/emails/api/${emailId}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (emailResponse.ok) {
+                    const emailData = await emailResponse.json();
+                    console.log('📧 Datos del email recibidos:', emailData.email);
+                    const dueDateInfo = {
+                        isOverdue: emailData.email.isOverdue,
+                        isDueSoon: emailData.email.isDueSoon,
+                        dueDate: emailData.email.due_date,
+                        dueDateShort: emailData.email.due_date_short,
+                        dueDateFull: emailData.email.due_date_full,
+                        isSnoozed: emailData.email.isSnoozed,
+                        snoozedUntilShort: emailData.email.snoozed_until_short,
+                        snoozedUntilFull: emailData.email.snoozed_until_full,
+                    };
+                    updateEmailBadges(emailId, dueDateInfo);
+                    // Actualizar opciones de los dropdowns
+                    updateDropdownOptions(emailId, dueDateInfo);
+                    // Actualizar estadísticas del sidebar
+                    updateSidebarStats();
+
+                    // Cerrar el dropdown con un pequeño delay
+                    setTimeout(() => {
+                        const dropdown = document.querySelector(`.snooze-dropdown[data-email-id="${emailId}"]`);
+                        if (dropdown) {
+                            // Simular click fuera para cerrar el dropdown
+                            document.body.click();
+                        }
+                    }, 100);
+                } else {
+                    console.error('❌ Error obteniendo datos del email:', emailResponse.status);
+                }
 
             } catch (error) {
                 console.error('❌ Error al despertar email:', error);
@@ -1906,8 +2412,38 @@
 
                 showNotification(`Fecha límite establecida en ${selectedIds.length} email(s)`, 'success');
 
-                // Recargar
-                setTimeout(() => window.location.reload(), 1000);
+                // Actualizar badges de cada email sin reload
+                for (const emailId of selectedIds) {
+                    try {
+                        const emailResponse = await fetch(`/emails/api/${emailId}`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        if (emailResponse.ok) {
+                            const emailData = await emailResponse.json();
+                            const dueDateInfo = {
+                                isOverdue: emailData.email.isOverdue,
+                                isDueSoon: emailData.email.isDueSoon,
+                                dueDate: emailData.email.due_date,
+                                dueDateShort: emailData.email.due_date_short,
+                                dueDateFull: emailData.email.due_date_full,
+                                isSnoozed: emailData.email.isSnoozed,
+                                snoozedUntilShort: emailData.email.snoozed_until_short,
+                                snoozedUntilFull: emailData.email.snoozed_until_full,
+                            };
+                            updateEmailBadges(emailId, dueDateInfo);
+                            updateDropdownOptions(emailId, dueDateInfo);
+                        }
+                    } catch (err) {
+                        console.error(`Error actualizando badge del email ${emailId}:`, err);
+                    }
+                }
+
+                // Actualizar estadísticas del sidebar después de procesar todos
+                updateSidebarStats();
 
             } catch (error) {
                 console.error('❌ Error en bulk set due date:', error);
@@ -1965,8 +2501,38 @@
 
                 showNotification(`${selectedIds.length} email(s) pospuesto(s)`, 'success');
 
-                // Recargar
-                setTimeout(() => window.location.reload(), 1000);
+                // Actualizar badges de cada email sin reload
+                for (const emailId of selectedIds) {
+                    try {
+                        const emailResponse = await fetch(`/emails/api/${emailId}`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        if (emailResponse.ok) {
+                            const emailData = await emailResponse.json();
+                            const dueDateInfo = {
+                                isOverdue: emailData.email.isOverdue,
+                                isDueSoon: emailData.email.isDueSoon,
+                                dueDate: emailData.email.due_date,
+                                dueDateShort: emailData.email.due_date_short,
+                                dueDateFull: emailData.email.due_date_full,
+                                isSnoozed: emailData.email.isSnoozed,
+                                snoozedUntilShort: emailData.email.snoozed_until_short,
+                                snoozedUntilFull: emailData.email.snoozed_until_full,
+                            };
+                            updateEmailBadges(emailId, dueDateInfo);
+                            updateDropdownOptions(emailId, dueDateInfo);
+                        }
+                    } catch (err) {
+                        console.error(`Error actualizando badge del email ${emailId}:`, err);
+                    }
+                }
+
+                // Actualizar estadísticas del sidebar después de procesar todos
+                updateSidebarStats();
 
             } catch (error) {
                 console.error('❌ Error en bulk snooze:', error);

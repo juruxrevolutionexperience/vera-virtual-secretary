@@ -48,7 +48,7 @@ Verificar que todo funciona al 100%
 - [ ] Buscar por remitente
 - [ ] Buscar por contenido
 - [ ] Filtros combinados (fecha + categoría + estado)
-- [ ] Verificar que la paginación funciona
+- [ ] Verificar que la paginación funciona**
 
 **4. Borradores y Papelera**
 - [ ] Mover a papelera

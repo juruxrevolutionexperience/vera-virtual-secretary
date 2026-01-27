@@ -121,6 +121,8 @@ Route::middleware(['auth'])->prefix('email-accounts')->name('email-accounts.')->
 Route::middleware(['auth'])->prefix('emails')->name('emails.')->group(function () {
     // API endpoint para obtener emails sin reload (AJAX)
     Route::get('/api/list', [EmailController::class, 'apiList'])->name('api.list');
+    // API endpoint para obtener estadísticas de due dates y snooze (DEBE ir ANTES de api/{email})
+    Route::get('/api/stats', [EmailController::class, 'apiStats'])->name('api.stats');
     // API endpoint para obtener un email individual (vista previa)
     Route::get('/api/{email}', [EmailController::class, 'apiShow'])->name('api.show');
 

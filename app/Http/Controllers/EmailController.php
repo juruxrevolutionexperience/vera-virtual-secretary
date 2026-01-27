@@ -386,15 +386,15 @@ class EmailController extends Controller
     /**
      * API: Obtener un email individual para vista previa (sin reload)
      */
-    public function apiShow(Email $email)
+    public function apiShow(Email $email, Request $request)
     {
         // Verificar que el email pertenece al usuario autenticado
         if ($email->user_id !== Auth::id()) {
             return response()->json(['error' => 'No autorizado'], 403);
         }
 
-        // Marcar como leído si no lo está
-        if (!$email->is_read) {
+        // Marcar como leído solo si se solicita explícitamente (para no marcar al actualizar badges)
+        if ($request->query('mark_as_read') === 'true' && !$email->is_read) {
             $email->markAsRead();
         }
 
@@ -429,6 +429,55 @@ class EmailController extends Controller
                 'vera_action_required' => $email->vera_action_required,
                 'vera_actions' => $email->veraActions,
                 'priority' => $email->priority ?? 'normal',
+
+                // Due Date & Snooze fields
+                'due_date' => $email->due_date,
+                'due_date_short' => $email->due_date ? formatDueDateBadge($email->due_date) : null,
+                'due_date_full' => $email->due_date ? formatDueDateFull($email->due_date) : null,
+                'isOverdue' => $email->isOverdue(),
+                'isDueSoon' => $email->due_date && $email->due_date > now() && $email->due_date <= now()->addHours(24),
+                'snoozed_until' => $email->snoozed_until,
+                'snoozed_until_short' => $email->snoozed_until ? formatDueDateBadge($email->snoozed_until) : null,
+                'snoozed_until_full' => $email->snoozed_until ? formatDueDateFull($email->snoozed_until) : null,
+                'isSnoozed' => $email->isSnoozed(),
+            ]
+        ]);
+    }
+
+    /**
+     * API: Obtener estadísticas de due dates y snooze
+     */
+    public function apiStats(Request $request)
+    {
+        $user = Auth::user();
+        $baseQuery = Email::where('user_id', $user->id)->where('status', 'received');
+
+        // Calcular estadísticas
+        $overdue = (clone $baseQuery)->overdue()->count();
+
+        $dueToday = (clone $baseQuery)
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', today())
+            ->where('workflow_status', '!=', 'completed')
+            ->where('workflow_status', '!=', 'archived')
+            ->count();
+
+        $dueThisWeek = (clone $baseQuery)
+            ->whereNotNull('due_date')
+            ->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])
+            ->where('workflow_status', '!=', 'completed')
+            ->where('workflow_status', '!=', 'archived')
+            ->count();
+
+        $snoozed = (clone $baseQuery)->snoozed()->count();
+
+        return response()->json([
+            'success' => true,
+            'stats' => [
+                'overdue' => $overdue,
+                'due_today' => $dueToday,
+                'due_this_week' => $dueThisWeek,
+                'snoozed' => $snoozed,
             ]
         ]);
     }

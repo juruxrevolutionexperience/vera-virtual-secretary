@@ -133,6 +133,7 @@
 
             <!-- Vencidos -->
             <a href="{{ route('emails.index', ['filter' => 'overdue']) }}"
+                data-filter="overdue"
                 class="flex items-center justify-between px-2 py-1.5 rounded-md mb-1 {{ request()->filter === 'overdue' ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                 <div class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,13 +142,14 @@
                     </svg>
                     <span>Vencidos</span>
                 </div>
-                @if(isset($stats['overdue']) && $stats['overdue'] > 0)
-                    <span class="text-xs text-white bg-red-600 px-1.5 py-0.5 rounded-full font-medium animate-pulse">{{ $stats['overdue'] }}</span>
-                @endif
+                <span class="badge-count text-xs text-white bg-red-600 px-1.5 py-0.5 rounded-full font-medium animate-pulse {{ isset($stats['overdue']) && $stats['overdue'] > 0 ? '' : 'hidden' }}">
+                    {{ $stats['overdue'] ?? 0 }}
+                </span>
             </a>
 
             <!-- Vencen hoy -->
             <a href="{{ route('emails.index', ['filter' => 'due_today']) }}"
+                data-filter="due_today"
                 class="flex items-center justify-between px-2 py-1.5 rounded-md mb-1 {{ request()->filter === 'due_today' ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                 <div class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,13 +158,14 @@
                     </svg>
                     <span>Vencen hoy</span>
                 </div>
-                @if(isset($stats['due_today']) && $stats['due_today'] > 0)
-                    <span class="text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full font-medium">{{ $stats['due_today'] }}</span>
-                @endif
+                <span class="badge-count text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full font-medium {{ isset($stats['due_today']) && $stats['due_today'] > 0 ? '' : 'hidden' }}">
+                    {{ $stats['due_today'] ?? 0 }}
+                </span>
             </a>
 
             <!-- Vencen esta semana -->
             <a href="{{ route('emails.index', ['filter' => 'due_this_week']) }}"
+                data-filter="due_this_week"
                 class="flex items-center justify-between px-2 py-1.5 rounded-md mb-1 {{ request()->filter === 'due_this_week' ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                 <div class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,13 +174,14 @@
                     </svg>
                     <span>Vencen esta semana</span>
                 </div>
-                @if(isset($stats['due_this_week']) && $stats['due_this_week'] > 0)
-                    <span class="text-xs text-gray-400 font-medium">{{ $stats['due_this_week'] }}</span>
-                @endif
+                <span class="badge-count text-xs text-gray-400 font-medium {{ isset($stats['due_this_week']) && $stats['due_this_week'] > 0 ? '' : 'hidden' }}">
+                    {{ $stats['due_this_week'] ?? 0 }}
+                </span>
             </a>
 
             <!-- Pospuestos (Snoozed) -->
             <a href="{{ route('emails.index', ['filter' => 'snoozed']) }}"
+                data-filter="snoozed"
                 class="flex items-center justify-between px-2 py-1.5 rounded-md {{ request()->filter === 'snoozed' ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                 <div class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,9 +190,9 @@
                     </svg>
                     <span>Pospuestos</span>
                 </div>
-                @if(isset($stats['snoozed']) && $stats['snoozed'] > 0)
-                    <span class="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full font-medium">{{ $stats['snoozed'] }}</span>
-                @endif
+                <span class="badge-count text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full font-medium {{ isset($stats['snoozed']) && $stats['snoozed'] > 0 ? '' : 'hidden' }}">
+                    {{ $stats['snoozed'] ?? 0 }}
+                </span>
             </a>
         </div>
 

@@ -365,7 +365,8 @@
                                                     x-transition:enter="transition ease-out duration-100"
                                                     x-transition:enter-start="opacity-0 scale-95"
                                                     x-transition:enter-end="opacity-100 scale-100"
-                                                    class="fixed w-56 bg-white rounded-lg shadow-2xl border border-gray-200"
+                                                    class="fixed w-56 bg-white rounded-lg shadow-2xl border border-gray-200 due-date-dropdown"
+                                                    data-email-id="{{ $email->id }}"
                                                     :style="{ top: dueDateDropdownStyle.top, right: dueDateDropdownStyle.right, zIndex: 99999 }"
                                                     x-cloak>
                                                     <div class="py-1">
@@ -393,7 +394,7 @@
                                                             <span class="font-medium">Próxima semana</span>
                                                         </button>
 
-                                                        <div class="border-t border-gray-200 my-1"></div>
+                                                        <div class="border-t border-gray-200 my-1 due-date-separator"></div>
 
                                                         <!-- Selector personalizado -->
                                                         <div class="px-3 py-2">
@@ -405,12 +406,14 @@
                                                         </div>
 
                                                         @if($email->due_date)
-                                                        <div class="border-t border-gray-200 my-1"></div>
-                                                        <button @click.stop="removeDueDate({{ $email->id }}); dueDateOpen = false"
-                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-red-50 flex items-center gap-2 text-red-600 transition-colors">
-                                                            <span>❌</span>
-                                                            <span class="font-medium">Quitar fecha límite</span>
-                                                        </button>
+                                                        <div class="remove-due-date-btn">
+                                                            <div class="border-t border-gray-200 my-1"></div>
+                                                            <button @click.stop="removeDueDate({{ $email->id }}); dueDateOpen = false"
+                                                                class="w-full text-left px-3 py-2 text-xs hover:bg-red-50 flex items-center gap-2 text-red-600 transition-colors">
+                                                                <span>❌</span>
+                                                                <span class="font-medium">Quitar fecha límite</span>
+                                                            </button>
+                                                        </div>
                                                         @endif
                                                     </div>
                                                 </div>
@@ -544,7 +547,8 @@
                                                     x-transition:enter="transition ease-out duration-100"
                                                     x-transition:enter-start="opacity-0 scale-95"
                                                     x-transition:enter-end="opacity-100 scale-100"
-                                                    class="fixed w-56 bg-white rounded-lg shadow-2xl border border-gray-200"
+                                                    class="fixed w-56 bg-white rounded-lg shadow-2xl border border-gray-200 snooze-dropdown"
+                                                    data-email-id="{{ $email->id }}"
                                                     :style="{ top: snoozeDropdownStyle.top, right: snoozeDropdownStyle.right, zIndex: 99999 }"
                                                     x-cloak>
                                                     <div class="py-1">
@@ -577,7 +581,7 @@
                                                             <span class="font-medium">En 1 semana</span>
                                                         </button>
 
-                                                        <div class="border-t border-gray-200 my-1"></div>
+                                                        <div class="border-t border-gray-200 my-1 snooze-separator"></div>
 
                                                         <!-- Selector personalizado -->
                                                         <div class="px-3 py-2">
@@ -589,12 +593,14 @@
                                                         </div>
 
                                                         @if($email->isSnoozed())
-                                                        <div class="border-t border-gray-200 my-1"></div>
-                                                        <button @click.stop="wakeupEmail({{ $email->id }}); snoozeOpen = false"
-                                                            class="w-full text-left px-3 py-2 text-xs hover:bg-red-50 flex items-center gap-2 text-red-600 transition-colors">
-                                                            <span>❌</span>
-                                                            <span class="font-medium">Despertar ahora</span>
-                                                        </button>
+                                                        <div class="wakeup-btn">
+                                                            <div class="border-t border-gray-200 my-1"></div>
+                                                            <button @click.stop="wakeupEmail({{ $email->id }}); snoozeOpen = false"
+                                                                class="w-full text-left px-3 py-2 text-xs hover:bg-red-50 flex items-center gap-2 text-red-600 transition-colors">
+                                                                <span>❌</span>
+                                                                <span class="font-medium">Despertar ahora</span>
+                                                            </button>
+                                                        </div>
                                                         @endif
                                                     </div>
                                                 </div>
@@ -647,27 +653,30 @@
                                         </span>
                                     @endif
 
-                                    <!-- Due Date Badges -->
-                                    @if($email->isOverdue())
-                                        <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-100 text-red-700 animate-pulse" title="Venció: {{ formatDueDateFull($email->due_date) }}">
-                                            🚨 Vencido: {{ formatDueDateBadge($email->due_date) }}
-                                        </span>
-                                    @elseif($email->due_date && $email->due_date > now() && $email->due_date <= now()->addHours(24))
-                                        <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700" title="Vence: {{ formatDueDateFull($email->due_date) }}">
-                                            ⏰ Vence: {{ formatDueDateBadge($email->due_date) }}
-                                        </span>
-                                    @elseif($email->due_date)
-                                        <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-700" title="Vence: {{ formatDueDateFull($email->due_date) }}">
-                                            📅 {{ formatDueDateBadge($email->due_date) }}
-                                        </span>
-                                    @endif
+                                    <!-- Due Date & Snooze Badges Container -->
+                                    <span class="email-badges inline-flex items-center gap-2">
+                                        <!-- Due Date Badges -->
+                                        @if($email->isOverdue())
+                                            <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-100 text-red-700 animate-pulse" title="Venció: {{ formatDueDateFull($email->due_date) }}">
+                                                🚨 Vencido: {{ formatDueDateBadge($email->due_date) }}
+                                            </span>
+                                        @elseif($email->due_date && $email->due_date > now() && $email->due_date <= now()->addHours(24))
+                                            <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700" title="Vence: {{ formatDueDateFull($email->due_date) }}">
+                                                ⏰ Vence: {{ formatDueDateBadge($email->due_date) }}
+                                            </span>
+                                        @elseif($email->due_date)
+                                            <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-700" title="Vence: {{ formatDueDateFull($email->due_date) }}">
+                                                📅 {{ formatDueDateBadge($email->due_date) }}
+                                            </span>
+                                        @endif
 
-                                    <!-- Snooze Badge -->
-                                    @if($email->isSnoozed())
-                                        <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700" title="Pospuesto hasta: {{ formatDueDateFull($email->snoozed_until) }}">
-                                            💤 Hasta: {{ formatDueDateBadge($email->snoozed_until) }}
-                                        </span>
-                                    @endif
+                                        <!-- Snooze Badge -->
+                                        @if($email->isSnoozed())
+                                            <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700" title="Pospuesto hasta: {{ formatDueDateFull($email->snoozed_until) }}">
+                                                💤 Hasta: {{ formatDueDateBadge($email->snoozed_until) }}
+                                            </span>
+                                        @endif
+                                    </span>
 
                                     <!-- Vera Processed -->
                                     @if($email->vera_processed)
