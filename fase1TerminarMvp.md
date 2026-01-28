@@ -30,38 +30,47 @@ Verificar que todo funciona al 100%
 #### ✅ Funcionalidades a revisar:
 
 **1. Workflow States (Estados de emails)**
-- [ ] Verificar que los estados funcionan: unread, pending_validation, pending_response, in_progress, in_review, completed, archived, no_action_needed
-- [ ] Testear cambio de estados desde el dropdown
-- [ ] Verificar que los badges de colores se ven correctamente
-- [ ] Comprobar que los filtros por estado funcionan
+- [x] Verificar que los estados funcionan: unread, pending_validation, pending_response, in_progress, in_review, completed, archived, no_action_needed
+- [x] Testear cambio de estados desde el dropdown
+- [x] Verificar que los badges de colores se ven correctamente
+- [x] Comprobar que los filtros por estado funcionan
 
 **2. Carpetas Jerárquicas**
 - [x] Crear carpetas (OK - ya funciona)
 - [x] Subcarpetas recursivas (OK - arreglado hoy)
-- [ ] Mover emails entre carpetas
-- [ ] Eliminar carpetas
-- [ ] Editar carpetas (nombre, color, icono)
-- [ ] Verificar contador de emails por carpeta
+- [x] Mover emails entre carpetas
+- [x] Eliminar carpetas
+- [x] Eliminar carpetas
+- [x] Eliminar carpetas
+- [x] Eliminar carpetas
+- [x] Eliminar carpetas
+- [x] Editar carpetas (nombre, color, icono)
+- [x] Verificar contador de emails por carpeta
 
 **3. Búsqueda Avanzada**
-- [ ] Buscar por asunto
-- [ ] Buscar por remitente
-- [ ] Buscar por contenido
-- [ ] Filtros combinados (fecha + categoría + estado)
-- [ ] Verificar que la paginación funciona**
+- [x] Buscar por asunto
+- [x] Buscar por remitente
+- [x] Buscar por contenido
+- [x] Filtros combinados (fecha + categoría + estado)
+- [x] Verificar que la paginación funciona**
 
-**4. Borradores y Papelera**
-- [ ] Mover a papelera
-- [ ] Restaurar de papelera
-- [ ] Eliminar permanentemente
-- [ ] Vista de papelera
-- [ ] Crear y guardar borradores
+**4. Borradores y Papelera** ✅ 100% COMPLETADO
+- [x] Mover a papelera (individual y bulk)
+- [x] Restaurar de papelera
+- [x] Eliminar permanentemente
+- [x] Vista de papelera con sidebar sincronizado
+- [x] Crear y guardar borradores (modal funcional + AJAX)
+- [x] Vista de borradores con sidebar sincronizado
 
-**5. Due Dates y Snooze**
-- [ ] Asignar fecha límite a un email
-- [ ] Posponer email (snooze)
-- [ ] Alertas de emails vencidos
-- [ ] Mostrar emails con due date próximo
+**5. Due Dates y Snooze** ✅ 95% COMPLETADO
+- [x] Asignar fecha límite a un email
+- [x] Posponer email (snooze)
+- [x] Alertas de emails vencidos
+- [x] Mostrar emails con due date próximo
+- [x] Notificaciones dinámicas automáticas
+- [x] Sistema de polling cada 2 minutos
+- [x] Todo funciona sin reload (100% AJAX)
+- [ ] Testing completo final (pendiente verificación)
 
 **Bugs/Mejoras a documentar:**
 - Frontend: ¿Los estilos son consistentes?

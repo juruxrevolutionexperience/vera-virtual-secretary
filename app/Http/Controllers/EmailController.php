@@ -723,13 +723,43 @@ class EmailController extends Controller
         // Paginación
         $emails = $query->paginate(50);
 
-        // Estadísticas (como array para compatibilidad con sidebar)
+        // Estadísticas completas (para compatibilidad con sidebar)
+        $statsObj = Email::where('user_id', $user->id)
+            ->where('status', 'received')
+            ->where('is_deleted', false)
+            ->where('is_draft', false)
+            ->selectRaw('
+                COUNT(*) as total,
+                SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as unread,
+                SUM(CASE WHEN is_starred = 1 THEN 1 ELSE 0 END) as starred
+            ')
+            ->first();
+
+        $baseQuery = Email::where('user_id', $user->id)->where('status', 'received')->where('is_deleted', false)->where('is_draft', false);
+        $overdue = (clone $baseQuery)->overdue()->count();
+        $dueToday = (clone $baseQuery)
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', today())
+            ->where('workflow_status', '!=', 'completed')
+            ->where('workflow_status', '!=', 'archived')
+            ->count();
+        $dueThisWeek = (clone $baseQuery)
+            ->whereNotNull('due_date')
+            ->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])
+            ->where('workflow_status', '!=', 'completed')
+            ->where('workflow_status', '!=', 'archived')
+            ->count();
+        $snoozed = (clone $baseQuery)->snoozed()->count();
+
         $stats = [
-            'total' => Email::where('user_id', $user->id)->where('is_deleted', true)->count(),
-            'unread' => 0,
-            'starred' => 0,
+            'total' => $statsObj->total ?? 0,
+            'unread' => $statsObj->unread ?? 0,
+            'starred' => $statsObj->starred ?? 0,
             'urgent' => 0,
-            'can_restore' => $emails->count(),
+            'overdue' => $overdue,
+            'due_today' => $dueToday,
+            'due_this_week' => $dueThisWeek,
+            'snoozed' => $snoozed,
         ];
 
         return view('emails.trash', compact(
@@ -778,15 +808,43 @@ class EmailController extends Controller
         // Paginación
         $emails = $query->paginate(50);
 
-        // Estadísticas (como array para compatibilidad con sidebar)
+        // Estadísticas completas (para compatibilidad con sidebar)
+        $statsObj = Email::where('user_id', $user->id)
+            ->where('status', 'received')
+            ->where('is_deleted', false)
+            ->where('is_draft', false)
+            ->selectRaw('
+                COUNT(*) as total,
+                SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as unread,
+                SUM(CASE WHEN is_starred = 1 THEN 1 ELSE 0 END) as starred
+            ')
+            ->first();
+
+        $baseQuery = Email::where('user_id', $user->id)->where('status', 'received')->where('is_deleted', false)->where('is_draft', false);
+        $overdue = (clone $baseQuery)->overdue()->count();
+        $dueToday = (clone $baseQuery)
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', today())
+            ->where('workflow_status', '!=', 'completed')
+            ->where('workflow_status', '!=', 'archived')
+            ->count();
+        $dueThisWeek = (clone $baseQuery)
+            ->whereNotNull('due_date')
+            ->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])
+            ->where('workflow_status', '!=', 'completed')
+            ->where('workflow_status', '!=', 'archived')
+            ->count();
+        $snoozed = (clone $baseQuery)->snoozed()->count();
+
         $stats = [
-            'total' => Email::where('user_id', $user->id)
-                ->where('is_draft', true)
-                ->where('is_deleted', false)
-                ->count(),
-            'unread' => 0,
-            'starred' => 0,
+            'total' => $statsObj->total ?? 0,
+            'unread' => $statsObj->unread ?? 0,
+            'starred' => $statsObj->starred ?? 0,
             'urgent' => 0,
+            'overdue' => $overdue,
+            'due_today' => $dueToday,
+            'due_this_week' => $dueThisWeek,
+            'snoozed' => $snoozed,
         ];
 
         return view('emails.drafts', compact(
@@ -795,6 +853,58 @@ class EmailController extends Controller
             'hasEmailAccounts',
             'stats'
         ));
+    }
+
+    /**                                                                                                                                        
+     * Guardar email como borrador                                                                                                             
+     */
+    public function saveDraft(Request $request)
+    {
+        $validated = $request->validate([
+            'to' => 'required|email',
+            'subject' => 'required|string|max:255',
+            'body' => 'required|string',
+        ]);
+
+        $user = Auth::user();
+
+        // Obtener la cuenta de email del usuario (primera disponible)                                                                         
+        $emailAccount = EmailAccount::where('user_id', $user->id)->first();
+
+        if (!$emailAccount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes una cuenta de email configurada',
+            ], 400);
+        }
+
+        // Crear el borrador                                                                                                                   
+        $draft = Email::create([
+            'user_id' => $user->id,
+            'email_account_id' => $emailAccount->id,
+            'from_email' => $emailAccount->email_address,
+            'from_name' => $emailAccount->display_name ?? $user->name,
+            'to_email' => $validated['to'],
+            'to' => [['email' => $validated['to'], 'name' => '']],
+            'subject' => $validated['subject'],
+            'body_html' => nl2br(e($validated['body'])), // Convertir saltos de línea a <br> y escapar HTML                                    
+            'body_text' => $validated['body'],
+            'is_draft' => true,
+            'is_read' => true,
+            'status' => 'draft',
+            'workflow_status' => 'in_progress',
+            'last_activity_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Borrador guardado correctamente',
+            'draft' => [
+                'id' => $draft->id,
+                'subject' => $draft->subject,
+                'to' => $draft->to_email,
+            ],
+        ]);
     }
 
     /**                                                                                                                                        
@@ -850,11 +960,11 @@ class EmailController extends Controller
             ->where('status', 'received')
             ->where('is_deleted', false)
             ->where('is_draft', false)
-            ->where(function($q) use ($search) {
+            ->where(function ($q) use ($search) {
                 $q->where('subject', 'like', "%{$search}%")
-                  ->orWhere('from_name', 'like', "%{$search}%")
-                  ->orWhere('from_email', 'like', "%{$search}%")
-                  ->orWhere('body_text', 'like', "%{$search}%");
+                    ->orWhere('from_name', 'like', "%{$search}%")
+                    ->orWhere('from_email', 'like', "%{$search}%")
+                    ->orWhere('body_text', 'like', "%{$search}%");
             })
             ->orderBy('received_at', 'desc')
             ->limit(5)
@@ -862,7 +972,7 @@ class EmailController extends Controller
 
         return response()->json([
             'success' => true,
-            'emails' => $emails->map(function($email) {
+            'emails' => $emails->map(function ($email) {
                 return [
                     'id' => $email->id,
                     'subject' => $email->subject,

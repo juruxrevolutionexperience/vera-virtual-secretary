@@ -280,16 +280,12 @@ class EmailWorkflowController extends Controller
     public function restoreFromTrash(Email $email)
     {
         if ($email->user_id !== Auth::id()) {
-            return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
+            return back()->with('error', 'No autorizado');
         }
 
         $email = $this->workflowService->restoreFromTrash($email);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Email restaurado de papelera',
-            'email' => $email,
-        ]);
+        return redirect()->route('emails.trash')->with('success', 'Email restaurado correctamente');
     }
 
     /**
@@ -300,10 +296,6 @@ class EmailWorkflowController extends Controller
         $user = Auth::user();
         $deletedCount = $this->workflowService->emptyTrash($user);
 
-        return response()->json([
-            'success' => true,
-            'message' => "Papelera vaciada: {$deletedCount} emails eliminados",
-            'deleted_count' => $deletedCount,
-        ]);
+        return redirect()->route('emails.trash')->with('success', "Papelera vaciada: {$deletedCount} emails eliminados permanentemente");
     }
 }

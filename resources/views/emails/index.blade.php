@@ -116,6 +116,7 @@
                 opacity: 0;
                 transform: translateX(100%);
             }
+
             to {
                 opacity: 1;
                 transform: translateX(0);
@@ -301,13 +302,13 @@
                         <div class="text-center mb-8">
                             <div
                                 class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full
-                                                                                                                      mb-4 shadow-lg">
+                                                                                                                                  mb-4 shadow-lg">
                                 <!-- Animated envelope icon -->
                                 <svg class="w-10 h-10 text-white animate-pulse" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5
-                                                                                                                      19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                                                                                                  19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
                             </div>
                             <h2 class="text-3xl font-bold text-gray-900 mb-2">Sincronizando tu bandeja de entrada</h2>
@@ -323,7 +324,7 @@
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
                                 <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-500 ease-out
-                                                                                                                      shadow-lg"
+                                                                                                                                  shadow-lg"
                                     :style="'width: ' + progressPercentage + '%'" x-show="progressPercentage > 0"
                                     x-transition:enter="transition ease-out duration-300"
                                     x-transition:enter-start="opacity-0 transform scale-x-0"
@@ -362,8 +363,8 @@
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2
-                                                                                                                       2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0
-                                                                                                                      01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                                                                                                                   2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0
+                                                                                                                                  01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                                         </svg>
                                     </div>
                                 </div>
@@ -381,7 +382,7 @@
                                                 stroke-width="4"></circle>
                                             <path class="opacity-75" fill="currentColor"
                                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962
-                                                                                                                      7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                                                                                                                  7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                                             </path>
                                         </svg>
                                     </div>
@@ -395,7 +396,7 @@
                                 viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9
-                                                                                                                      9 0 0118 0z" />
+                                                                                                                                  9 0 0118 0z" />
                             </svg>
                             <div class="flex-1">
                                 <p class="text-sm text-blue-800 font-medium">Esto puede tardar unos minutos</p>
@@ -425,6 +426,72 @@
     <!-- Settings Modal (Estilo OpenAI) -->
     @include('components.settings-modal')
 
+    <!-- Modal Componer Email -->
+    <div x-data="{ composeOpen: false }" @open-compose.window="composeOpen = true"
+        @close-compose.window="composeOpen = false" x-show="composeOpen" x-cloak
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+
+        <div @click.away="composeOpen = false" x-show="composeOpen" x-transition
+            class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+                <h3 class="text-lg font-semibold text-gray-900">Nuevo Email</h3>
+                <button @click="composeOpen = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form id="compose-form" @submit.prevent="saveDraft()" class="px-6 py-4 space-y-4">
+
+                <!-- Para -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Para <span class="text-red-500">*</span>
+                    </label>
+                    <input type="email" id="compose-to" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500                        
+  focus:border-transparent" placeholder="destinatario@ejemplo.com">
+                </div>
+
+                <!-- Asunto -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Asunto <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="compose-subject" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500                        
+  focus:border-transparent" placeholder="Asunto del email">
+                </div>
+
+                <!-- Cuerpo -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Mensaje <span class="text-red-500">*</span>
+                    </label>
+                    <textarea id="compose-body" required rows="10" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500                     
+  focus:border-transparent" placeholder="Escribe tu mensaje aquí..."></textarea>
+                </div>
+
+                <!-- Botones -->
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                    <button type="button" @click="composeOpen = false"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                        Cancelar
+                    </button>
+
+                    <button type="submit"
+                        class="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors">
+                        💾 Guardar como Borrador
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
     <!-- Portal para dropdowns (fuera del flujo con overflow) -->
     <div id="dropdowns-portal" class="fixed" style="z-index: 99999;"></div>
 
@@ -432,7 +499,7 @@
         // ==========================================
         // NOTIFICACIONES DE DUE DATES AL CARGAR
         // ==========================================
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // Inicializar stats del servidor (para evitar notificaciones duplicadas)
             const overdue = {{ $stats['overdue'] ?? 0 }};
             const dueToday = {{ $stats['due_today'] ?? 0 }};
@@ -1103,14 +1170,34 @@
             }
         }
 
+        // ==========================================
+        // ALPINE STORE - Para compartir estado entre componentes
+        // ==========================================
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('emails', {
+                selectedEmails: [],
+                showBulkActions: false
+            });
+        });
+
         function emailApp() {
             return {
                 currentStatusFilter: '',
-                allEmails: [], // Guardará todos los emails cargados     
+                allEmails: [], // Guardará todos los emails cargados
                 selectedEmails: [],
                 showBulkActions: false,
                 currentFilter: '{{ request()->filter ?? "all" }}',
                 currentCategory: '{{ request()->category ?? "" }}',
+
+                init() {
+                    // Sincronizar con el store de Alpine
+                    this.$watch('selectedEmails', (value) => {
+                        if (Alpine.store) {
+                            Alpine.store('emails').selectedEmails = value;
+                            Alpine.store('emails').showBulkActions = value.length > 0;
+                        }
+                    });
+                },
 
                 toggleEmailSelection(emailId) {
                     if (this.selectedEmails.includes(emailId)) {
@@ -1928,7 +2015,7 @@
                 const now = new Date();
                 let dueDate;
 
-                switch(preset) {
+                switch (preset) {
                     case 'today':
                         dueDate = new Date(now.setHours(23, 59, 59, 999));
                         break;
@@ -2146,7 +2233,7 @@
                 const now = new Date();
                 let snoozeDate;
 
-                switch(preset) {
+                switch (preset) {
                     case '1hour':
                         snoozeDate = new Date(now.getTime() + 1 * 60 * 60 * 1000);
                         break;
@@ -2373,7 +2460,7 @@
                 const now = new Date();
                 let dueDate;
 
-                switch(preset) {
+                switch (preset) {
                     case 'today':
                         dueDate = new Date(now.setHours(23, 59, 59, 999));
                         break;
@@ -2466,7 +2553,7 @@
                 const now = new Date();
                 let snoozeDate;
 
-                switch(preset) {
+                switch (preset) {
                     case '1hour':
                         snoozeDate = new Date(now.getTime() + 1 * 60 * 60 * 1000);
                         break;
@@ -2537,6 +2624,177 @@
             } catch (error) {
                 console.error('❌ Error en bulk snooze:', error);
                 alert('Error al posponer emails. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: MOVER EMAIL A PAPELERA
+        // ==========================================
+        async function moveToTrash(emailId) {
+            try {
+                const response = await fetch(`/email-workflow/${emailId}/move-to-trash`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) throw new Error('Error al mover a papelera');
+
+                const data = await response.json();
+                console.log('✅ Email movido a papelera:', data);
+
+                showNotification('Email movido a papelera', 'success');
+
+                // Eliminar email del DOM sin reload
+                const emailElement = document.getElementById(`email-${emailId}`);
+                if (emailElement) {
+                    emailElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    emailElement.style.opacity = '0';
+                    emailElement.style.transform = 'translateX(-20px)';
+                    setTimeout(() => emailElement.remove(), 300);
+                }
+
+                // Actualizar estadísticas del sidebar
+                updateSidebarStats();
+
+            } catch (error) {
+                console.error('❌ Error al mover a papelera:', error);
+                alert('Error al mover el email a papelera. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: BULK MOVE TO TRASH
+        // ==========================================
+        async function bulkMoveToTrash() {
+            const selectedIds = Alpine.store ? Alpine.store('emails')?.selectedEmails : [];
+            if (!selectedIds || selectedIds.length === 0) {
+                alert('No hay emails seleccionados');
+                return;
+            }
+
+            // Confirmación
+            const confirmed = confirm(`¿Mover ${selectedIds.length} email(s) a la papelera?`);
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch('/email-workflow/bulk/move-to-trash', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email_ids: selectedIds })
+                });
+
+                if (!response.ok) throw new Error('Error al mover emails a papelera');
+
+                const data = await response.json();
+                console.log(`✅ ${data.moved_count} email(s) movidos a papelera`);
+
+                showNotification(`${data.moved_count} email(s) movidos a papelera`, 'success');
+
+                // Eliminar emails del DOM sin reload
+                selectedIds.forEach(emailId => {
+                    const emailElement = document.getElementById(`email-${emailId}`);
+                    if (emailElement) {
+                        emailElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        emailElement.style.opacity = '0';
+                        emailElement.style.transform = 'translateX(-20px)';
+                        setTimeout(() => emailElement.remove(), 300);
+                    }
+                });
+
+                // Limpiar selección
+                if (Alpine.store && Alpine.store('emails')) {
+                    Alpine.store('emails').selectedEmails = [];
+                    Alpine.store('emails').showBulkActions = false;
+                }
+
+                // Actualizar estadísticas del sidebar
+                updateSidebarStats();
+
+            } catch (error) {
+                console.error('❌ Error en bulk move to trash:', error);
+                alert('Error al mover emails a papelera. Por favor, inténtalo de nuevo.');
+            }
+        }
+
+        // ==========================================                                                                                      
+        // FUNCIÓN: GUARDAR BORRADOR                                                                                                       
+        // ==========================================                                                                                      
+        async function saveDraft() {
+            try {
+                // Obtener valores del formulario                                                                                          
+                const to = document.getElementById('compose-to').value.trim();
+                const subject = document.getElementById('compose-subject').value.trim();
+                const body = document.getElementById('compose-body').value.trim();
+
+                // Validación básica                                                                                                       
+                if (!to || !subject || !body) {
+                    alert('Por favor completa todos los campos');
+                    return;
+                }
+
+                // Validar formato de email                                                                                                
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(to)) {
+                    alert('Por favor ingresa un email válido');
+                    return;
+                }
+
+                console.log('📧 Guardando borrador...', { to, subject });
+
+                // Enviar al backend                                                                                                       
+                const response = await fetch('/emails/drafts/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        to: to,
+                        subject: subject,
+                        body: body
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Error al guardar borrador');
+                }
+
+                const data = await response.json();
+                console.log('✅ Borrador guardado:', data);
+
+                // Mostrar notificación de éxito                                                                                           
+                showNotification('Borrador guardado correctamente', 'success');
+
+                // Limpiar formulario                                                                                                      
+                document.getElementById('compose-to').value = '';
+                document.getElementById('compose-subject').value = '';
+                document.getElementById('compose-body').value = '';
+
+                // Cerrar modal                                                                                                            
+                // Usamos Alpine para cerrar el modal                                                                                      
+                const event = new CustomEvent('close-compose');
+                window.dispatchEvent(event);
+
+                // Opcionalmente redirigir a la vista de borradores                                                                        
+                setTimeout(() => {
+                    if (confirm('Borrador guardado. ¿Quieres ver tus borradores?')) {
+                        window.location.href = '/emails/drafts';
+                    }
+                }, 500);
+
+            } catch (error) {
+                console.error('❌ Error al guardar borrador:', error);
+                alert('Error al guardar el borrador: ' + error.message);
             }
         }
 

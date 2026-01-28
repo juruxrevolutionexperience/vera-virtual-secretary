@@ -134,6 +134,8 @@ Route::middleware(['auth'])->prefix('emails')->name('emails.')->group(function (
     // Vistas especiales (antes de rutas dinámicas)
     Route::get('/trash', [EmailController::class, 'trash'])->name('trash');
     Route::get('/drafts', [EmailController::class, 'drafts'])->name('drafts');
+    // Guardar borrador de email (AJAX)
+    Route::post('/drafts/save', [EmailController::class, 'saveDraft'])->name('save-draft');
 
     // Vista principal de emails
     Route::get('/', [EmailController::class, 'index'])->name('index');
@@ -153,6 +155,7 @@ Route::middleware(['auth'])->prefix('emails')->name('emails.')->group(function (
 
     // Acciones masivas
     Route::post('/bulk-action', [EmailController::class, 'bulkAction'])->name('bulk-action');
+
 });
 
 // ========================================

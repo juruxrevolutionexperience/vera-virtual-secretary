@@ -8,7 +8,8 @@
             </div>
             <span class="text-gray-900 font-semibold text-sm">Vera</span>
         </a>
-        <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100">
+        <button onclick="toggleSidebar()"
+            class="md:hidden text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -29,11 +30,10 @@
         <div class="h-px bg-gray-200 my-3"></div>
 
         <!-- Compose Button -->
-        <button
-            class="w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md mb-4 font-medium transition-colors">
+        <button @click="$dispatch('open-compose')" class="w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md mb-4 font-medium
+   transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 4v16m8-8H4" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             <span>Nuevo Email</span>
         </button>
@@ -66,7 +66,8 @@
                     <span>No leídos</span>
                 </div>
                 @if($stats['unread'] > 0)
-                    <span class="text-xs text-white bg-purple-600 px-1.5 py-0.5 rounded-full font-medium">{{ $stats['unread'] }}</span>
+                    <span
+                        class="text-xs text-white bg-purple-600 px-1.5 py-0.5 rounded-full font-medium">{{ $stats['unread'] }}</span>
                 @endif
             </a>
 
@@ -94,7 +95,8 @@
                     <span>Urgentes</span>
                 </div>
                 @if($stats['urgent'] > 0)
-                    <span class="text-xs text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full font-medium">{{ $stats['urgent'] }}</span>
+                    <span
+                        class="text-xs text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full font-medium">{{ $stats['urgent'] }}</span>
                 @endif
             </a>
 
@@ -132,8 +134,7 @@
             </div>
 
             <!-- Vencidos -->
-            <a href="{{ route('emails.index', ['filter' => 'overdue']) }}"
-                data-filter="overdue"
+            <a href="{{ route('emails.index', ['filter' => 'overdue']) }}" data-filter="overdue"
                 class="flex items-center justify-between px-2 py-1.5 rounded-md mb-1 {{ request()->filter === 'overdue' ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                 <div class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,14 +143,14 @@
                     </svg>
                     <span>Vencidos</span>
                 </div>
-                <span class="badge-count text-xs text-white bg-red-600 px-1.5 py-0.5 rounded-full font-medium animate-pulse {{ isset($stats['overdue']) && $stats['overdue'] > 0 ? '' : 'hidden' }}">
+                <span
+                    class="badge-count text-xs text-white bg-red-600 px-1.5 py-0.5 rounded-full font-medium animate-pulse {{ isset($stats['overdue']) && $stats['overdue'] > 0 ? '' : 'hidden' }}">
                     {{ $stats['overdue'] ?? 0 }}
                 </span>
             </a>
 
             <!-- Vencen hoy -->
-            <a href="{{ route('emails.index', ['filter' => 'due_today']) }}"
-                data-filter="due_today"
+            <a href="{{ route('emails.index', ['filter' => 'due_today']) }}" data-filter="due_today"
                 class="flex items-center justify-between px-2 py-1.5 rounded-md mb-1 {{ request()->filter === 'due_today' ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                 <div class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,14 +159,14 @@
                     </svg>
                     <span>Vencen hoy</span>
                 </div>
-                <span class="badge-count text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full font-medium {{ isset($stats['due_today']) && $stats['due_today'] > 0 ? '' : 'hidden' }}">
+                <span
+                    class="badge-count text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full font-medium {{ isset($stats['due_today']) && $stats['due_today'] > 0 ? '' : 'hidden' }}">
                     {{ $stats['due_today'] ?? 0 }}
                 </span>
             </a>
 
             <!-- Vencen esta semana -->
-            <a href="{{ route('emails.index', ['filter' => 'due_this_week']) }}"
-                data-filter="due_this_week"
+            <a href="{{ route('emails.index', ['filter' => 'due_this_week']) }}" data-filter="due_this_week"
                 class="flex items-center justify-between px-2 py-1.5 rounded-md mb-1 {{ request()->filter === 'due_this_week' ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                 <div class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,14 +175,14 @@
                     </svg>
                     <span>Vencen esta semana</span>
                 </div>
-                <span class="badge-count text-xs text-gray-400 font-medium {{ isset($stats['due_this_week']) && $stats['due_this_week'] > 0 ? '' : 'hidden' }}">
+                <span
+                    class="badge-count text-xs text-gray-400 font-medium {{ isset($stats['due_this_week']) && $stats['due_this_week'] > 0 ? '' : 'hidden' }}">
                     {{ $stats['due_this_week'] ?? 0 }}
                 </span>
             </a>
 
             <!-- Pospuestos (Snoozed) -->
-            <a href="{{ route('emails.index', ['filter' => 'snoozed']) }}"
-                data-filter="snoozed"
+            <a href="{{ route('emails.index', ['filter' => 'snoozed']) }}" data-filter="snoozed"
                 class="flex items-center justify-between px-2 py-1.5 rounded-md {{ request()->filter === 'snoozed' ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
                 <div class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,7 +191,8 @@
                     </svg>
                     <span>Pospuestos</span>
                 </div>
-                <span class="badge-count text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full font-medium {{ isset($stats['snoozed']) && $stats['snoozed'] > 0 ? '' : 'hidden' }}">
+                <span
+                    class="badge-count text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full font-medium {{ isset($stats['snoozed']) && $stats['snoozed'] > 0 ? '' : 'hidden' }}">
                     {{ $stats['snoozed'] ?? 0 }}
                 </span>
             </a>
@@ -224,11 +226,10 @@
         <div class="mb-4" x-data="foldersTree()">
             <div class="flex justify-between items-center px-2 mb-1">
                 <p class="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Mis Carpetas</p>
-                <button @click="openCreateFolderModal()"
-                    class="text-purple-600 hover:text-purple-800 transition-colors"
+                <button @click="openCreateFolderModal()" class="text-purple-600 hover:text-purple-800 transition-colors"
                     title="Nueva carpeta">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
                 </button>
             </div>
@@ -237,9 +238,12 @@
             <div id="folders-tree-container">
                 <template x-if="loading">
                     <div class="text-center py-3">
-                        <svg class="animate-spin h-4 w-4 mx-auto text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        <svg class="animate-spin h-4 w-4 mx-auto text-gray-400" xmlns="http://www.w3.org/2000/svg"
+                            fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                         </svg>
                     </div>
                 </template>
@@ -258,18 +262,15 @@
             </div>
 
             <!-- Menú contextual de carpetas -->
-            <div x-show="contextMenuOpen"
-                 x-transition
-                 @click.away="closeContextMenu()"
-                 :style="`position: fixed; top: ${contextMenuPosition.y}px; left: ${contextMenuPosition.x}px; z-index: 9999;`"
-                 class="w-40 bg-white rounded-lg shadow-2xl border border-gray-200 py-1"
-                 style="display: none;">
+            <div x-show="contextMenuOpen" x-transition @click.away="closeContextMenu()"
+                :style="`position: fixed; top: ${contextMenuPosition.y}px; left: ${contextMenuPosition.x}px; z-index: 9999;`"
+                class="w-40 bg-white rounded-lg shadow-2xl border border-gray-200 py-1" style="display: none;">
 
                 <button @click="editFolder(contextMenuFolderId)"
-                        class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left">
+                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                     <span>Editar</span>
                 </button>
@@ -277,10 +278,10 @@
                 <div class="h-px bg-gray-200 my-1"></div>
 
                 <button @click="deleteFolder(contextMenuFolderId)"
-                        class="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left">
+                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                     <span>Eliminar</span>
                 </button>
@@ -327,10 +328,8 @@
                             d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
                     </svg>
                     <span>Idioma</span>
-                    <svg class="w-3 h-3 ml-auto text-gray-400" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 5l7 7-7 7" />
+                    <svg class="w-3 h-3 ml-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                     </svg>
                 </a>
 
@@ -370,10 +369,8 @@
                             d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span>Más información</span>
-                    <svg class="w-3 h-3 ml-auto text-gray-400" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 5l7 7-7 7" />
+                    <svg class="w-3 h-3 ml-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                     </svg>
                 </a>
 
@@ -384,8 +381,7 @@
                     @csrf
                     <button type="submit"
                         class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left">
-                        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>

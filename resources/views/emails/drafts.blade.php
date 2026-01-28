@@ -16,7 +16,7 @@
 
 <body class="antialiased bg-[#fafafa] font-['Inter'] text-[#1f2937]">
 
-<div class="flex min-h-screen">
+<div class="flex min-h-screen" x-data="emailApp()">
     <!-- Sidebar -->
     @include('emails.partials.sidebar')
 
