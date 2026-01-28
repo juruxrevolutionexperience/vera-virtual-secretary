@@ -223,8 +223,12 @@ Route::middleware(['auth'])->prefix('email-workflow')->name('email-workflow.')->
 
 Route::middleware(['auth'])->prefix('email-templates')->name('email-templates.')->group(function () {
     Route::get('/', [EmailTemplateController::class, 'index'])->name('index');
+    Route::get('/manage', function () {
+        return view('email-templates.index');
+    })->name('manage');
     Route::post('/', [EmailTemplateController::class, 'store'])->name('store');
     Route::get('/stats', [EmailTemplateController::class, 'stats'])->name('stats');
+    Route::post('/{template}/render', [EmailTemplateController::class, 'render'])->name('render');
     Route::get('/{template}', [EmailTemplateController::class, 'show'])->name('show');
     Route::put('/{template}', [EmailTemplateController::class, 'update'])->name('update');
     Route::delete('/{template}', [EmailTemplateController::class, 'destroy'])->name('destroy');

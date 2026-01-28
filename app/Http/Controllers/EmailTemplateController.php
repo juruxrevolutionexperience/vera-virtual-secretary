@@ -163,4 +163,25 @@ class EmailTemplateController extends Controller
             'stats' => $stats,
         ]);
     }
+
+    /**
+     * Renderizar template con datos específicos (preview)
+     */
+    public function render(Request $request, EmailTemplate $template)
+    {
+        if ($template->user_id !== Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
+        }
+
+        $validated = $request->validate([
+            'data' => 'required|array',
+        ]);
+
+        $rendered = $template->render($validated['data']);
+
+        return response()->json([
+            'success' => true,
+            'rendered' => $rendered,
+        ]);
+    }
 }

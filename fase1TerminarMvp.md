@@ -83,13 +83,18 @@ Verificar que todo funciona al 100%
 
 #### ✅ Funcionalidades a revisar:
 
-**1. Templates de Respuesta**
-- [ ] Crear template con placeholders ({nombre}, {fecha}, etc.)
-- [ ] Editar templates
-- [ ] Eliminar templates
-- [ ] Usar template para responder email
-- [ ] Preview del template antes de enviar
-- [ ] Verificar que los placeholders se reemplazan correctamente
+**1. Templates de Respuesta** ✅ 50% COMPLETADO (Implementado hoy 28/01)
+- [x] Crear template con placeholders ({{nombre}}, {{fecha}}, etc.)
+- [x] Editar templates
+- [x] Eliminar templates
+- [x] Vista de gestión completa (`/email-templates/manage`)
+- [x] Filtros y búsqueda
+- [x] Activar/desactivar templates
+- [x] Duplicar templates
+- [x] Sistema de templates por defecto
+- [ ] Usar template para responder email (MAÑANA)
+- [ ] Preview del template antes de enviar (MAÑANA)
+- [ ] Verificar que placeholders se reemplazan (MAÑANA)
 
 **2. Emails Programados (Scheduled Emails)**
 - [ ] Programar envío de email para fecha futura
