@@ -213,7 +213,7 @@
                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                               placeholder="Contenido del email..."></textarea>
                     <p class="mt-2 text-xs text-gray-500">
-                        💡 Usa placeholders: {{nombre}}, {{fecha}}, {{asunto_original}}, {{remitente}}
+                        💡 Usa placeholders: @{{nombre}}, @{{fecha}}, @{{asunto_original}}, @{{remitente}}
                     </p>
                 </div>
 

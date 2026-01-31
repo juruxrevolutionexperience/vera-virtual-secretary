@@ -7,6 +7,7 @@ use App\Models\EmailCategory;
 use App\Models\EmailAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class EmailController extends Controller
 {
@@ -1119,5 +1120,122 @@ class EmailController extends Controller
                 'total' => $emails->total(),
             ]
         ]);
+    }
+
+    /**
+     * Enviar respuesta a un email (manual del usuario)
+     */
+    public function sendReply(Request $request, Email $email)
+    {
+        // Validar que el email pertenece al usuario
+        if ($email->user_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No autorizado'
+            ], 403);
+        }
+
+        // Validar datos de entrada
+        $validated = $request->validate([
+            'to_email' => 'required|email',
+            'subject' => 'required|string|max:500',
+            'body' => 'required|string',
+            'cc' => 'nullable|string',
+            'bcc' => 'nullable|string',
+        ]);
+
+        try {
+            // Obtener cuenta de email del usuario
+            $emailAccount = \App\Models\EmailAccount::where('user_id', Auth::id())
+                ->where('provider', $email->provider ?? 'gmail')
+                ->where('sync_enabled', true)
+                ->first();
+
+            if (!$emailAccount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay cuenta de email configurada'
+                ], 400);
+            }
+
+            // Preparar datos del email
+            $emailData = [
+                'from' => $emailAccount->email_address,
+                'to' => $validated['to_email'],
+                'subject' => $validated['subject'],
+                'body' => $validated['body'],
+                'in_reply_to' => $email->provider_message_id,
+                'references' => $email->provider_message_id,
+                'thread_id' => $email->provider_thread_id,
+            ];
+
+            // Agregar CC y BCC si existen
+            if (!empty($validated['cc'])) {
+                $emailData['cc'] = $validated['cc'];
+            }
+            if (!empty($validated['bcc'])) {
+                $emailData['bcc'] = $validated['bcc'];
+            }
+
+            // Enviar según proveedor
+            if ($emailAccount->provider === 'gmail') {
+                $gmailService = new \App\Services\GmailSyncService();
+                $sentEmail = $gmailService->sendEmail($emailAccount, $emailData);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Proveedor no soportado aún'
+                ], 400);
+            }
+
+            if ($sentEmail) {
+                // Marcar email original como respondido
+                $email->update([
+                    'replied_at' => now(),
+                    'workflow_status' => 'completed',
+                ]);
+
+                // Registrar actividad
+                \App\Models\VeraActivityLog::create([
+                    'user_id' => Auth::id(),
+                    'activity_type' => 'email_replied',
+                    'email_id' => $email->id,
+                    'title' => 'Respuesta manual enviada',
+                    'description' => 'El usuario respondió manualmente al email',
+                    'metadata' => [
+                        'to' => $validated['to_email'],
+                        'subject' => $validated['subject'],
+                        'sent_email_id' => $sentEmail->id,
+                        'manual_reply' => true,
+                    ],
+                    'status' => 'completed',
+                    'counts_towards_limit' => false, // No cuenta hacia límite porque es manual
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Respuesta enviada exitosamente',
+                    'sent_email' => $sentEmail,
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al enviar el email. Por favor intenta nuevamente.'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error enviando respuesta manual', [
+                'email_id' => $email->id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al enviar: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

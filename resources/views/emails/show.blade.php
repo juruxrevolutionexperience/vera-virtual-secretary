@@ -45,6 +45,10 @@
             color: #3b82f6;
             text-decoration: underline;
         }
+
+        [x-cloak] {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -70,7 +74,25 @@
                         </a>
 
                         <!-- Acciones -->
-                        <div class="flex items-center space-x-2">
+                        <div class="flex items-center space-x-2" x-data>
+                            <!-- Responder -->
+                            <button
+                                @click="$dispatch('open-reply-modal', {
+                                    emailId: {{ $email->id }},
+                                    emailAccountId: {{ $email->email_account_id }},
+                                    subject: {{ Js::from('Re: ' . $email->subject) }},
+                                    toEmail: {{ Js::from($email->from_email) }},
+                                    toName: {{ Js::from($email->from_name ?? '') }},
+                                    originalSubject: {{ Js::from($email->subject) }}
+                                })"
+                                class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                </svg>
+                                Responder
+                            </button>
+
                             <!-- Destacar -->
                             <button onclick="toggleStar({{ $email->id }})"
                                     class="p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -260,9 +282,473 @@
 
     <script>
         // ==========================================
-        // COMPONENTE ALPINE.JS: ÁRBOL DE CARPETAS
+        // COMPONENTES ALPINE.JS
         // ==========================================
         document.addEventListener('alpine:init', () => {
+            // Componente: Reply Composer (Modal de Respuesta)
+            Alpine.data('replyComposer', () => ({
+                // Estado
+                isOpen: false,
+                loading: false,
+                emailId: null,
+                emailAccountId: null,
+                toEmail: '',
+                toName: '',
+                subject: '',
+                message: '',
+                originalSubject: '',
+
+                // Inicialización
+                init() {
+                    // Escuchar evento de template seleccionado
+                    window.addEventListener('template-selected', (e) => {
+                        this.insertTemplate(e.detail);
+                    });
+                },
+
+                // Abrir composer
+                openComposer(data) {
+                    console.log('🔵 Modal abriendo con datos:', data);
+                    this.emailId = data.emailId;
+                    this.emailAccountId = data.emailAccountId;
+                    this.toEmail = data.toEmail;
+                    this.toName = data.toName || '';
+                    this.subject = data.subject;
+                    this.originalSubject = data.originalSubject;
+                    this.message = '';
+                    this.isOpen = true;
+                    console.log('✅ Modal abierto:', this.isOpen);
+                },
+
+                // Cerrar composer
+                closeComposer() {
+                    if (this.loading) return;
+
+                    // Confirmar si hay contenido escrito
+                    if (this.message.trim()) {
+                        if (!confirm('¿Descartar el mensaje?')) {
+                            return;
+                        }
+                    }
+
+                    this.isOpen = false;
+                    this.resetForm();
+                },
+
+                // Resetear formulario
+                resetForm() {
+                    this.emailId = null;
+                    this.emailAccountId = null;
+                    this.toEmail = '';
+                    this.toName = '';
+                    this.subject = '';
+                    this.message = '';
+                    this.originalSubject = '';
+                    this.loading = false;
+                },
+
+                // Enviar respuesta
+                async sendReply() {
+                    if (!this.message.trim()) {
+                        alert('Por favor escribe un mensaje');
+                        return;
+                    }
+
+                    this.loading = true;
+
+                    try {
+                        const response = await fetch(`/emails/${this.emailId}/reply`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                to_email: this.toEmail,
+                                subject: this.subject,
+                                body: this.message,
+                            }),
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            // Mostrar mensaje de éxito
+                            alert('✅ Respuesta enviada exitosamente');
+
+                            // Cerrar modal
+                            this.isOpen = false;
+                            this.resetForm();
+
+                            // Recargar página o actualizar UI
+                            window.location.reload();
+                        } else {
+                            alert('❌ Error: ' + (data.message || 'No se pudo enviar el email'));
+                        }
+
+                    } catch (error) {
+                        console.error('Error enviando respuesta:', error);
+                        alert('❌ Error al enviar el email. Por favor intenta nuevamente.');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                // Abrir selector de templates
+                openTemplateSelector() {
+                    window.dispatchEvent(new CustomEvent('open-template-selector', {
+                        detail: {
+                            emailId: this.emailId,
+                            originalSubject: this.originalSubject,
+                            toName: this.toName,
+                            toEmail: this.toEmail,
+                        }
+                    }));
+                },
+
+                // Insertar template seleccionado
+                insertTemplate(data) {
+                    if (data.subject) {
+                        this.subject = data.subject;
+                    }
+                    if (data.body) {
+                        this.message = data.body;
+                    }
+                },
+
+                // Abrir modal de programación
+                openScheduleModal() {
+                    window.dispatchEvent(new CustomEvent('open-schedule-modal', {
+                        detail: {
+                            emailId: this.emailId,
+                            emailAccountId: this.emailAccountId,
+                            toEmail: this.toEmail,
+                            subject: this.subject,
+                            message: this.message,
+                        }
+                    }));
+                },
+            }));
+
+            // Componente: Schedule Email Modal (Modal de Programación)
+            Alpine.data('scheduleEmailModal', () => ({
+                isOpen: false,
+                loading: false,
+                scheduledDate: '',
+                scheduledTime: '',
+                minDate: '',
+                emailData: null,
+
+                init() {
+                    // Establecer fecha mínima (hoy)
+                    const today = new Date();
+                    this.minDate = today.toISOString().split('T')[0];
+                    console.log('✅ Schedule Email Modal inicializado');
+                },
+
+                openModal(data) {
+                    console.log('🔵 Abriendo modal de programación:', data);
+                    this.emailData = data;
+                    this.isOpen = true;
+                    // Resetear valores
+                    this.scheduledDate = '';
+                    this.scheduledTime = '';
+                },
+
+                closeModal() {
+                    this.isOpen = false;
+                    this.emailData = null;
+                },
+
+                setSchedule(option) {
+                    const now = new Date();
+
+                    switch (option) {
+                        case '1hour':
+                            now.setHours(now.getHours() + 1);
+                            break;
+                        case '3hours':
+                            now.setHours(now.getHours() + 3);
+                            break;
+                        case 'tomorrow9am':
+                            now.setDate(now.getDate() + 1);
+                            now.setHours(9, 0, 0);
+                            break;
+                        case 'nextMonday9am':
+                            const daysUntilMonday = (8 - now.getDay()) % 7 || 7;
+                            now.setDate(now.getDate() + daysUntilMonday);
+                            now.setHours(9, 0, 0);
+                            break;
+                    }
+
+                    this.scheduledDate = now.toISOString().split('T')[0];
+                    this.scheduledTime = now.toTimeString().slice(0, 5);
+                },
+
+                getFormattedSchedule() {
+                    if (!this.scheduledDate || !this.scheduledTime) return '';
+
+                    const date = new Date(`${this.scheduledDate}T${this.scheduledTime}`);
+                    return date.toLocaleString('es-ES', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                },
+
+                async confirmSchedule() {
+                    if (!this.scheduledDate || !this.scheduledTime) {
+                        alert('Por favor selecciona fecha y hora');
+                        return;
+                    }
+
+                    this.loading = true;
+
+                    try {
+                        const scheduledAt = `${this.scheduledDate} ${this.scheduledTime}:00`;
+
+                        const response = await fetch('/scheduled-emails', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                email_account_id: this.emailData.emailAccountId,
+                                original_email_id: this.emailData.emailId,
+                                to: this.emailData.toEmail,
+                                subject: this.emailData.subject,
+                                body: this.emailData.message,
+                                scheduled_at: scheduledAt,
+                            }),
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            alert('✅ Email programado exitosamente para: ' + this.getFormattedSchedule());
+                            this.closeModal();
+
+                            // Cerrar también el composer
+                            window.dispatchEvent(new Event('close-reply-modal'));
+
+                            // Recargar página
+                            window.location.reload();
+                        } else {
+                            alert('❌ Error: ' + (data.message || 'No se pudo programar el email'));
+                        }
+
+                    } catch (error) {
+                        console.error('Error programando email:', error);
+                        alert('❌ Error al programar el email');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+            }));
+
+            // Componente: Template Selector (Modal de Selección de Templates)
+            Alpine.data('templateSelector', () => ({
+                // Estado
+                isOpen: false,
+                loading: false,
+                templates: [],
+                selectedTemplate: null,
+                previewMode: false,
+                renderedPreview: null,
+                emailId: null,
+                originalSubject: '',
+                toName: '',
+                toEmail: '',
+
+                // Inicialización
+                init() {
+                    console.log('✅ Template Selector inicializado');
+                },
+
+                // Abrir selector
+                async openSelector(data) {
+                    console.log('🔵 Abriendo selector de templates con datos:', data);
+                    this.emailId = data.emailId;
+                    this.originalSubject = data.originalSubject;
+                    this.toName = data.toName;
+                    this.toEmail = data.toEmail;
+                    this.isOpen = true;
+                    this.previewMode = false;
+                    this.selectedTemplate = null;
+                    this.renderedPreview = null;
+
+                    // Cargar templates
+                    await this.loadTemplates();
+                },
+
+                // Cerrar selector
+                closeSelector() {
+                    this.isOpen = false;
+                    this.templates = [];
+                    this.selectedTemplate = null;
+                    this.previewMode = false;
+                    this.renderedPreview = null;
+                },
+
+                // Cargar templates activos
+                async loadTemplates() {
+                    this.loading = true;
+
+                    try {
+                        const response = await fetch('/email-templates?active_only=1&type=reply', {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.templates = data.templates || [];
+                            console.log('✅ Templates cargados:', this.templates.length);
+                        } else {
+                            console.error('❌ Error cargando templates:', data);
+                            this.templates = [];
+                        }
+
+                    } catch (error) {
+                        console.error('❌ Error en loadTemplates:', error);
+                        this.templates = [];
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                // Seleccionar template
+                selectTemplate(template) {
+                    this.selectedTemplate = template;
+                    console.log('✅ Template seleccionado:', template.name);
+                },
+
+                // Preview de template con datos reales
+                async previewTemplate(template) {
+                    console.log('🔵 Generando preview para:', template.name);
+                    this.selectedTemplate = template;
+                    this.previewMode = true;
+                    this.loading = true;
+
+                    try {
+                        const response = await fetch(`/email-templates/${template.id}/render`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                data: {
+                                    nombre: this.toName || 'Usuario',
+                                    fecha: new Date().toLocaleDateString('es-ES', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                    }),
+                                    asunto_original: this.originalSubject,
+                                    remitente: '{{ auth()->user()->name ?? "Yo" }}',
+                                }
+                            }),
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.renderedPreview = data.rendered;
+                            console.log('✅ Preview generado:', this.renderedPreview);
+                        } else {
+                            alert('❌ Error generando preview: ' + (data.message || 'Error desconocido'));
+                            this.previewMode = false;
+                        }
+
+                    } catch (error) {
+                        console.error('❌ Error en previewTemplate:', error);
+                        alert('❌ Error al generar preview');
+                        this.previewMode = false;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                // Usar template (insertar en composer)
+                async useTemplate(template) {
+                    console.log('🔵 Usando template:', template.name);
+
+                    // Si ya hay preview renderizado, usar ese
+                    if (this.renderedPreview) {
+                        window.dispatchEvent(new CustomEvent('template-selected', {
+                            detail: {
+                                subject: this.renderedPreview.subject,
+                                body: this.renderedPreview.body,
+                            }
+                        }));
+
+                        this.closeSelector();
+                        return;
+                    }
+
+                    // Si no hay preview, renderizar primero
+                    this.loading = true;
+
+                    try {
+                        const response = await fetch(`/email-templates/${template.id}/render`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                data: {
+                                    nombre: this.toName || 'Usuario',
+                                    fecha: new Date().toLocaleDateString('es-ES', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                    }),
+                                    asunto_original: this.originalSubject,
+                                    remitente: '{{ auth()->user()->name ?? "Yo" }}',
+                                }
+                            }),
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            // Disparar evento para insertar en composer
+                            window.dispatchEvent(new CustomEvent('template-selected', {
+                                detail: {
+                                    subject: data.rendered.subject,
+                                    body: data.rendered.body,
+                                }
+                            }));
+
+                            console.log('✅ Template insertado en composer');
+                            this.closeSelector();
+                        } else {
+                            alert('❌ Error usando template: ' + (data.message || 'Error desconocido'));
+                        }
+
+                    } catch (error) {
+                        console.error('❌ Error en useTemplate:', error);
+                        alert('❌ Error al usar template');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+            }));
+
+            // Componente: Árbol de Carpetas
             Alpine.data('foldersTree', () => ({
                 folders: [],
                 loading: true,
@@ -436,6 +922,15 @@
 
     <!-- Command Palette Global (Ctrl+K) -->
     @include('components.command-palette')
+
+    <!-- Modal de Respuesta de Email -->
+    @include('components.email-reply-modal')
+
+    <!-- Modal Selector de Templates -->
+    @include('components.template-selector-modal')
+
+    <!-- Modal Programar Envío -->
+    @include('components.schedule-email-modal')
 
     <!-- Scripts adicionales -->
     @stack('scripts')
