@@ -141,14 +141,14 @@
                         <!-- Rendered Subject -->
                         <div class="mb-4">
                             <p class="text-xs font-medium text-gray-600 mb-1">ASUNTO:</p>
-                            <p class="text-base font-semibold text-gray-900" x-text="renderedPreview.subject"></p>
+                            <p class="text-base font-semibold text-gray-900" x-text="renderedPreview ? renderedPreview.subject : ''"></p>
                         </div>
 
                         <!-- Rendered Body -->
                         <div>
                             <p class="text-xs font-medium text-gray-600 mb-1">MENSAJE:</p>
                             <div class="bg-white rounded-lg p-4 border border-gray-200">
-                                <p class="text-sm text-gray-800 whitespace-pre-wrap" x-text="renderedPreview.body"></p>
+                                <p class="text-sm text-gray-800 whitespace-pre-wrap" x-text="renderedPreview ? renderedPreview.body : ''"></p>
                             </div>
                         </div>
 
@@ -166,9 +166,18 @@
 
             <!-- Footer -->
             <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-                <p class="text-sm text-gray-500">
-                    <span x-text="templates.length"></span> template(s) disponible(s)
-                </p>
+                <div class="flex items-center gap-3">
+                    <p class="text-sm text-gray-500">
+                        <span x-text="templates.length"></span> template(s) disponible(s)
+                    </p>
+                    <a href="/email-templates/manage" target="_blank"
+                       class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Crear nuevo template
+                    </a>
+                </div>
                 <button @click="closeSelector()"
                         class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                     Cerrar

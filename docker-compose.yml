@@ -44,6 +44,25 @@ services:
             - mysql
             - redis
         restart: unless-stopped
+    scheduler:
+        build:
+            context: ./docker/8.3
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: sail-8.3/app
+        command: php artisan schedule:work
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - mysql
+            - redis
+        restart: unless-stopped
     mysql:
         image: 'mysql/mysql-server:8.0'
         ports:

@@ -64,12 +64,12 @@
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex-1">
                         <h3 class="text-lg font-semibold text-gray-900" x-text="template.name"></h3>
-                        <span class="inline-block mt-1 px-2 py-1 text-xs font-medium rounded-full"
+                        <span class="inline-block mt-1 px-2 py-1 text-xs font-medium rounded-full text-white"
                               :class="{
-                                  'bg-blue-100 text-blue-700': template.type === 'reply',
-                                  'bg-green-100 text-green-700': template.type === 'forward',
-                                  'bg-purple-100 text-purple-700': template.type === 'new',
-                                  'bg-orange-100 text-orange-700': template.type === 'auto_response'
+                                  'bg-blue-600': template.type === 'reply',
+                                  'bg-green-600': template.type === 'forward',
+                                  'bg-purple-600': template.type === 'new',
+                                  'bg-orange-600': template.type === 'auto_response'
                               }"
                               x-text="getTypeLabel(template.type)"></span>
                     </div>
@@ -154,65 +154,65 @@
 
                 <!-- Name -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <label class="block text-sm font-medium text-gray-900 mb-2">
                         Nombre <span class="text-red-500">*</span>
                     </label>
                     <input type="text"
                            x-model="form.name"
                            required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
                            placeholder="Ej: Respuesta de bienvenida">
                 </div>
 
                 <!-- Type -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <label class="block text-sm font-medium text-gray-900 mb-2">
                         Tipo <span class="text-red-500">*</span>
                     </label>
                     <select x-model="form.type"
                             required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                        <option value="reply">Respuesta</option>
-                        <option value="forward">Reenvío</option>
-                        <option value="new">Nuevo Email</option>
-                        <option value="auto_response">Auto-respuesta</option>
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white text-gray-900">
+                        <option value="reply" class="text-gray-900 bg-white">Respuesta</option>
+                        <option value="forward" class="text-gray-900 bg-white">Reenvío</option>
+                        <option value="new" class="text-gray-900 bg-white">Nuevo Email</option>
+                        <option value="auto_response" class="text-gray-900 bg-white">Auto-respuesta</option>
                     </select>
                 </div>
 
                 <!-- Description -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <label class="block text-sm font-medium text-gray-900 mb-2">
                         Descripción
                     </label>
                     <input type="text"
                            x-model="form.description"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
                            placeholder="Breve descripción del template">
                 </div>
 
                 <!-- Subject -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <label class="block text-sm font-medium text-gray-900 mb-2">
                         Asunto <span class="text-red-500">*</span>
                     </label>
                     <input type="text"
                            x-model="form.subject"
                            required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
                            placeholder="Asunto del email">
                 </div>
 
                 <!-- Body -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <label class="block text-sm font-medium text-gray-900 mb-2">
                         Mensaje <span class="text-red-500">*</span>
                     </label>
                     <textarea x-model="form.body"
                               required
                               rows="8"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
                               placeholder="Contenido del email..."></textarea>
-                    <p class="mt-2 text-xs text-gray-500">
+                    <p class="mt-2 text-xs text-gray-600">
                         💡 Usa placeholders: @{{nombre}}, @{{fecha}}, @{{asunto_original}}, @{{remitente}}
                     </p>
                 </div>
@@ -220,12 +220,12 @@
                 <!-- Checkboxes -->
                 <div class="flex items-center gap-6">
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" x-model="form.is_active" class="rounded text-purple-600">
-                        <span class="text-sm text-gray-700">Activo</span>
+                        <input type="checkbox" x-model="form.is_active" class="rounded text-purple-600 bg-white">
+                        <span class="text-sm text-gray-900 font-medium">Activo</span>
                     </label>
                     <label class="flex items-center gap-2">
-                        <input type="checkbox" x-model="form.is_default" class="rounded text-purple-600">
-                        <span class="text-sm text-gray-700">Establecer como predeterminado</span>
+                        <input type="checkbox" x-model="form.is_default" class="rounded text-purple-600 bg-white">
+                        <span class="text-sm text-gray-900 font-medium">Establecer como predeterminado</span>
                     </label>
                 </div>
 

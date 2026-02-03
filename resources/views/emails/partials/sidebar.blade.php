@@ -112,6 +112,25 @@
                 </div>
             </a>
 
+            <!-- Emails Programados -->
+            <a href="{{ route('scheduled-emails.index') }}"
+                class="flex items-center justify-between px-2 py-1.5 rounded-md mb-1 {{ request()->routeIs('scheduled-emails.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"/>
+                    </svg>
+                    <span>Programados</span>
+                </div>
+                @php
+                    $scheduledCount = \App\Models\ScheduledEmail::where('user_id', auth()->id())
+                        ->whereIn('status', ['pending', 'processing'])
+                        ->count();
+                @endphp
+                @if($scheduledCount > 0)
+                    <span class="text-xs text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full font-medium">{{ $scheduledCount }}</span>
+                @endif
+            </a>
+
             <!-- Papelera -->
             <a href="{{ route('emails.trash') }}"
                 class="flex items-center justify-between px-2 py-1.5 rounded-md {{ request()->routeIs('emails.trash') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}">

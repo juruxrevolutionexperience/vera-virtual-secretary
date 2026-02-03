@@ -427,11 +427,15 @@
     @include('components.settings-modal')
 
     <!-- Modal Componer Email -->
-    <div x-data="{ composeOpen: false }" @open-compose.window="composeOpen = true"
-        @close-compose.window="composeOpen = false" x-show="composeOpen" x-cloak
+    <div x-data="{ composeOpen: false }"
+        @open-compose.window="composeOpen = true"
+        @close-compose.window="composeOpen = false"
+        x-show="composeOpen"
+        x-cloak
+        @click.self="composeOpen = false"
         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
 
-        <div @click.away="composeOpen = false" x-show="composeOpen" x-transition
+        <div x-show="composeOpen" x-transition
             class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 
             <!-- Header -->
@@ -448,12 +452,58 @@
             <!-- Form -->
             <form id="compose-form" @submit.prevent="saveDraft()" class="px-6 py-4 space-y-4">
 
+                <!-- Selector de Templates (NUEVO) -->
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <label class="block text-sm font-medium text-purple-900 mb-2">
+                        📋 Usar Template (Opcional)
+                    </label>
+                    <div class="flex gap-2">
+                        <select id="template-selector"
+                                class="flex-1 px-3 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900">
+                            <option value="" class="text-gray-900 bg-white">-- Selecciona un template --</option>
+                            @foreach($templates ?? [] as $template)
+                                <option value="{{ $template->id }}"
+                                        class="text-gray-900 bg-white"
+                                        data-subject="{{ $template->subject }}"
+                                        data-body="{{ $template->body }}"
+                                        data-placeholders="{{ json_encode($template->getAvailablePlaceholders()) }}">
+                                    {{ $template->name }}
+                                    @if($template->type === 'reply')
+                                        (Respuesta)
+                                    @elseif($template->type === 'forward')
+                                        (Reenvío)
+                                    @else
+                                        (Nuevo)
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        <button type="button"
+                                onclick="loadSelectedTemplate()"
+                                class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors whitespace-nowrap">
+                            ⬇️ Cargar
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between mt-3">
+                        <p class="text-xs text-purple-600">
+                            💡 Selecciona un template y haz clic en "Cargar"
+                        </p>
+                        <a href="/email-templates/manage" target="_blank"
+                           class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-white bg-purple-500 hover:bg-purple-600 rounded-md transition-colors">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Crear nuevo
+                        </a>
+                    </div>
+                </div>
+
                 <!-- Para -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Para <span class="text-red-500">*</span>
                     </label>
-                    <input type="email" id="compose-to" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500                        
+                    <input type="email" id="compose-to" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500
   focus:border-transparent" placeholder="destinatario@ejemplo.com">
                 </div>
 
@@ -476,16 +526,23 @@
                 </div>
 
                 <!-- Botones -->
-                <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                <div class="flex items-center justify-between pt-4 border-t border-gray-200">
                     <button type="button" @click="composeOpen = false"
                         class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
                         Cancelar
                     </button>
 
-                    <button type="submit"
-                        class="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors">
-                        💾 Guardar como Borrador
-                    </button>
+                    <div class="flex gap-3">
+                        <button type="submit"
+                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md transition-colors">
+                            💾 Guardar Borrador
+                        </button>
+
+                        <button type="button" onclick="sendEmail()"
+                            class="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors">
+                            📧 Enviar
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -2724,9 +2781,71 @@
             }
         }
 
-        // ==========================================                                                                                      
-        // FUNCIÓN: GUARDAR BORRADOR                                                                                                       
-        // ==========================================                                                                                      
+        // ==========================================
+        // FUNCIÓN: CARGAR TEMPLATE SELECCIONADO
+        // ==========================================
+        function loadSelectedTemplate() {
+            const selector = document.getElementById('template-selector');
+            const selectedOption = selector.options[selector.selectedIndex];
+
+            if (!selectedOption.value) {
+                alert('Por favor selecciona un template primero');
+                return;
+            }
+
+            // Obtener datos del template
+            const subject = selectedOption.dataset.subject || '';
+            const body = selectedOption.dataset.body || '';
+            const placeholders = JSON.parse(selectedOption.dataset.placeholders || '[]');
+
+            console.log('📋 Cargando template:', {
+                subject,
+                bodyLength: body.length,
+                placeholders
+            });
+
+            // Si hay placeholders, preguntar valores al usuario
+            if (placeholders.length > 0) {
+                let replacedSubject = subject;
+                let replacedBody = body;
+
+                // Crear objeto con valores de placeholders
+                const placeholderValues = {};
+
+                // Pedir valor para cada placeholder
+                for (const placeholder of placeholders) {
+                    const value = prompt('Valor para @{{ ' + placeholder + ' }}:', '');
+                    if (value !== null) { // null = usuario canceló
+                        placeholderValues[placeholder] = value;
+                    }
+                }
+
+                // Reemplazar placeholders
+                for (const [key, value] of Object.entries(placeholderValues)) {
+                    const regex = new RegExp('\\{\\{' + key + '\\}\\}', 'g');
+                    replacedSubject = replacedSubject.replace(regex, value);
+                    replacedBody = replacedBody.replace(regex, value);
+                }
+
+                // Rellenar campos del formulario
+                document.getElementById('compose-subject').value = replacedSubject;
+                document.getElementById('compose-body').value = replacedBody;
+            } else {
+                // Sin placeholders, cargar directamente
+                document.getElementById('compose-subject').value = subject;
+                document.getElementById('compose-body').value = body;
+            }
+
+            // Mostrar feedback
+            showNotification('Template cargado exitosamente', 'success');
+
+            // Resetear selector
+            selector.selectedIndex = 0;
+        }
+
+        // ==========================================
+        // FUNCIÓN: GUARDAR BORRADOR
+        // ==========================================
         async function saveDraft() {
             try {
                 // Obtener valores del formulario                                                                                          
@@ -2795,6 +2914,86 @@
             } catch (error) {
                 console.error('❌ Error al guardar borrador:', error);
                 alert('Error al guardar el borrador: ' + error.message);
+            }
+        }
+
+        // ==========================================
+        // FUNCIÓN: ENVIAR EMAIL
+        // ==========================================
+        async function sendEmail() {
+            try {
+                // Obtener valores del formulario
+                const to = document.getElementById('compose-to').value.trim();
+                const subject = document.getElementById('compose-subject').value.trim();
+                const body = document.getElementById('compose-body').value.trim();
+
+                // Validación básica
+                if (!to || !subject || !body) {
+                    alert('Por favor completa todos los campos');
+                    return;
+                }
+
+                // Validar formato de email
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(to)) {
+                    alert('Por favor ingresa un email válido');
+                    return;
+                }
+
+                // Confirmar envío
+                if (!confirm(`¿Enviar email a ${to}?`)) {
+                    return;
+                }
+
+                console.log('📧 Enviando email...', { to, subject });
+
+                // Mostrar estado de envío
+                showNotification('Enviando email...', 'info');
+
+                // Enviar al backend
+                const response = await fetch('/emails/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        to_email: to,
+                        subject: subject,
+                        body: body
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Error al enviar email');
+                }
+
+                const data = await response.json();
+                console.log('✅ Email enviado:', data);
+
+                // Mostrar notificación de éxito
+                showNotification('✅ Email enviado exitosamente', 'success');
+
+                // Limpiar formulario
+                document.getElementById('compose-to').value = '';
+                document.getElementById('compose-subject').value = '';
+                document.getElementById('compose-body').value = '';
+
+                // Resetear selector de templates
+                const templateSelector = document.getElementById('template-selector');
+                if (templateSelector) {
+                    templateSelector.selectedIndex = 0;
+                }
+
+                // Cerrar modal
+                const event = new CustomEvent('close-compose');
+                window.dispatchEvent(event);
+
+            } catch (error) {
+                console.error('❌ Error al enviar email:', error);
+                showNotification('❌ Error al enviar: ' + error.message, 'error');
             }
         }
 

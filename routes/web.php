@@ -152,6 +152,7 @@ Route::middleware(['auth'])->prefix('emails')->name('emails.')->group(function (
     Route::post('/{email}/archive', [EmailController::class, 'archive'])->name('archive');
     Route::post('/{email}/unarchive', [EmailController::class, 'unarchive'])->name('unarchive');
     Route::post('/{email}/reply', [EmailController::class, 'sendReply'])->name('reply');
+    Route::post('/send', [EmailController::class, 'sendEmail'])->name('send');
     Route::delete('/{email}', [EmailController::class, 'destroy'])->name('destroy');
 
     // Acciones masivas

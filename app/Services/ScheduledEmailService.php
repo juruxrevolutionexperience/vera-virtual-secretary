@@ -70,14 +70,26 @@ class ScheduledEmailService
         }
 
         // Convertir arrays a strings si es necesario
-        if (isset($data['to']) && is_array($data['to'])) {
-            $data['to'] = implode(',', $data['to']);
+        if (isset($data['to'])) {
+            if (is_array($data['to'])) {
+                // Filtrar vacíos y hacer implode
+                $data['to'] = implode(',', array_filter($data['to']));
+            }
+            // Si ya es string, dejarlo como está
         }
-        if (isset($data['cc']) && is_array($data['cc'])) {
-            $data['cc'] = implode(',', $data['cc']);
+        if (isset($data['cc'])) {
+            if (is_array($data['cc'])) {
+                $data['cc'] = implode(',', array_filter($data['cc']));
+            } elseif (empty($data['cc'])) {
+                $data['cc'] = null;
+            }
         }
-        if (isset($data['bcc']) && is_array($data['bcc'])) {
-            $data['bcc'] = implode(',', $data['bcc']);
+        if (isset($data['bcc'])) {
+            if (is_array($data['bcc'])) {
+                $data['bcc'] = implode(',', array_filter($data['bcc']));
+            } elseif (empty($data['bcc'])) {
+                $data['bcc'] = null;
+            }
         }
 
         if (isset($data['scheduled_at'])) {
