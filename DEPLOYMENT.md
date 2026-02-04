@@ -1,5 +1,98 @@
 # 🚀 DEPLOYMENT GUIDE - VIRTUAL EMPLOYEE (VERA AI)
 
+## Configuración de Gmail/SMTP para Envío de Emails
+
+### 📧 Configurar Gmail en Producción o Testing
+
+Para que los emails se envíen realmente (no a Mailpit), necesitas configurar Gmail SMTP.
+
+#### **Paso 1: Crear App Password en Google**
+
+1. Ve a: https://myaccount.google.com/apppasswords
+2. Inicia sesión con tu cuenta de Gmail
+3. **Si no tienes verificación en 2 pasos:**
+   - Ve a: https://myaccount.google.com/security
+   - Activa "Verificación en 2 pasos" (requerido para App Passwords)
+4. **Crear App Password:**
+   - Nombre: `Virtual Employee Production` (o el nombre que prefieras)
+   - Clic en "Crear"
+   - Google te mostrará una contraseña de 16 caracteres (ej: `abcd efgh ijkl mnop`)
+   - **COPIA Y GUARDA** esta contraseña
+
+#### **Paso 2: Configurar .env**
+
+Edita tu archivo `.env` con estas variables:
+
+```env
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=tu-email@gmail.com
+MAIL_PASSWORD="abcd efgh ijkl mnop"  # Tu App Password (con o sin espacios)
+MAIL_FROM_ADDRESS="tu-email@gmail.com"
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+**⚠️ IMPORTANTE:**
+- `MAIL_USERNAME` y `MAIL_FROM_ADDRESS` deben ser el mismo email que gestiona Vera
+- La `MAIL_PASSWORD` DEBE ir entre comillas dobles si tiene espacios
+- El email que gestiona Vera es el REMITENTE (quien envía)
+- Los destinatarios se configuran en cada email programado
+
+#### **Paso 3: Limpiar caché**
+
+```bash
+php artisan config:clear
+php artisan cache:clear
+```
+
+#### **Paso 4: Testear la configuración**
+
+```bash
+php artisan tinker
+```
+
+```php
+Mail::raw('Test email', function($message) {
+    $message->to('destinatario@ejemplo.com')
+            ->subject('Test desde Vera AI');
+});
+```
+
+Si no da error, la configuración está correcta.
+
+---
+
+### 📝 Configuraciones para Diferentes Entornos
+
+#### **Desarrollo Local (Mailpit)**
+
+```env
+MAIL_MAILER=smtp
+MAIL_SCHEME=null
+MAIL_HOST=mailpit
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_FROM_ADDRESS="hello@example.com"
+```
+
+Mailpit captura todos los emails y los muestra en: http://localhost:8025
+
+#### **Testing/Staging (Gmail)**
+
+Usa la configuración de Gmail mostrada arriba.
+
+#### **Producción (Gmail o SMTP Profesional)**
+
+Para producción, considera usar:
+- Gmail (hasta 500 emails/día)
+- Gmail Workspace (hasta 2000 emails/día)
+- SendGrid, Mailgun, SES (para volúmenes mayores)
+
+---
+
 ## Configuración del Scheduler en Producción
 
 ### 1. Configurar Cron Job en el Servidor
