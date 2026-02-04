@@ -72,22 +72,39 @@ class ScheduledEmailService
         // Convertir arrays a strings si es necesario
         if (isset($data['to'])) {
             if (is_array($data['to'])) {
-                // Filtrar vacíos y hacer implode
-                $data['to'] = implode(',', array_filter($data['to']));
+                // Aplanar el array en caso de arrays anidados y filtrar vacíos
+                $data['to'] = implode(',', array_filter(
+                    array_map(function($item) {
+                        return is_array($item) ? implode(',', $item) : $item;
+                    }, $data['to'])
+                ));
             }
-            // Si ya es string, dejarlo como está
+            // Si ya es string, asegurarse de que no esté vacío
+            if (is_string($data['to']) && trim($data['to']) === '') {
+                throw new \Exception('El campo "Para" no puede estar vacío');
+            }
         }
         if (isset($data['cc'])) {
             if (is_array($data['cc'])) {
-                $data['cc'] = implode(',', array_filter($data['cc']));
-            } elseif (empty($data['cc'])) {
+                $data['cc'] = implode(',', array_filter(
+                    array_map(function($item) {
+                        return is_array($item) ? implode(',', $item) : $item;
+                    }, $data['cc'])
+                ));
+            }
+            if (empty($data['cc']) || (is_string($data['cc']) && trim($data['cc']) === '')) {
                 $data['cc'] = null;
             }
         }
         if (isset($data['bcc'])) {
             if (is_array($data['bcc'])) {
-                $data['bcc'] = implode(',', array_filter($data['bcc']));
-            } elseif (empty($data['bcc'])) {
+                $data['bcc'] = implode(',', array_filter(
+                    array_map(function($item) {
+                        return is_array($item) ? implode(',', $item) : $item;
+                    }, $data['bcc'])
+                ));
+            }
+            if (empty($data['bcc']) || (is_string($data['bcc']) && trim($data['bcc']) === '')) {
                 $data['bcc'] = null;
             }
         }
@@ -204,17 +221,57 @@ class ScheduledEmailService
     {
         $emailAccount = $scheduledEmail->emailAccount;
 
-        // TODO: Integrar con GmailSyncService o OutlookSyncService según el tipo de cuenta
-        // Por ahora, esto es un placeholder
-
-        Log::info('Enviando email programado...', [
+        Log::info('📤 Enviando email programado...', [
+            'scheduled_email_id' => $scheduledEmail->id,
             'account_type' => $emailAccount->provider,
             'to' => $scheduledEmail->to,
             'subject' => $scheduledEmail->subject,
         ]);
 
-        // Simular envío exitoso
-        // En producción, aquí se llamaría a GmailSyncService o OutlookSyncService
+        // Preparar destinatarios
+        $to = array_filter(explode(',', $scheduledEmail->to));
+        $cc = $scheduledEmail->cc ? array_filter(explode(',', $scheduledEmail->cc)) : [];
+        $bcc = $scheduledEmail->bcc ? array_filter(explode(',', $scheduledEmail->bcc)) : [];
+
+        // Usar body_html si existe, sino usar body
+        $emailBody = $scheduledEmail->body_html ?? $scheduledEmail->body;
+
+        // Enviar email usando Mail facade
+        \Illuminate\Support\Facades\Mail::html($emailBody, function ($message) use ($scheduledEmail, $to, $cc, $bcc) {
+            // Destinatarios principales
+            foreach ($to as $recipient) {
+                $message->to(trim($recipient));
+            }
+
+            // CC
+            if (!empty($cc)) {
+                foreach ($cc as $ccRecipient) {
+                    $message->cc(trim($ccRecipient));
+                }
+            }
+
+            // BCC
+            if (!empty($bcc)) {
+                foreach ($bcc as $bccRecipient) {
+                    $message->bcc(trim($bccRecipient));
+                }
+            }
+
+            // Asunto
+            $message->subject($scheduledEmail->subject);
+
+            // TODO: En el futuro, adjuntar archivos si hay attachments
+            // if ($scheduledEmail->attachments) {
+            //     foreach (json_decode($scheduledEmail->attachments, true) as $attachment) {
+            //         $message->attach($attachment['path']);
+            //     }
+            // }
+        });
+
+        Log::info('✅ Email programado enviado exitosamente', [
+            'scheduled_email_id' => $scheduledEmail->id,
+            'to' => $scheduledEmail->to,
+        ]);
     }
 
     /**
