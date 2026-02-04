@@ -22,45 +22,61 @@ class ContactController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $query = Contact::where('user_id', $user->id);
 
-        // Filtros
-        if ($request->has('search')) {
-            $query->search($request->search);
+        // Si es petición AJAX, devolver JSON
+        if ($request->wantsJson() || $request->expectsJson()) {
+            $query = Contact::where('user_id', $user->id);
+
+            // Filtros
+            if ($request->has('search')) {
+                $query->search($request->search);
+            }
+
+            if ($request->has('priority')) {
+                $query->byPriority($request->priority);
+            }
+
+            if ($request->has('starred')) {
+                $query->starred();
+            }
+
+            if ($request->has('blocked')) {
+                $query->blocked();
+            } else {
+                $query->notBlocked();
+            }
+
+            // Ordenamiento
+            $sortBy = $request->get('sort_by', 'last_contact_at');
+            $sortOrder = $request->get('sort_order', 'desc');
+            $query->orderBy($sortBy, $sortOrder);
+
+            $contacts = $query->paginate($request->get('per_page', 20));
+
+            return response()->json($contacts);
         }
 
-        if ($request->has('priority')) {
-            $query->byPriority($request->priority);
-        }
-
-        if ($request->has('starred')) {
-            $query->starred();
-        }
-
-        if ($request->has('blocked')) {
-            $query->blocked();
-        } else {
-            $query->notBlocked();
-        }
-
-        // Ordenamiento
-        $sortBy = $request->get('sort_by', 'last_contact_at');
-        $sortOrder = $request->get('sort_order', 'desc');
-        $query->orderBy($sortBy, $sortOrder);
-
-        $contacts = $query->paginate($request->get('per_page', 20));
-
-        return response()->json($contacts);
+        // Si es petición normal del navegador, devolver vista
+        return view('contacts.index');
     }
 
     /**
      * Ver contacto específico
      */
-    public function show(Contact $contact)
+    public function show(Request $request, Contact $contact)
     {
         $this->authorize('view', $contact);
 
-        return response()->json($contact);
+        // Si es petición AJAX, devolver JSON
+        if ($request->wantsJson() || $request->expectsJson()) {
+            return response()->json($contact);
+        }
+
+        // Obtener todos los emails del contacto
+        $emails = $contact->all_emails;
+
+        // Si es petición normal del navegador, devolver vista
+        return view('contacts.show', compact('contact', 'emails'));
     }
 
     /**

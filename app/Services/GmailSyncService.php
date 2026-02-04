@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\EmailAccount;
 use App\Models\Email;
 use App\Models\SyncLog;
+use App\Services\ContactService;
 use Google\Client as GoogleClient;
 use Google\Service\Gmail;
 use Carbon\Carbon;
@@ -553,6 +554,30 @@ class GmailSyncService
 
             // Disparar procesamiento con Vera para emails nuevos
             \App\Jobs\ProcessEmailWithVera::dispatch($email);
+
+            // NUEVO: Auto-sync de contacto desde el email
+            try {
+                $contactService = app(ContactService::class);
+                $user = \App\Models\User::find($account->user_id);
+
+                if ($user && $email->from_email && filter_var($email->from_email, FILTER_VALIDATE_EMAIL)) {
+                    $contact = $contactService->getOrCreate($user, $email->from_email, $email->from_name);
+                    $contact->incrementReceived();
+
+                    Log::info('📇 Contacto auto-sync', [
+                        'email_id' => $email->id,
+                        'contact_email' => $contact->email,
+                        'contact_name' => $contact->name,
+                        'emails_received' => $contact->emails_received,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Error syncing contact from email', [
+                    'email_id' => $email->id,
+                    'error' => $e->getMessage(),
+                ]);
+                // No fallar la sincronización si falla el contacto
+            }
 
             return ['action' => 'created', 'email' => $email];
         }

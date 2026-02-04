@@ -38,7 +38,13 @@ class EmailAlertController extends Controller
                         ->orderBy('created_at', 'desc')
                         ->paginate($request->get('per_page', 20));
 
-        return response()->json($alerts);
+        // Si es petición AJAX, devolver JSON
+        if ($request->wantsJson() || $request->expectsJson()) {
+            return response()->json($alerts);
+        }
+
+        // Si es petición normal del navegador, devolver vista
+        return view('email-alerts.index');
     }
 
     public function show(EmailAlert $alert)

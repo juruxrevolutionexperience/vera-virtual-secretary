@@ -42,6 +42,11 @@ class VeraResponseGenerator
         // 1. Verificar que el email necesita respuesta
         if (!$this->needsResponse($email)) {
             Log::info('⏭️  Email no necesita respuesta', ['email_id' => $email->id]);
+
+            // Actualizar estado: No requiere acción
+            $email->update(['workflow_status' => 'no_action_needed']);
+            Log::info('📊 Estado actualizado a: no_action_needed', ['email_id' => $email->id]);
+
             return null;
         }
 
@@ -154,6 +159,13 @@ class VeraResponseGenerator
             Log::info('⏸️  Requiere aprobación manual, NO se envía automáticamente', [
                 'action_id' => $action->id,
             ]);
+
+            // Actualizar estado: Requiere respuesta (pendiente de aprobación)
+            $email->update(['workflow_status' => 'pending_response']);
+            Log::info('📊 Estado actualizado a: pending_response (requiere aprobación)', [
+                'email_id' => $email->id,
+            ]);
+
             return;
         }
 
@@ -168,6 +180,13 @@ class VeraResponseGenerator
             $action->update([
                 'user_feedback' => 'rejected',
                 'user_notes' => 'Auto-rechazada: confianza insuficiente',
+            ]);
+
+            // Actualizar estado: Requiere respuesta (confianza insuficiente)
+            $email->update(['workflow_status' => 'pending_response']);
+            Log::info('📊 Estado actualizado a: pending_response (confianza insuficiente)', [
+                'email_id' => $email->id,
+                'confidence' => round($action->confidence_score * 100) . '%',
             ]);
 
             return;
@@ -227,9 +246,14 @@ class VeraResponseGenerator
                     'response_sent_at' => now(),
                 ]);
 
-                // Marcar email original como respondido
+                // Marcar email original como respondido y actualizar estado
                 $email->update([
                     'replied_at' => now(),
+                    'workflow_status' => 'completed',
+                ]);
+
+                Log::info('📊 Estado actualizado a: completed (respuesta enviada)', [
+                    'email_id' => $email->id,
                 ]);
 
                 // Actualizar actividad para reflejar que fue enviada
@@ -282,6 +306,34 @@ class VeraResponseGenerator
 
         if (!$config || !$config->auto_response_enabled) {
             Log::debug('❌ Auto-respuestas deshabilitadas', ['email_id' => $email->id]);
+            return false;
+        }
+
+        // 2.1. NUEVO: Verificar horario de disponibilidad
+        if (!$this->isWithinAvailableHours($config)) {
+            Log::info('⏰ Fuera del horario de disponibilidad', [
+                'email_id' => $email->id,
+                'current_time' => now()->format('H:i'),
+                'available_hours' => $config->availability_start . ' - ' . $config->availability_end,
+            ]);
+            return false;
+        }
+
+        // 2.2. NUEVO: Verificar si hay auto-responder activo que manejaría este email
+        if ($this->hasActiveAutoResponder($email)) {
+            Log::info('🤖 Hay un auto-responder activo para este email', [
+                'email_id' => $email->id,
+                'from' => $email->from_email,
+            ]);
+            return false;
+        }
+
+        // 2.3. NUEVO: Verificar si ya hay un email programado para este remitente
+        if ($this->hasScheduledEmailForSender($email)) {
+            Log::info('📅 Ya hay un email programado para este remitente', [
+                'email_id' => $email->id,
+                'from' => $email->from_email,
+            ]);
             return false;
         }
 
@@ -664,5 +716,87 @@ PROMPT;
     protected function formatBoolean(bool $value): string
     {
         return $value ? 'Sí' : 'No';
+    }
+
+    /**
+     * Verificar si estamos dentro del horario de disponibilidad configurado
+     */
+    protected function isWithinAvailableHours(\App\Models\VeraConfig $config): bool
+    {
+        // Si no hay horarios configurados, asumir 24/7
+        if (empty($config->availability_start) || empty($config->availability_end)) {
+            return true;
+        }
+
+        $now = now();
+        $currentTime = $now->format('H:i');
+
+        $startTime = substr($config->availability_start, 0, 5); // HH:MM
+        $endTime = substr($config->availability_end, 0, 5); // HH:MM
+
+        // Caso normal: 09:00 - 18:00
+        if ($startTime <= $endTime) {
+            return $currentTime >= $startTime && $currentTime <= $endTime;
+        }
+
+        // Caso que cruza medianoche: 22:00 - 06:00
+        return $currentTime >= $startTime || $currentTime <= $endTime;
+    }
+
+    /**
+     * Verificar si hay un auto-responder activo que manejaría este email
+     */
+    protected function hasActiveAutoResponder(Email $email): bool
+    {
+        $autoResponders = \App\Models\AutoResponder::where('user_id', $email->user_id)
+            ->where('is_active', true)
+            ->get();
+
+        if ($autoResponders->isEmpty()) {
+            return false;
+        }
+
+        // Verificar si alguno de los auto-responders respondería a este email
+        foreach ($autoResponders as $autoResponder) {
+            if ($autoResponder->shouldRespondTo($email)) {
+                Log::info('🤖 Auto-responder encontrado que respondería', [
+                    'email_id' => $email->id,
+                    'auto_responder_id' => $autoResponder->id,
+                    'auto_responder_name' => $autoResponder->name,
+                    'auto_responder_type' => $autoResponder->type,
+                ]);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Verificar si ya hay un email programado pendiente para este remitente
+     */
+    protected function hasScheduledEmailForSender(Email $email): bool
+    {
+        $scheduledEmail = \App\Models\ScheduledEmail::where('user_id', $email->user_id)
+            ->where('status', 'pending')
+            ->where(function($query) use ($email) {
+                // Buscar si hay un email programado para este remitente específico
+                $query->where('to', 'LIKE', '%' . $email->from_email . '%')
+                      ->orWhere('cc', 'LIKE', '%' . $email->from_email . '%')
+                      ->orWhere('bcc', 'LIKE', '%' . $email->from_email . '%');
+            })
+            ->first();
+
+        if ($scheduledEmail) {
+            Log::info('📅 Email programado encontrado para este remitente', [
+                'email_id' => $email->id,
+                'scheduled_email_id' => $scheduledEmail->id,
+                'scheduled_at' => $scheduledEmail->scheduled_at,
+                'subject' => $scheduledEmail->subject,
+            ]);
+            return true;
+        }
+
+        return false;
     }
 }

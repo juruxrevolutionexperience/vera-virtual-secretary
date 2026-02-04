@@ -31,7 +31,13 @@ class FollowUpReminderController extends Controller
 
         $reminders = $query->orderBy('remind_at')->paginate($request->get('per_page', 20));
 
-        return response()->json($reminders);
+        // Si es petición AJAX, devolver JSON
+        if ($request->wantsJson() || $request->expectsJson()) {
+            return response()->json($reminders);
+        }
+
+        // Si es petición normal del navegador, devolver vista
+        return view('follow-up-reminders.index');
     }
 
     public function show(FollowUpReminder $reminder)

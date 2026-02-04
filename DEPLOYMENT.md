@@ -456,6 +456,87 @@ Si encuentras problemas durante el deployment:
 
 ---
 
+## 🤖 Vera AI - Configuración y Comportamiento
+
+### Cómo Vera Respeta TODA tu Configuración
+
+Vera AI verifica **TODAS** las configuraciones del usuario antes de generar una respuesta automática. Cada select, cada checkbox, cada ajuste en `/vera/config` afecta directamente cómo Vera actúa.
+
+#### ✅ Configuraciones que Vera Verifica Automáticamente
+
+**1. Control General**
+- `auto_response_enabled` - Si está desactivado, Vera NO genera respuestas
+- `auto_response_mode` - Controla cuándo responder:
+  - `no` - Nunca responder automáticamente
+  - `ask_first` - Solo emails con preguntas directas
+  - `important_only` - Solo emails importantes
+  - `suggest_responses` - Sugerir respuestas (requiere aprobación)
+  - `always` - Siempre responder automáticamente
+
+**2. Horarios de Disponibilidad** ⏰
+- `availability_start` / `availability_end` - Vera solo genera respuestas dentro del horario configurado
+- Ejemplo: Si configuras 09:00-18:00, Vera NO responderá fuera de ese horario
+- Soporta horarios que cruzan medianoche (ej: 22:00-06:00)
+
+**3. Auto-responders Activos** 🤖
+- Si tienes un auto-responder activo (ej: "Fuera de Oficina"), Vera NO genera respuestas
+- Evita respuestas duplicadas o contradictorias
+- Vera verifica si el auto-responder respondería al email específico
+
+**4. Emails Programados** 📅
+- Si ya programaste un email para un remitente, Vera NO generará respuesta automática
+- Previene respuestas conflictivas cuando ya tienes comunicación planificada
+
+**5. Remitentes Bloqueados y Prioritarios**
+- `blocked_senders` - Vera NUNCA responde a remitentes bloqueados
+- `allowed_senders` - Vera SIEMPRE responde a remitentes prioritarios (ignora otros filtros)
+- Soporta patrones: emails exactos, dominios (@empresa.com), substrings (noreply)
+
+**6. Palabras Clave Bloqueadas** 🔤
+- `blocked_keywords` - Vera NO responde si el email contiene palabras clave bloqueadas
+- Busca en asunto y cuerpo del email
+
+**7. Filtros de Categorías** 🏷️
+- `response_allowed_categories` - Solo responder a estas categorías
+- `response_blocked_categories` - Nunca responder a estas categorías
+- Ejemplo: Bloquear "promociones" y "newsletters"
+
+**8. Nivel de Autonomía** 🎯
+- `autonomy_level` (conservative/moderate/aggressive)
+- `confidence_threshold` - Solo envía respuestas con este nivel de confianza o superior
+
+**9. Estilo de Escritura** ✍️
+- `writing_style` (formal/professional/casual)
+- Vera adapta el tono de las respuestas generadas
+
+**10. Aprobación Manual**
+- `auto_response_require_approval` - Si está activo, las respuestas necesitan aprobación en `/vera/responses`
+
+#### 🔄 Orden de Verificación (Pipeline de Decisión)
+
+Cuando llega un email, Vera verifica en este orden:
+
+1. ❌ ¿Email archivado? → NO responder
+2. ❌ ¿Auto-respuestas deshabilitadas? → NO responder
+3. ⏰ ¿Fuera del horario disponible? → NO responder
+4. 🤖 ¿Hay auto-responder activo? → NO responder
+5. 📅 ¿Ya hay email programado para este remitente? → NO responder
+6. ⭐ ¿Es remitente prioritario? → SÍ responder (saltar filtros)
+7. 🚫 ¿Es remitente bloqueado? → NO responder
+8. 🚫 ¿Es email automático/newsletter? → NO responder
+9. 🚫 ¿Categoría bloqueada? → NO responder
+10. 🔤 ¿Contiene palabras clave bloqueadas? → NO responder
+11. ✅ ¿Es persona real? → Evaluar según modo de respuesta
+
+#### 📍 Archivo de Implementación
+
+Toda la lógica de verificación está en:
+- `app/Services/VeraResponseGenerator.php` - Método `needsResponse()`
+- Líneas 272-467: Filtros y verificaciones
+- Líneas 689-777: Métodos helper para horarios, auto-responders y emails programados
+
+---
+
 **Última actualización:** 04/02/2026
-**Versión:** 1.0
+**Versión:** 1.1
 **Autor:** Virtual Employee Development Team

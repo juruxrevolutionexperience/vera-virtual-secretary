@@ -26,7 +26,13 @@ class EscalationRuleController extends Controller
 
         $rules = $query->byPriority()->paginate($request->get('per_page', 20));
 
-        return response()->json($rules);
+        // Si es petición AJAX, devolver JSON
+        if ($request->wantsJson() || $request->expectsJson()) {
+            return response()->json($rules);
+        }
+
+        // Si es petición normal del navegador, devolver vista
+        return view('escalation-rules.index');
     }
 
     public function show(EscalationRule $rule)
