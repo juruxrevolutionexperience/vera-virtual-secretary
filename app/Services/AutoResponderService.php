@@ -139,15 +139,45 @@ class AutoResponderService
             Log::info('📤 Enviando auto-respuesta', [
                 'auto_responder_id' => $autoResponder->id,
                 'email_id' => $email->id,
+                'to' => $email->from_email,
             ]);
 
             // Obtener contenido de la respuesta
             $content = $autoResponder->getResponseContent($email);
 
-            // Aquí iría la integración con el servicio de envío de emails
-            // Por ahora lo simulamos
+            // Enviar email usando Mail facade
+            \Illuminate\Support\Facades\Mail::html($content['body'], function ($message) use ($content, $email, $autoResponder) {
+                // Destinatario (el remitente del email original)
+                $message->to($email->from_email);
 
-            Log::info('Auto-respuesta enviada', [
+                // Si reply_to_all está activado y hay CC, incluirlos
+                if ($autoResponder->reply_to_all && $email->cc) {
+                    $ccEmails = is_array($email->cc) ? $email->cc : explode(',', $email->cc);
+                    foreach ($ccEmails as $ccEmail) {
+                        if (trim($ccEmail)) {
+                            $message->cc(trim($ccEmail));
+                        }
+                    }
+                }
+
+                // Asunto
+                $message->subject($content['subject']);
+
+                // Headers de auto-respuesta (para evitar loops)
+                $message->getHeaders()->addTextHeader('Auto-Submitted', 'auto-replied');
+                $message->getHeaders()->addTextHeader('X-Auto-Response-Suppress', 'All');
+                $message->getHeaders()->addTextHeader('Precedence', 'auto_reply');
+
+                // Si el email original tiene un Message-ID, agregarlo como In-Reply-To
+                if ($email->message_id) {
+                    $message->getHeaders()->addTextHeader('In-Reply-To', $email->message_id);
+                    $message->getHeaders()->addTextHeader('References', $email->message_id);
+                }
+            });
+
+            Log::info('✅ Auto-respuesta enviada exitosamente', [
+                'auto_responder_id' => $autoResponder->id,
+                'email_id' => $email->id,
                 'to' => $email->from_email,
                 'subject' => $content['subject'],
             ]);
@@ -155,17 +185,15 @@ class AutoResponderService
             // Registrar en el historial
             $autoResponder->recordResponse($email);
 
-            Log::info('✅ Auto-respuesta enviada exitosamente', [
-                'auto_responder_id' => $autoResponder->id,
-                'email_id' => $email->id,
-            ]);
-
         } catch (\Exception $e) {
             Log::error('❌ Error enviando auto-respuesta', [
                 'auto_responder_id' => $autoResponder->id,
                 'email_id' => $email->id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
+
+            throw $e; // Re-lanzar para que el caller pueda manejarlo
         }
     }
 
