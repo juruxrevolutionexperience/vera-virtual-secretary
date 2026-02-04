@@ -15,8 +15,8 @@ Revisar cada funcionalidad implementada, testearla y documentar bugs/mejoras
 **PROGRESO:**
 - ✅ SUB-FASE 1A: Gestión Básica (100%)
 - ✅ SUB-FASE 1B: Respuestas y Automatización (100%)
-- ✅ SUB-FASE 1C: Alertas y Seguimiento (100%) ← **COMPLETADO 04/02/2026**
-- ⏳ SUB-FASE 1D: Multi-tenancy y Roles (0%)
+- ✅ SUB-FASE 1C: Alertas y Seguimiento (100%)
+- 🚀 SUB-FASE 1D: Multi-tenancy Simplificado (0%) ← **EN DESARROLLO 04/02/2026**
 - ⏳ SUB-FASE 1E: Seguridad excepto 2FA (0%)
 
 ### 🔧 PARTE 2: MEJORAS Y PULIDO (1 semana) - **PENDIENTE**
@@ -789,38 +789,169 @@ Verificar que todo funciona al 100%
 
 ---
 
-### **DÍA 7: SUB-FASE 1D - MULTI-TENANCY Y ROLES**
+### **DÍA 7: SUB-FASE 1D - MULTI-TENANCY SIMPLIFICADO**
 
-#### ✅ Funcionalidades a revisar:
+> **🎯 CONCEPTO CLAVE:**
+> - Cada usuario tiene **su cuenta independiente** (su Gmail, su Vera, sus emails)
+> - Las empresas pueden crear **organizaciones** para compartir recursos (billing, templates, carpetas, contactos)
+> - **NO se comparten emails individuales** (cada uno tiene los suyos)
+> - Roles **simples y útiles** (solo 3: Owner, Admin, Member)
 
-**1. Organizaciones**
-- [ ] Crear organización
-- [ ] Invitar usuarios a organización
-- [ ] Aceptar invitación
+---
+
+#### ✅ **PASO 1: Roles Simplificados (Spatie Permission)**
+
+**Crear solo 3 roles:**
+
+**1. Owner 👑**
+- [ ] Crea la organización
+- [ ] Administra billing (Stripe)
+- [ ] Invita/remueve usuarios
+- [ ] Gestiona recursos compartidos
+- [ ] Puede hacer TODO
+
+**2. Admin 🛡️**
+- [ ] Co-administrador de la organización
+- [ ] Puede invitar usuarios
+- [ ] Gestiona recursos compartidos (carpetas, templates, contactos)
+- [ ] NO puede cambiar billing ni eliminar la organización
+
+**3. Member 👤**
+- [ ] Usuario normal del equipo
+- [ ] Tiene acceso a recursos compartidos (lectura/escritura)
+- [ ] Gestiona SUS emails con SU Vera
+- [ ] No puede invitar ni administrar
+
+**Seeder de Roles:**
+- [ ] Crear DatabaseSeeder con los 3 roles
+- [ ] Definir permisos por rol
+- [ ] Ejecutar seeder
+
+---
+
+#### ✅ **PASO 2: Gestión de Organizaciones**
+
+**1. Backend:**
+- [ ] OrganizationPolicy (autorización)
+- [ ] OrganizationController (CRUD completo)
+- [ ] OrganizationInvitationController (invitar/aceptar)
+- [ ] Rutas configuradas
+
+**2. Funcionalidades:**
+- [ ] Crear organización (Owner)
+- [ ] Invitar usuarios a organización (Owner/Admin)
+- [ ] Aceptar invitación (email con link único)
 - [ ] Ver miembros de la organización
-- [ ] Salir de organización
+- [ ] Cambiar rol de un miembro (Owner)
+- [ ] Remover miembro (Owner/Admin)
+- [ ] Salir de organización (Member puede salir)
+- [ ] Eliminar organización (solo Owner)
 
-**2. Roles y Permisos (Spatie Permission)**
-- [ ] Verificar roles: owner, admin, manager, secretary, administrative, employee
-- [ ] Probar permisos de cada rol:
-  - Owner: puede todo
-  - Admin: gestión de organización
-  - Manager: gestión de equipo
-  - Secretary: gestión de emails del jefe
-  - Administrative: operativo limitado
-  - Employee: solo emails propios
-- [ ] Compartir email con otro usuario
-- [ ] Compartir carpeta con permisos (lectura/escritura)
+**3. Frontend:**
+- [ ] Vista organizations/index.blade.php (lista de organizaciones)
+- [ ] Vista organizations/show.blade.php (detalles + miembros)
+- [ ] Vista organizations/members.blade.php (gestión de miembros)
+- [ ] Modal de invitación de usuarios
+- [ ] Badge en sidebar con nombre de organización
 
-**3. Políticas (Policies)**
-- [ ] EmailPolicy: solo puede ver/editar emails propios o compartidos
-- [ ] FolderPolicy: solo puede gestionar carpetas propias
-- [ ] OrganizationPolicy: solo owner/admin puede gestionar
+---
 
-**Bugs/Mejoras a documentar:**
-- ¿Los permisos son muy restrictivos o muy permisivos?
-- ¿Falta algún rol común en empresas?
-- ¿La UI deja claro quién puede hacer qué?
+#### ✅ **PASO 3: Recursos Compartidos**
+
+**1. Carpetas Compartidas de Organización 📁**
+- [ ] Marcar carpetas como "de organización" (campo `organization_id`)
+- [ ] Owner/Admin pueden crear carpetas compartidas
+- [ ] Todos los miembros pueden mover SUS emails a estas carpetas
+- [ ] **Importante:** Solo se comparte la carpeta (estructura), NO los emails dentro
+- [ ] Cada usuario ve solo SUS emails en carpetas compartidas
+- [ ] Vista filtrada: "Mis Carpetas" vs "Carpetas de la Organización"
+
+**2. Templates Compartidos 📝**
+- [ ] Marcar templates como "de organización" (campo `organization_id`)
+- [ ] Owner/Admin pueden crear templates compartidos
+- [ ] Biblioteca de plantillas de la empresa
+- [ ] Todos pueden usar los templates de la organización
+- [ ] Vista filtrada: "Mis Templates" vs "Templates de la Organización"
+
+**3. Contactos Compartidos 👥**
+- [ ] Marcar contactos como "de organización" (campo `organization_id`)
+- [ ] Base de datos de contactos de la empresa
+- [ ] Todos pueden ver y usar estos contactos
+- [ ] Se enriquecen automáticamente con emails de todos
+- [ ] Vista filtrada: "Mis Contactos" vs "Contactos de la Organización"
+
+**4. Estadísticas Agregadas 📊** (Opcional - Fase 2)
+- [ ] Dashboard del equipo
+- [ ] Métricas globales (emails procesados, tiempos de respuesta)
+- [ ] NO ver emails individuales de otros
+
+---
+
+#### ✅ **PASO 4: Policies de Autorización**
+
+**1. OrganizationPolicy**
+- [ ] `view` - Todos los miembros pueden ver
+- [ ] `update` - Solo Owner/Admin
+- [ ] `delete` - Solo Owner
+- [ ] `invite` - Owner/Admin
+- [ ] `removeMember` - Owner/Admin
+
+**2. SharedResourcePolicy** (para templates/carpetas/contactos compartidos)
+- [ ] `view` - Todos los miembros
+- [ ] `create` - Owner/Admin para recursos compartidos
+- [ ] `update` - Owner/Admin para recursos compartidos
+- [ ] `delete` - Owner/Admin para recursos compartidos
+
+---
+
+#### ✅ **PASO 5: Integración con Sistema Existente**
+
+**1. Filtrado por Organización:**
+- [ ] Modificar EmailController para filtrar por `organization_id`
+- [ ] Modificar EmailFolderController para diferenciar carpetas propias vs compartidas
+- [ ] Modificar EmailTemplateController para diferenciar templates propios vs compartidos
+- [ ] Modificar ContactController para diferenciar contactos propios vs compartidos
+
+**2. Queries Optimizadas:**
+- [ ] Agregar scopes: `ownedByUser()`, `sharedInOrganization()`
+- [ ] Eager loading de organización donde sea necesario
+- [ ] Índices en `organization_id` (ya deberían existir)
+
+---
+
+#### ✅ **PASO 6: Testing Completo**
+
+**Escenarios a testear:**
+- [ ] Usuario crea organización → Se convierte en Owner
+- [ ] Owner invita usuario → Recibe email con link
+- [ ] Usuario acepta invitación → Se une como Member
+- [ ] Owner cambia rol de Member a Admin → Permisos actualizados
+- [ ] Admin crea carpeta compartida → Todos los miembros la ven
+- [ ] Member crea template → Solo él lo ve (no es compartido)
+- [ ] Admin crea template compartido → Todos lo ven
+- [ ] Member mueve SU email a carpeta compartida → Email visible solo para él
+- [ ] Member intenta eliminar organización → Acceso denegado
+- [ ] Owner elimina organización → Todos los miembros son removidos
+
+---
+
+#### 📝 **Notas Importantes:**
+
+**LO QUE ELIMINAMOS (No tiene sentido):**
+- ❌ Rol "Secretary" - No hay gestión de emails del jefe
+- ❌ Rol "Administrative" - No necesario
+- ❌ Rol "Manager" - Admin es suficiente
+- ❌ Compartir emails individuales uno por uno
+- ❌ "Ver emails de otro usuario"
+- ❌ Permisos granulares complejos
+- ❌ EmailPolicy para emails individuales (cada uno ve solo los suyos)
+
+**RESULTADO FINAL:**
+- ✅ **Uso individual:** Si no tienes organización, usas Vera 100% personal
+- ✅ **Uso empresarial:** Si tienes organización, compartes recursos útiles
+- ✅ **Independencia:** Cada usuario tiene SU Vera, SUS emails, SU configuración
+- ✅ **Colaboración ligera:** Templates, carpetas y contactos compartidos
+- ✅ **Simple:** Solo 3 roles, sin complejidad innecesaria
 
 ---
 
@@ -1110,14 +1241,24 @@ Al terminar la Fase 1.0, tendremos:
 **Estado del proyecto (04/02/2026):**
 - ✅ **SUB-FASE 1A: 100% COMPLETADO**
 - ✅ **SUB-FASE 1B: 100% COMPLETADO**
-- ✅ **SUB-FASE 1C: 100% COMPLETADO** ← TERMINADO HOY
+- ✅ **SUB-FASE 1C: 100% COMPLETADO**
   - ✅ Contactos Auto-sync (100%)
   - ✅ Sistema de Alertas (100%)
   - ✅ Escalados Automáticos (95%)
   - ✅ Follow-up Reminders (100%)
-- ⏳ **Pendiente:** SUB-FASE 1D (Multi-tenancy), 1E (Seguridad), 2FA
+- 🚀 **SUB-FASE 1D: EN DESARROLLO** ← INICIANDO HOY
+  - Multi-tenancy Simplificado (3 roles: Owner, Admin, Member)
+  - Organizaciones con recursos compartidos
+  - Carpetas, Templates y Contactos compartidos
+- ⏳ **Pendiente:** SUB-FASE 1E (Seguridad), 2FA
 
 **PROGRESO TOTAL MVP: 60%** ███████████░░░░░░░░░
+
+**PRÓXIMA SESIÓN: SUB-FASE 1D (Multi-tenancy Simplificado)**
+- 🎯 3 roles simples (Owner, Admin, Member)
+- 🎯 Organizaciones con recursos compartidos
+- 🎯 Carpetas, Templates y Contactos compartidos
+- 🎯 Sin compartir emails individuales (cada usuario independiente)
 
 **SESIÓN DEL 04/02/2026:**
 - 🎯 4 sistemas completados en un día
