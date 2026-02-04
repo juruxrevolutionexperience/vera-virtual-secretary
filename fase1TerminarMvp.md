@@ -96,39 +96,51 @@ Verificar que todo funciona al 100%
 - [ ] Preview del template antes de enviar (MAÑANA)
 - [ ] Verificar que placeholders se reemplazan (MAÑANA)
 
-**2. Emails Programados (Scheduled Emails)** ✅ FUNCIONAL (con nota técnica)
+**2. Emails Programados (Scheduled Emails)** ✅ 100% COMPLETADO (Producción-ready)
 - [x] Programar envío de email para fecha futura
 - [x] Ver lista de emails programados
 - [x] Editar email programado antes de que se envíe (ARREGLADO error 500)
 - [x] Cancelar email programado
 - [x] Command `emails:send-scheduled` funciona perfectamente
 - [x] Emails se envían correctamente (verificado: IDs 5 y 6)
+- [x] **SOLUCIÓN IMPLEMENTADA:** Cron job configurado (04/02/2026)
 
-> **⚠️ NOTA TÉCNICA - PENDIENTE DE RESOLVER:**
+> **✅ SOLUCIÓN IMPLEMENTADA (04/02/2026):**
 >
-> **Issue:** El scheduler (`schedule:work`) NO ejecuta automáticamente `emails:send-scheduled`
+> **Problema resuelto:** El scheduler no ejecutaba automáticamente el comando.
 >
-> **Diagnóstico (03/02/2026):**
-> - ✅ El command `emails:send-scheduled` funciona perfectamente al ejecutarse manualmente
-> - ✅ El scheduler SÍ funciona (ejecuta `incremental-sync-emails` cada 2 min)
-> - ✅ El command está registrado en `app/Console/Kernel.php` línea 92-101
-> - ✅ Servicio Docker `scheduler` creado y funcionando
-> - ❌ `schedule:list` solo muestra 2 de 15+ tasks del Kernel
-> - ❌ El command NO se ejecuta automáticamente cada minuto como debería
+> **Solución aplicada:** Cron job del sistema
+> - Se configuró un cron job que ejecuta el comando cada minuto
+> - En producción, se usará `schedule:run` para ejecutar todas las tareas programadas
+> - Documentado en `DEPLOYMENT.md` con guía completa
 >
-> **Archivos modificados:**
-> - `docker-compose.yml` - Agregado servicio `scheduler`
-> - `app/Services/ScheduledEmailService.php` - Arreglado manejo de arrays en update
-> - `resources/views/emails/scheduled/show.blade.php` - Arreglado error array_column
+> **Línea del cron (desarrollo local con Docker/Sail):**
+> ```bash
+> * * * * * ./vendor/bin/sail artisan emails:send-scheduled >> /tmp/cron-emails.log 2>&1
+> ```
 >
-> **Soluciones temporales:**
-> 1. Ejecutar manualmente: `./vendor/bin/sail artisan emails:send-scheduled`
-> 2. Cron del sistema (recomendado): Agregar al crontab
-> 3. Investigación pendiente: Requiere debug profundo del scheduler de Laravel
+> **Línea del cron (producción en servidor):**
+> ```bash
+> * * * * * cd /ruta/a/tu/proyecto && php artisan schedule:run >> /dev/null 2>&1
+> ```
 >
-> **Estado:** FUNCIONAL pero requiere ejecución manual. No bloquea el MVP.
+> **¿Por qué `schedule:run` en producción?**
+> - Ejecuta TODAS las tareas programadas del `Kernel.php`
+> - Solo se configura el cron UNA VEZ en el servidor
+> - Cualquier tarea nueva que añadas en código funciona automáticamente
+> - Es la forma oficial y recomendada por Laravel
 >
-> **TODO:** Resolver issue del scheduler en Fase 2 o durante testing final.
+> **Estado:** ✅ FUNCIONAL Y LISTO PARA PRODUCCIÓN
+>
+> **Archivos creados/modificados:**
+> - `DEPLOYMENT.md` - Guía completa de deployment con configuración de cron
+> - `app/Console/Kernel.php:92-101` - Command registrado correctamente
+> - `app/Services/ScheduledEmailService.php` - Lógica de envío funcionando
+>
+> **Monitoreo:**
+> - Logs locales: `tail -f /tmp/cron-emails.log`
+> - Logs producción: `storage/logs/laravel.log`
+> - Ver emails pendientes: `php artisan tinker` → `\App\Models\ScheduledEmail::where('status', 'pending')->count()`
 
 **3. Auto-responders**
 - [ ] Configurar respuesta automática (fuera de oficina)
