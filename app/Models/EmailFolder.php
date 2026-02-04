@@ -100,6 +100,66 @@ class EmailFolder extends Model
     }
 
     /**
+     * Scope: Solo carpetas propias del usuario (no compartidas)
+     */
+    public function scopeOwnedByUser($query, $userId)
+    {
+        return $query->where('user_id', $userId)
+                    ->whereNull('organization_id');
+    }
+
+    /**
+     * Scope: Solo carpetas compartidas de la organización
+     */
+    public function scopeSharedInOrganization($query, $organizationId)
+    {
+        return $query->where('organization_id', $organizationId);
+    }
+
+    /**
+     * Scope: Carpetas accesibles por el usuario (propias + compartidas de su organización)
+     */
+    public function scopeAccessibleByUser($query, User $user)
+    {
+        return $query->where(function ($q) use ($user) {
+            // Carpetas propias
+            $q->where('user_id', $user->id);
+
+            // Carpetas compartidas de organizaciones del usuario
+            $userOrganizations = $user->activeOrganizations()->pluck('organization_id');
+            if ($userOrganizations->isNotEmpty()) {
+                $q->orWhereIn('organization_id', $userOrganizations);
+            }
+        });
+    }
+
+    /**
+     * Verificar si es una carpeta compartida
+     */
+    public function isShared(): bool
+    {
+        return !is_null($this->organization_id);
+    }
+
+    /**
+     * Verificar si el usuario puede editar esta carpeta
+     */
+    public function canBeEditedBy(User $user): bool
+    {
+        // Carpetas propias siempre se pueden editar
+        if ($this->user_id === $user->id && !$this->isShared()) {
+            return true;
+        }
+
+        // Carpetas compartidas solo por owner/admin
+        if ($this->isShared()) {
+            return $user->hasPermissionTo('shared.folders.update');
+        }
+
+        return false;
+    }
+
+    /**
      * Obtener la ruta completa de la carpeta (ej: "Trabajo/Proyectos/Proyecto A")
      */
     public function getFullPath(): string

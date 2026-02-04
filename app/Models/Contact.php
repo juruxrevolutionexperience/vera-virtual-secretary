@@ -12,6 +12,7 @@ class Contact extends Model
 
     protected $fillable = [
         'user_id',
+        'organization_id',
         'email',
         'name',
         'company',
@@ -227,5 +228,69 @@ class Contact extends Model
     {
         return !$this->last_contact_at ||
                $this->last_contact_at->isBefore(now()->subDays($days));
+    }
+
+    // ==========================================
+    // SCOPES PARA RECURSOS COMPARTIDOS
+    // ==========================================
+
+    /**
+     * Scope: Solo contactos propios del usuario (no compartidos)
+     */
+    public function scopeOwnedByUser($query, $userId)
+    {
+        return $query->where('user_id', $userId)
+                    ->whereNull('organization_id');
+    }
+
+    /**
+     * Scope: Solo contactos compartidos de la organización
+     */
+    public function scopeSharedInOrganization($query, $organizationId)
+    {
+        return $query->where('organization_id', $organizationId);
+    }
+
+    /**
+     * Scope: Contactos accesibles por el usuario (propios + compartidos de su organización)
+     */
+    public function scopeAccessibleByUser($query, User $user)
+    {
+        return $query->where(function ($q) use ($user) {
+            // Contactos propios
+            $q->where('user_id', $user->id);
+
+            // Contactos compartidos de organizaciones del usuario
+            $userOrganizations = $user->activeOrganizations()->pluck('organization_id');
+            if ($userOrganizations->isNotEmpty()) {
+                $q->orWhereIn('organization_id', $userOrganizations);
+            }
+        });
+    }
+
+    /**
+     * Verificar si es un contacto compartido
+     */
+    public function isShared(): bool
+    {
+        return !is_null($this->organization_id);
+    }
+
+    /**
+     * Verificar si el usuario puede editar este contacto
+     */
+    public function canBeEditedBy(User $user): bool
+    {
+        // Contactos propios siempre se pueden editar
+        if ($this->user_id === $user->id && !$this->isShared()) {
+            return true;
+        }
+
+        // Contactos compartidos solo por owner/admin
+        if ($this->isShared()) {
+            return $user->hasPermissionTo('shared.contacts.update');
+        }
+
+        return false;
     }
 }

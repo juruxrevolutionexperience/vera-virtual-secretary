@@ -14,6 +14,7 @@ class EmailTemplate extends Model
 
     protected $fillable = [
         'user_id',
+        'organization_id',
         'name',
         'subject',
         'body',
@@ -81,6 +82,66 @@ class EmailTemplate extends Model
     public function scopeForUser($query, $userId)
     {
         return $query->where('user_id', $userId);
+    }
+
+    /**
+     * Scope: Solo templates propios del usuario (no compartidos)
+     */
+    public function scopeOwnedByUser($query, $userId)
+    {
+        return $query->where('user_id', $userId)
+                    ->whereNull('organization_id');
+    }
+
+    /**
+     * Scope: Solo templates compartidos de la organización
+     */
+    public function scopeSharedInOrganization($query, $organizationId)
+    {
+        return $query->where('organization_id', $organizationId);
+    }
+
+    /**
+     * Scope: Templates accesibles por el usuario (propios + compartidos de su organización)
+     */
+    public function scopeAccessibleByUser($query, User $user)
+    {
+        return $query->where(function ($q) use ($user) {
+            // Templates propios
+            $q->where('user_id', $user->id);
+
+            // Templates compartidos de organizaciones del usuario
+            $userOrganizations = $user->activeOrganizations()->pluck('organization_id');
+            if ($userOrganizations->isNotEmpty()) {
+                $q->orWhereIn('organization_id', $userOrganizations);
+            }
+        });
+    }
+
+    /**
+     * Verificar si es un template compartido
+     */
+    public function isShared(): bool
+    {
+        return !is_null($this->organization_id);
+    }
+
+    /**
+     * Verificar si el usuario puede editar este template
+     */
+    public function canBeEditedBy(User $user): bool
+    {
+        // Templates propios siempre se pueden editar
+        if ($this->user_id === $user->id && !$this->isShared()) {
+            return true;
+        }
+
+        // Templates compartidos solo por owner/admin
+        if ($this->isShared()) {
+            return $user->hasPermissionTo('shared.templates.update');
+        }
+
+        return false;
     }
 
     /**
