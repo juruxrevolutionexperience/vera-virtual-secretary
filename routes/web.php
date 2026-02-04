@@ -514,6 +514,36 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ===========================================
+    // RUTAS DE ORGANIZACIONES (SUB-FASE 1D)
+    // ===========================================
+
+    // GESTIÓN DE ORGANIZACIONES
+    Route::resource('organizations', \App\Http\Controllers\OrganizationController::class);
+
+    // RUTAS ADICIONALES DE ORGANIZACIONES
+    Route::prefix('organizations/{organization}')->name('organizations.')->group(function () {
+        // Miembros
+        Route::get('/members', [\App\Http\Controllers\OrganizationController::class, 'members'])->name('members');
+        Route::delete('/members/{user}', [\App\Http\Controllers\OrganizationController::class, 'removeMember'])->name('members.remove');
+        Route::put('/members/{user}/role', [\App\Http\Controllers\OrganizationController::class, 'changeMemberRole'])->name('members.change-role');
+
+        // Salir de organización
+        Route::post('/leave', [\App\Http\Controllers\OrganizationController::class, 'leave'])->name('leave');
+
+        // Invitaciones
+        Route::get('/invitations', [\App\Http\Controllers\OrganizationInvitationController::class, 'index'])->name('invitations.index');
+        Route::post('/invitations', [\App\Http\Controllers\OrganizationInvitationController::class, 'store'])->name('invitations.store');
+        Route::delete('/invitations/{invitation}', [\App\Http\Controllers\OrganizationInvitationController::class, 'destroy'])->name('invitations.destroy');
+    });
+
+    // ACEPTAR/RECHAZAR INVITACIONES (rutas públicas con token)
+    Route::prefix('invitations')->name('invitations.')->group(function () {
+        Route::get('/{token}', [\App\Http\Controllers\OrganizationInvitationController::class, 'show'])->name('show');
+        Route::post('/{token}/accept', [\App\Http\Controllers\OrganizationInvitationController::class, 'accept'])->name('accept');
+        Route::post('/{token}/decline', [\App\Http\Controllers\OrganizationInvitationController::class, 'decline'])->name('decline');
+    });
+
+    // ===========================================
     // RUTAS DE SEGURIDAD Y COMPLIANCE (SUB-FASE 1E)
     // ===========================================
 

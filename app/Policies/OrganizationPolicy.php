@@ -39,12 +39,12 @@ class OrganizationPolicy
      */
     public function update(User $user, Organization $organization): bool
     {
-        // Solo el owner o usuarios con permiso manage_settings
+        // Solo el owner o admin (con permiso organization.update)
         if ($organization->isOwner($user)) {
             return true;
         }
 
-        return $user->hasPermissionTo('organization.manage_settings')
+        return $user->hasPermissionTo('organization.update')
             && $user->belongsToOrganization($organization);
     }
 
@@ -78,11 +78,12 @@ class OrganizationPolicy
      */
     public function viewSettings(User $user, Organization $organization): bool
     {
+        // Todos los miembros pueden ver la organización
         if (!$user->belongsToOrganization($organization)) {
             return false;
         }
 
-        return $user->hasPermissionTo('organization.view_settings');
+        return $user->hasPermissionTo('organization.view');
     }
 
     /**
@@ -90,11 +91,12 @@ class OrganizationPolicy
      */
     public function manageSettings(User $user, Organization $organization): bool
     {
+        // Solo owner o admin
         if (!$user->belongsToOrganization($organization)) {
             return false;
         }
 
-        return $user->hasPermissionTo('organization.manage_settings');
+        return $user->hasPermissionTo('organization.update');
     }
 
     /**
@@ -140,23 +142,12 @@ class OrganizationPolicy
      */
     public function changeMemberRoles(User $user, Organization $organization): bool
     {
+        // Solo owner o admin
         if (!$user->belongsToOrganization($organization)) {
             return false;
         }
 
-        return $user->hasPermissionTo('organization.change_member_roles');
-    }
-
-    /**
-     * Determine whether the user can view analytics.
-     */
-    public function viewAnalytics(User $user, Organization $organization): bool
-    {
-        if (!$user->belongsToOrganization($organization)) {
-            return false;
-        }
-
-        return $user->hasPermissionTo('organization.view_analytics');
+        return $user->hasPermissionTo('organization.change_roles');
     }
 
     /**
