@@ -43,8 +43,10 @@ class OrganizationInvitationController extends Controller
 
             if ($existingInvitation) {
                 return response()->json([
-                    'message' => '❌ Ya existe una invitación pendiente para este email',
-                ], 422);
+                    'message' => 'ℹ️ Ya se envió una invitación a este email anteriormente. La invitación sigue pendiente.',
+                    'invitation' => $existingInvitation,
+                    'invitation_url' => route('invitations.accept', ['token' => $existingInvitation->token]),
+                ], 200);
             }
 
             // Crear invitación
@@ -65,7 +67,7 @@ class OrganizationInvitationController extends Controller
                 return response()->json([
                     'message' => '✅ Invitación enviada exitosamente',
                     'invitation' => $invitation,
-                    'invitation_url' => route('organizations.invitations.accept', ['token' => $invitation->token]),
+                    'invitation_url' => route('invitations.accept', ['token' => $invitation->token]),
                 ], 201);
             }
 

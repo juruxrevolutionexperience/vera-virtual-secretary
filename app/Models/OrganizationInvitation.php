@@ -22,12 +22,16 @@ class OrganizationInvitation extends Model
         'expires_at',
         'accepted_at',
         'rejected_at',
+        'declined_at',
+        'cancelled_at',
     ];
 
     protected $casts = [
         'expires_at' => 'datetime',
         'accepted_at' => 'datetime',
         'rejected_at' => 'datetime',
+        'declined_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     /**
@@ -61,6 +65,14 @@ class OrganizationInvitation extends Model
     public function inviter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'invited_by');
+    }
+
+    /**
+     * Alias para inviter (para compatibilidad con el controlador)
+     */
+    public function invitedBy(): BelongsTo
+    {
+        return $this->inviter();
     }
 
     /**

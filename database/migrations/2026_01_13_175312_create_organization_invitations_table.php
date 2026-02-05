@@ -16,13 +16,15 @@ return new class extends Migration
             $table->foreignId('organization_id')->constrained()->onDelete('cascade');
             $table->string('email'); // Email del invitado
             $table->foreignId('invited_by')->constrained('users')->onDelete('cascade');
-            $table->string('role')->default('employee'); // Rol propuesto
+            $table->string('role')->default('member'); // Rol propuesto (member por defecto)
             $table->string('token')->unique(); // Token de validación
-            $table->enum('status', ['pending', 'accepted', 'rejected', 'expired'])->default('pending');
+            $table->enum('status', ['pending', 'accepted', 'rejected', 'declined', 'cancelled', 'expired'])->default('pending');
             $table->text('message')->nullable(); // Mensaje personalizado
             $table->timestamp('expires_at');
             $table->timestamp('accepted_at')->nullable();
             $table->timestamp('rejected_at')->nullable();
+            $table->timestamp('declined_at')->nullable();
+            $table->timestamp('cancelled_at')->nullable();
             $table->timestamps();
 
             // Índices

@@ -799,67 +799,67 @@ Verificar que todo funciona al 100%
 
 ---
 
-#### ✅ **PASO 1: Roles Simplificados (Spatie Permission)**
+#### ✅ **PASO 1: Roles Simplificados (Spatie Permission)** ✅ COMPLETADO
 
 **Crear solo 3 roles:**
 
 **1. Owner 👑**
-- [ ] Crea la organización
-- [ ] Administra billing (Stripe)
-- [ ] Invita/remueve usuarios
-- [ ] Gestiona recursos compartidos
-- [ ] Puede hacer TODO
+- [x] Crea la organización
+- [x] Administra billing (Stripe)
+- [x] Invita/remueve usuarios
+- [x] Gestiona recursos compartidos
+- [x] Puede hacer TODO
 
 **2. Admin 🛡️**
-- [ ] Co-administrador de la organización
-- [ ] Puede invitar usuarios
-- [ ] Gestiona recursos compartidos (carpetas, templates, contactos)
-- [ ] NO puede cambiar billing ni eliminar la organización
+- [x] Co-administrador de la organización
+- [x] Puede invitar usuarios
+- [x] Gestiona recursos compartidos (carpetas, templates, contactos)
+- [x] NO puede cambiar billing ni eliminar la organización
 
 **3. Member 👤**
-- [ ] Usuario normal del equipo
-- [ ] Tiene acceso a recursos compartidos (lectura/escritura)
-- [ ] Gestiona SUS emails con SU Vera
-- [ ] No puede invitar ni administrar
+- [x] Usuario normal del equipo
+- [x] Tiene acceso a recursos compartidos (lectura/escritura)
+- [x] Gestiona SUS emails con SU Vera
+- [x] No puede invitar ni administrar
 
 **Seeder de Roles:**
-- [ ] Crear DatabaseSeeder con los 3 roles
-- [ ] Definir permisos por rol
-- [ ] Ejecutar seeder
+- [x] Crear RolesAndPermissionsSeeder con los 3 roles
+- [x] Definir 20 permisos por sistema
+- [x] Ejecutar seeder (Owner: 20, Admin: 18, Member: 5)
 
 ---
 
-#### ✅ **PASO 2: Gestión de Organizaciones**
+#### ✅ **PASO 2: Gestión de Organizaciones** ✅ MAYORMENTE COMPLETADO
 
 **1. Backend:**
-- [ ] OrganizationPolicy (autorización)
-- [ ] OrganizationController (CRUD completo)
-- [ ] OrganizationInvitationController (invitar/aceptar)
-- [ ] Rutas configuradas
+- [x] OrganizationPolicy (autorización completa)
+- [x] OrganizationController (CRUD completo)
+- [x] OrganizationInvitationController (invitar/aceptar)
+- [x] Rutas configuradas (14 rutas)
 
 **2. Funcionalidades:**
-- [ ] Crear organización (Owner)
-- [ ] Invitar usuarios a organización (Owner/Admin)
-- [ ] Aceptar invitación (email con link único)
-- [ ] Ver miembros de la organización
-- [ ] Cambiar rol de un miembro (Owner)
-- [ ] Remover miembro (Owner/Admin)
-- [ ] Salir de organización (Member puede salir)
-- [ ] Eliminar organización (solo Owner)
+- [x] Crear organización (Owner) ✅ TESTEADO
+- [x] Invitar usuarios a organización (Owner/Admin) ✅ TESTEADO
+- [ ] Aceptar invitación (email con link único) ⚠️ Backend existe, falta testear
+- [x] Ver miembros de la organización ✅ TESTEADO
+- [ ] Cambiar rol de un miembro (Owner) ⚠️ Frontend existe, falta testear
+- [ ] Remover miembro (Owner/Admin) ⚠️ Frontend existe, falta testear
+- [ ] Salir de organización (Member puede salir) ⚠️ Frontend existe, falta testear
+- [ ] Eliminar organización (solo Owner) ⚠️ Frontend existe, falta testear
 
 **3. Frontend:**
-- [ ] Vista organizations/index.blade.php (lista de organizaciones)
-- [ ] Vista organizations/show.blade.php (detalles + miembros)
-- [ ] Vista organizations/members.blade.php (gestión de miembros)
-- [ ] Modal de invitación de usuarios
-- [ ] Badge en sidebar con nombre de organización
+- [x] Vista organizations/index.blade.php (lista de organizaciones) ✅ FUNCIONA
+- [x] Vista organizations/show.blade.php (detalles + miembros + tabs) ✅ FUNCIONA
+- [x] Modal de invitación de usuarios ✅ FUNCIONA
+- [ ] Badge en sidebar con nombre de organización ❌ NO implementado
+- [x] Link en sidebar "Organizaciones" ✅ FUNCIONA
 
 ---
 
-#### ✅ **PASO 3: Recursos Compartidos**
+#### ⏳ **PASO 3: Recursos Compartidos** ⚠️ PENDIENTE PARA MAÑANA
 
 **1. Carpetas Compartidas de Organización 📁**
-- [ ] Marcar carpetas como "de organización" (campo `organization_id`)
+- [x] Campo `organization_id` ya existe en tabla `email_folders`
 - [ ] Owner/Admin pueden crear carpetas compartidas
 - [ ] Todos los miembros pueden mover SUS emails a estas carpetas
 - [ ] **Importante:** Solo se comparte la carpeta (estructura), NO los emails dentro
@@ -867,14 +867,15 @@ Verificar que todo funciona al 100%
 - [ ] Vista filtrada: "Mis Carpetas" vs "Carpetas de la Organización"
 
 **2. Templates Compartidos 📝**
-- [ ] Marcar templates como "de organización" (campo `organization_id`)
+- [x] Campo `organization_id` ya existe en tabla `email_templates`
 - [ ] Owner/Admin pueden crear templates compartidos
 - [ ] Biblioteca de plantillas de la empresa
 - [ ] Todos pueden usar los templates de la organización
 - [ ] Vista filtrada: "Mis Templates" vs "Templates de la Organización"
 
 **3. Contactos Compartidos 👥**
-- [ ] Marcar contactos como "de organización" (campo `organization_id`)
+- [x] Campo `organization_id` ya existe en tabla `contacts`
+- [ ] Owner/Admin pueden crear contactos compartidos
 - [ ] Base de datos de contactos de la empresa
 - [ ] Todos pueden ver y usar estos contactos
 - [ ] Se enriquecen automáticamente con emails de todos
@@ -887,16 +888,20 @@ Verificar que todo funciona al 100%
 
 ---
 
-#### ✅ **PASO 4: Policies de Autorización**
+#### ✅ **PASO 4: Policies de Autorización** ✅ COMPLETADO PARCIALMENTE
 
-**1. OrganizationPolicy**
-- [ ] `view` - Todos los miembros pueden ver
-- [ ] `update` - Solo Owner/Admin
-- [ ] `delete` - Solo Owner
-- [ ] `invite` - Owner/Admin
-- [ ] `removeMember` - Owner/Admin
+**1. OrganizationPolicy** ✅ COMPLETADO
+- [x] `view` - Todos los miembros pueden ver
+- [x] `update` - Solo Owner/Admin
+- [x] `delete` - Solo Owner
+- [x] `inviteMembers` - Owner/Admin
+- [x] `removeMembers` - Owner/Admin
+- [x] `changeMemberRoles` - Owner/Admin
+- [x] `leave` - Member puede salir (Owner no)
+- [x] `viewMembers` - Todos los miembros
+- [x] `manageBilling` - Solo Owner
 
-**2. SharedResourcePolicy** (para templates/carpetas/contactos compartidos)
+**2. SharedResourcePolicy** ⚠️ PENDIENTE
 - [ ] `view` - Todos los miembros
 - [ ] `create` - Owner/Admin para recursos compartidos
 - [ ] `update` - Owner/Admin para recursos compartidos
@@ -904,7 +909,7 @@ Verificar que todo funciona al 100%
 
 ---
 
-#### ✅ **PASO 5: Integración con Sistema Existente**
+#### ⏳ **PASO 5: Integración con Sistema Existente** ⚠️ PENDIENTE PARA MAÑANA
 
 **1. Filtrado por Organización:**
 - [ ] Modificar EmailController para filtrar por `organization_id`
@@ -913,25 +918,35 @@ Verificar que todo funciona al 100%
 - [ ] Modificar ContactController para diferenciar contactos propios vs compartidos
 
 **2. Queries Optimizadas:**
-- [ ] Agregar scopes: `ownedByUser()`, `sharedInOrganization()`
+- [x] Scopes ya existen en modelos: `ownedByUser()`, `sharedInOrganization()`, `accessibleByUser()`
+- [x] Métodos helper: `isShared()`, `canBeEditedBy()`
+- [ ] Integrar scopes en controllers
 - [ ] Eager loading de organización donde sea necesario
-- [ ] Índices en `organization_id` (ya deberían existir)
+- [x] Índices en `organization_id` ya existen en todas las tablas
 
 ---
 
-#### ✅ **PASO 6: Testing Completo**
+#### ⏳ **PASO 6: Testing Completo** ⚠️ PARCIALMENTE COMPLETADO
 
-**Escenarios a testear:**
-- [ ] Usuario crea organización → Se convierte en Owner
-- [ ] Owner invita usuario → Recibe email con link
-- [ ] Usuario acepta invitación → Se une como Member
-- [ ] Owner cambia rol de Member a Admin → Permisos actualizados
-- [ ] Admin crea carpeta compartida → Todos los miembros la ven
-- [ ] Member crea template → Solo él lo ve (no es compartido)
-- [ ] Admin crea template compartido → Todos lo ven
-- [ ] Member mueve SU email a carpeta compartida → Email visible solo para él
-- [ ] Member intenta eliminar organización → Acceso denegado
-- [ ] Owner elimina organización → Todos los miembros son removidos
+**Escenarios testeados hoy:**
+- [x] Usuario crea organización → Se convierte en Owner ✅ FUNCIONA
+- [x] Owner invita usuario → Sistema funciona (pendiente envío de email)
+- [ ] Usuario acepta invitación → Se une como Member ⚠️ Backend existe, falta testear
+- [ ] Owner cambia rol de Member a Admin → Frontend existe, falta testear
+- [ ] Admin crea carpeta compartida → Pendiente (PASO 3)
+- [ ] Member crea template → Pendiente (PASO 3)
+- [ ] Admin crea template compartido → Pendiente (PASO 3)
+- [ ] Member mueve SU email a carpeta compartida → Pendiente (PASO 3)
+- [ ] Member intenta eliminar organización → Frontend existe, falta testear
+- [ ] Owner elimina organización → Frontend existe, falta testear
+
+**Testing realizado manualmente:**
+- [x] Verificación de roles y permisos
+- [x] Creación de organizaciones
+- [x] Invitación de miembros (sin duplicados)
+- [x] Vista de lista de organizaciones
+- [x] Vista de detalles de organización
+- [x] Modales con texto visible (negro sobre blanco)
 
 ---
 
@@ -952,6 +967,31 @@ Verificar que todo funciona al 100%
 - ✅ **Independencia:** Cada usuario tiene SU Vera, SUS emails, SU configuración
 - ✅ **Colaboración ligera:** Templates, carpetas y contactos compartidos
 - ✅ **Simple:** Solo 3 roles, sin complejidad innecesaria
+
+---
+
+## 📊 RESUMEN DE PROGRESO - DÍA 7
+
+### ✅ COMPLETADO HOY (60% de SUB-FASE 1D)
+- ✅ Sistema de roles (Owner, Admin, Member) con 20 permisos
+- ✅ Backend completo (Controllers, Policies, Modelos)
+- ✅ Frontend básico (Lista, Detalles, Modales)
+- ✅ Sistema de invitaciones funcionando
+- ✅ Migraciones y base de datos actualizada
+- ✅ 9 archivos creados/modificados
+- ✅ Testing manual exitoso
+
+### ⏳ PENDIENTE PARA MAÑANA (40% restante)
+- ⚠️ **PASO 3**: Recursos Compartidos (carpetas, templates, contactos)
+- ⚠️ **PASO 5**: Integración con controllers existentes
+- ⚠️ **PASO 6**: Testing completo de todos los escenarios
+- ⚠️ Funcionalidades del frontend por testear (cambiar rol, remover, salir, eliminar)
+- ⚠️ Badge en sidebar con nombre de organización
+
+### 🎯 PRIORIDAD PARA MAÑANA
+1. **Recursos Compartidos** (PASO 3) - Core funcionalidad
+2. **Integración** (PASO 5) - Conectar con sistema existente
+3. **Testing completo** (PASO 6) - Verificar todo funciona
 
 ---
 

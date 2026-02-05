@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,21 +12,28 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('emails', function (Blueprint $table) {
-            // Índice simple para due_date (búsquedas y ordenamiento)
-            $table->index('due_date', 'emails_due_date_index');
+        // Crear índices solo si no existen
+        $this->createIndexIfNotExists('emails_due_date_index', 'emails', ['due_date']);
+        $this->createIndexIfNotExists('emails_snoozed_until_index', 'emails', ['snoozed_until']);
+        $this->createIndexIfNotExists('emails_due_workflow_index', 'emails', ['due_date', 'workflow_status']);
+        $this->createIndexIfNotExists('emails_snooze_workflow_index', 'emails', ['snoozed_until', 'workflow_status']);
+    }
 
-            // Índice simple para snoozed_until (wakeup command)
-            $table->index('snoozed_until', 'emails_snoozed_until_index');
-
-            // Índice compuesto para filtros de due dates (overdue, due today, etc)
-            // Usado en queries: WHERE due_date IS NOT NULL AND workflow_status != 'completed'
-            $table->index(['due_date', 'workflow_status'], 'emails_due_workflow_index');
-
-            // Índice compuesto para queries de snooze activos
-            // Usado en scope snoozed()
-            $table->index(['snoozed_until', 'workflow_status'], 'emails_snooze_workflow_index');
-        });
+    /**
+     * Helper para crear índice solo si no existe
+     */
+    private function createIndexIfNotExists(string $indexName, string $tableName, array $columns): void
+    {
+        try {
+            Schema::table($tableName, function (Blueprint $table) use ($indexName, $columns) {
+                $table->index($columns, $indexName);
+            });
+        } catch (\Exception $e) {
+            // Si el índice ya existe, ignorar el error
+            if (!str_contains($e->getMessage(), 'Duplicate key name')) {
+                throw $e;
+            }
+        }
     }
 
     /**

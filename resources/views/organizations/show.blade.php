@@ -132,7 +132,7 @@
                                     @endif
                                 </div>
                                 <p class="text-sm text-gray-500">{{ $member->email }}</p>
-                                <p class="text-xs text-gray-400">Se unió {{ $member->pivot->joined_at->diffForHumans() }}</p>
+                                <p class="text-xs text-gray-400">Se unió {{ \Carbon\Carbon::parse($member->pivot->joined_at)->diffForHumans() }}</p>
                             </div>
                         </div>
 
@@ -239,13 +239,13 @@
                                 <input type="email"
                                        x-model="invitation.email"
                                        required
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900">
                             </div>
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Rol *</label>
                                 <select x-model="invitation.role"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900">
                                     <option value="member">👤 Member (Usuario normal)</option>
                                     <option value="admin">🛡️ Admin (Co-administrador)</option>
                                 </select>
@@ -304,7 +304,8 @@ function organizationShowApp() {
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert('✅ ' + data.message);
+                    // Mostrar el mensaje tal cual viene del servidor (ya incluye el ícono)
+                    alert(data.message);
                     this.showInviteModal = false;
                     this.invitation = { email: '', role: 'member' };
                 } else {

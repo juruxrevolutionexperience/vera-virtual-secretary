@@ -163,7 +163,7 @@
                                 <input type="text"
                                        x-model="newOrg.name"
                                        required
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900"
                                        placeholder="Ej: Mi Empresa S.A.">
                             </div>
 
@@ -171,7 +171,7 @@
                                 <label class="block text-sm font-medium text-gray-700">Descripción</label>
                                 <textarea x-model="newOrg.description"
                                           rows="3"
-                                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900"
                                           placeholder="Descripción breve de la organización"></textarea>
                             </div>
 
@@ -179,7 +179,7 @@
                                 <label class="block text-sm font-medium text-gray-700">Email</label>
                                 <input type="email"
                                        x-model="newOrg.email"
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900"
                                        placeholder="contacto@empresa.com">
                             </div>
 
@@ -187,7 +187,7 @@
                                 <label class="block text-sm font-medium text-gray-700">Sitio Web</label>
                                 <input type="url"
                                        x-model="newOrg.website"
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900"
                                        placeholder="https://empresa.com">
                             </div>
                         </div>
