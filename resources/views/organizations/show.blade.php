@@ -206,6 +206,19 @@
                 @endif
             </dl>
 
+            @can('leave', $organization)
+                <div class="mt-8 pt-6 border-t border-gray-200">
+                    <h4 class="text-sm font-medium text-orange-600 mb-2">Salir de la Organización</h4>
+                    <p class="text-sm text-gray-600 mb-4">
+                        Si sales de esta organización, perderás acceso a todos los recursos compartidos.
+                    </p>
+                    <button @click="confirmLeave()"
+                            class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors">
+                        Salir de la Organización
+                    </button>
+                </div>
+            @endcan
+
             @can('delete', $organization)
                 <div class="mt-8 pt-6 border-t border-gray-200">
                     <h4 class="text-sm font-medium text-red-600 mb-2">Zona de Peligro</h4>
@@ -371,6 +384,36 @@ function organizationShowApp() {
                 }
             } catch (error) {
                 alert('❌ Error al remover el miembro');
+                console.error(error);
+            }
+        },
+
+        confirmLeave() {
+            if (confirm('⚠️ ¿Estás seguro de salir de esta organización?\n\nPerderás acceso a todos los recursos compartidos.')) {
+                this.leaveOrganization();
+            }
+        },
+
+        async leaveOrganization() {
+            try {
+                const response = await fetch('/organizations/{{ $organization->id }}/leave', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('✅ ' + data.message);
+                    window.location.href = '/organizations';
+                } else {
+                    alert('❌ ' + (data.message || 'Error al salir de la organización'));
+                }
+            } catch (error) {
+                alert('❌ Error al salir de la organización');
                 console.error(error);
             }
         },

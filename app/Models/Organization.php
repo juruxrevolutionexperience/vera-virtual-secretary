@@ -236,6 +236,11 @@ class Organization extends Model
      */
     public function removeUser(User $user): void
     {
+        // No se puede remover al owner
+        if ($this->isOwner($user)) {
+            throw new \Exception('No se puede remover al propietario de la organización');
+        }
+
         $this->users()->updateExistingPivot($user->id, [
             'is_active' => false,
             'left_at' => now(),
@@ -247,6 +252,11 @@ class Organization extends Model
      */
     public function changeUserRole(User $user, string $newRole): void
     {
+        // No se puede cambiar el rol del owner
+        if ($this->isOwner($user)) {
+            throw new \Exception('No se puede cambiar el rol del propietario de la organización');
+        }
+
         $this->users()->updateExistingPivot($user->id, [
             'role' => $newRole,
         ]);

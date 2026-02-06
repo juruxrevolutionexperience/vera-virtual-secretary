@@ -25,7 +25,8 @@ class ContactController extends Controller
 
         // Si es petición AJAX, devolver JSON
         if ($request->wantsJson() || $request->expectsJson()) {
-            $query = Contact::where('user_id', $user->id);
+            // Incluir contactos propios + contactos compartidos de la organización
+            $query = Contact::accessibleByUser($user);
 
             // Filtros
             if ($request->has('search')) {

@@ -128,11 +128,12 @@ class EmailFolderService
     }
 
     /**
-     * Obtener árbol de carpetas del usuario
+     * Obtener árbol de carpetas del usuario (propias + compartidas)
      */
     public function getFolderTree(User $user): array
     {
-        $rootFolders = EmailFolder::where('user_id', $user->id)
+        // Incluir carpetas propias + carpetas compartidas de la organización
+        $rootFolders = EmailFolder::accessibleByUser($user)
             ->whereNull('parent_folder_id')
             ->orderBy('order')
             ->with('descendantsRecursive')
@@ -156,6 +157,8 @@ class EmailFolderService
                 'order' => $folder->order,
                 'is_system_folder' => $folder->is_system_folder,
                 'is_shared' => $folder->is_shared,
+                'organization_id' => $folder->organization_id,
+                'is_organization_shared' => !is_null($folder->organization_id), // Nueva prop: es carpeta de organización
                 'emails_count' => $folder->getEmailsCount(),
                 'emails_count_recursive' => $folder->getEmailsCountRecursive(),
                 'depth' => $folder->getDepthLevel(),

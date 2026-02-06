@@ -81,11 +81,12 @@ class EmailTemplateService
     }
 
     /**
-     * Obtener templates del usuario
+     * Obtener templates del usuario (propios + compartidos de organización)
      */
     public function getUserTemplates(User $user, ?string $type = null, bool $onlyActive = false): Collection
     {
-        $query = EmailTemplate::forUser($user->id);
+        // Incluir templates propios + templates compartidos de la organización
+        $query = EmailTemplate::accessibleByUser($user);
 
         if ($type) {
             $query->ofType($type);
