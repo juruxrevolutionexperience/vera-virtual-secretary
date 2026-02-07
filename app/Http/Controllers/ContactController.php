@@ -92,6 +92,7 @@ class ContactController extends Controller
             'phone' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
             'priority' => 'nullable|in:low,normal,high,vip',
+            'is_organization_shared' => 'nullable|boolean',
         ]);
 
         $contact = $this->contactService->getOrCreate(
@@ -104,6 +105,11 @@ class ContactController extends Controller
         if (isset($validated['phone'])) $contact->phone = $validated['phone'];
         if (isset($validated['notes'])) $contact->notes = $validated['notes'];
         if (isset($validated['priority'])) $contact->priority = $validated['priority'];
+
+        // Setear organization_id si se comparte
+        if (($validated['is_organization_shared'] ?? false) && Auth::user()->organizations()->wherePivot('is_active', true)->exists()) {
+            $contact->organization_id = Auth::user()->organizations()->wherePivot('is_active', true)->first()->id;
+        }
 
         $contact->save();
 

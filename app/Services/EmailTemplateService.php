@@ -14,8 +14,15 @@ class EmailTemplateService
      */
     public function createTemplate(User $user, array $data): EmailTemplate
     {
+        // Determinar organization_id si se comparte con organización
+        $organizationId = null;
+        if (($data['is_organization_shared'] ?? false) && $user->organizations()->wherePivot('is_active', true)->exists()) {
+            $organizationId = $user->organizations()->wherePivot('is_active', true)->first()->id;
+        }
+
         $template = EmailTemplate::create([
             'user_id' => $user->id,
+            'organization_id' => $organizationId,
             'name' => $data['name'],
             'subject' => $data['subject'],
             'body' => $data['body'],

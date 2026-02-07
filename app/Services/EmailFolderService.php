@@ -33,8 +33,15 @@ class EmailFolderService
             $data['order'] = $maxOrder + 1;
         }
 
+        // Determinar organization_id si se comparte con organización
+        $organizationId = null;
+        if (($data['is_organization_shared'] ?? false) && $user->organizations()->wherePivot('is_active', true)->exists()) {
+            $organizationId = $user->organizations()->wherePivot('is_active', true)->first()->id;
+        }
+
         $folder = EmailFolder::create([
             'user_id' => $user->id,
+            'organization_id' => $organizationId,
             'parent_folder_id' => $data['parent_folder_id'] ?? null,
             'name' => $data['name'],
             'icon' => $data['icon'] ?? 'folder',

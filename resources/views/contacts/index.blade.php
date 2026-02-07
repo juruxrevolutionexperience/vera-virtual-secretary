@@ -335,6 +335,7 @@ function contactsApp() {
             phone: '',
             notes: '',
             priority: 'normal',
+            is_organization_shared: false,
         },
 
         // Init

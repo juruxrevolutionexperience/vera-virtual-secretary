@@ -3090,6 +3090,22 @@
                     </div>
                 </div>
 
+                <!-- Compartir con Organización -->
+                @if(auth()->user()->organizations()->wherePivot('is_active', true)->exists())
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" x-model="formData.is_organization_shared"
+                            class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                        <div class="ml-3">
+                            <span class="text-sm font-medium text-gray-900">🏢 Compartir con mi organización</span>
+                            <p class="text-xs text-gray-600 mt-1">
+                                Todos los miembros podrán mover sus emails a esta carpeta
+                            </p>
+                        </div>
+                    </label>
+                </div>
+                @endif
+
                 <!-- Descripción -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -3169,7 +3185,8 @@
                         parent_folder_id: '',
                         color: '#6B7280',
                         icon: 'folder',
-                        description: ''
+                        description: '',
+                        is_organization_shared: false
                     };
                     this.folderId = null;
                 },

@@ -43,6 +43,7 @@ class EmailTemplateController extends Controller
             'category' => 'nullable|string|max:100',
             'is_active' => 'boolean',
             'is_default' => 'boolean',
+            'is_organization_shared' => 'nullable|boolean',
         ]);
 
         $template = $this->templateService->createTemplate(Auth::user(), $validated);

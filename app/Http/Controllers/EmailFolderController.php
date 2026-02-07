@@ -106,6 +106,7 @@ class EmailFolderController extends Controller
             'icon' => 'nullable|string|max:50',
             'color' => 'nullable|string|max:7', // Hex color
             'description' => 'nullable|string|max:500',
+            'is_organization_shared' => 'nullable|boolean',
         ]);
 
         $user = Auth::user();
