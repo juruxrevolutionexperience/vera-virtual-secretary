@@ -30,6 +30,31 @@ Verificar que todo funciona al 100%
 
 ---
 
+## 📧 INTEGRACIONES DE EMAIL
+
+### ✅ **Gmail API** - IMPLEMENTADA Y FUNCIONAL
+- ✅ Sincronización de emails
+- ✅ Envío de emails
+- ✅ OAuth2 autenticación
+- ✅ Webhooks para notificaciones
+- ✅ Gestión de etiquetas y carpetas
+- ✅ 100% funcional y testeada
+
+### ⏳ **Outlook API (Microsoft Graph)** - PENDIENTE
+- ❌ NO implementada aún
+- 📋 Requiere implementación similar a Gmail
+- 📋 Componentes necesarios:
+  - Autenticación OAuth2 con Microsoft
+  - Sincronización de emails (Microsoft Graph API)
+  - Envío de emails
+  - Gestión de carpetas
+  - Webhooks/Subscriptions
+- 📅 **Para implementar en FASE 2 o posterior**
+
+**NOTA IMPORTANTE:** Actualmente el sistema funciona 100% con cuentas de Gmail. Para soportar Outlook/Microsoft 365, se requiere una implementación adicional que NO está incluida en el MVP Fase 1.
+
+---
+
 ## 🔍 PARTE 1: REVISIÓN Y TESTING
 
 ### **DÍA 1-2: SUB-FASE 1A - GESTIÓN BÁSICA**
@@ -1599,6 +1624,12 @@ Esta separación garantiza una clara diferenciación entre uso personal y empres
 - Testing de performance
 - Testing de seguridad
 - Testing UX/UI
+
+**📧 INTEGRACIONES DE EMAIL:**
+- ✅ Gmail API: 100% implementada y funcional
+- ❌ Outlook API (Microsoft Graph): NO implementada (pendiente Fase 2)
+
+**NOTA:** El MVP actual funciona exclusivamente con Gmail. La integración con Outlook/Microsoft 365 requiere desarrollo adicional.
 
 ---
 
