@@ -127,10 +127,18 @@ class OrganizationController extends Controller
     {
         $this->authorize('view', $organization);
 
-        // Cargar miembros con información adicional
+        // Cargar miembros activos
         $members = $organization->activeUsers()
             ->withPivot(['role', 'joined_at', 'is_primary'])
             ->get();
+
+        // Cargar historial de miembros inactivos (solo para Owner/Admin)
+        $formerMembers = collect();
+        if ($request->user()->can('viewMembers', $organization)) {
+            $formerMembers = $organization->users()
+                ->wherePivot('is_active', false)
+                ->get();
+        }
 
         // Obtener rol del usuario actual
         $userRole = $organization->getUserRole($request->user());
@@ -139,6 +147,7 @@ class OrganizationController extends Controller
             return response()->json([
                 'organization' => $organization->load('owner'),
                 'members' => $members,
+                'former_members' => $formerMembers,
                 'user_role' => $userRole,
                 'stats' => [
                     'total_members' => $members->count(),
@@ -150,7 +159,7 @@ class OrganizationController extends Controller
             ]);
         }
 
-        return view('organizations.show', compact('organization', 'members', 'userRole'));
+        return view('organizations.show', compact('organization', 'members', 'formerMembers', 'userRole'));
     }
 
     /**
@@ -286,7 +295,11 @@ class OrganizationController extends Controller
         }
 
         try {
-            $organization->removeUser($user);
+            // Obtener razón opcional de la request
+            $reason = $request->input('reason');
+
+            // Remover usuario guardando quién lo removió
+            $organization->removeUser($user, $request->user(), $reason);
 
             if ($request->wantsJson()) {
                 return response()->json([
@@ -359,7 +372,12 @@ class OrganizationController extends Controller
         $this->authorize('leave', $organization);
 
         try {
-            $organization->removeUser($request->user());
+            // Usuario se va voluntariamente (removed_by será él mismo)
+            $organization->removeUser(
+                $request->user(),
+                $request->user(),
+                'Salió voluntariamente de la organización'
+            );
 
             if ($request->wantsJson()) {
                 return response()->json([

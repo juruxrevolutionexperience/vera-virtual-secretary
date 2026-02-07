@@ -61,7 +61,19 @@ class Organization extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'organization_user')
-            ->withPivot(['role', 'is_primary', 'invited_by', 'invited_at', 'joined_at', 'left_at', 'is_active'])
+            ->withPivot([
+                'role',
+                'is_primary',
+                'invited_by',
+                'invited_at',
+                'joined_at',
+                'left_at',
+                'is_active',
+                'user_name',
+                'user_email',
+                'removed_by',
+                'removal_reason',
+            ])
             ->withTimestamps();
     }
 
@@ -228,13 +240,16 @@ class Organization extends Model
             'invited_at' => now(),
             'joined_at' => now(),
             'is_active' => true,
+            // Snapshot de datos del usuario (para auditoría)
+            'user_name' => $user->name,
+            'user_email' => $user->email,
         ]);
     }
 
     /**
      * Remover un usuario de la organización
      */
-    public function removeUser(User $user): void
+    public function removeUser(User $user, ?User $removedBy = null, ?string $reason = null): void
     {
         // No se puede remover al owner
         if ($this->isOwner($user)) {
@@ -244,6 +259,8 @@ class Organization extends Model
         $this->users()->updateExistingPivot($user->id, [
             'is_active' => false,
             'left_at' => now(),
+            'removed_by' => $removedBy?->id,
+            'removal_reason' => $reason,
         ]);
     }
 

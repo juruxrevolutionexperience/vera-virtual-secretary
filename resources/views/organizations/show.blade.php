@@ -88,6 +88,18 @@
                         class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                     Invitaciones
                 </button>
+                @can('viewMembers', $organization)
+                <button @click="activeTab = 'history'"
+                        :class="activeTab === 'history' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    Historial
+                    @if($formerMembers->count() > 0)
+                        <span class="ml-2 bg-gray-100 text-gray-600 py-1 px-2 rounded-full text-xs">
+                            {{ $formerMembers->count() }}
+                        </span>
+                    @endif
+                </button>
+                @endcan
                 <button @click="activeTab = 'settings'"
                         :class="activeTab === 'settings' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                         class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
@@ -141,7 +153,7 @@
                                 <div class="flex items-center gap-2">
                                     @can('changeMemberRoles', $organization)
                                         <select @change="changeMemberRole({{ $member->id }}, $event.target.value)"
-                                                class="text-sm border-gray-300 rounded-md">
+                                                class="text-sm text-gray-900 bg-white border-gray-300 rounded-md focus:border-purple-500 focus:ring-purple-500">
                                             <option value="admin" {{ $member->pivot->role === 'admin' ? 'selected' : '' }}>Admin</option>
                                             <option value="member" {{ $member->pivot->role === 'member' ? 'selected' : '' }}>Member</option>
                                         </select>
@@ -169,6 +181,78 @@
             <p class="text-gray-600">Sistema de invitaciones próximamente...</p>
         </div>
     </div>
+
+    <!-- Tab Content: Historial de Miembros -->
+    @can('viewMembers', $organization)
+    <div x-show="activeTab === 'history'">
+        <div class="bg-white rounded-lg border border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Historial de Miembros ({{ $formerMembers->count() }})</h2>
+                <p class="text-sm text-gray-600 mt-1">Usuarios que han dejado la organización</p>
+            </div>
+
+            @if($formerMembers->isEmpty())
+                <div class="px-6 py-12 text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-600">No hay miembros en el historial</p>
+                </div>
+            @else
+                <div class="divide-y divide-gray-200">
+                    @foreach($formerMembers as $member)
+                        <div class="px-6 py-4">
+                            <div class="flex items-center justify-between">
+                                <!-- Info del usuario -->
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-semibold text-lg">
+                                        {{ substr($member->pivot->user_name ?? 'U', 0, 1) }}
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-gray-900">
+                                            {{ $member->pivot->user_name ?? 'Usuario eliminado' }}
+                                        </p>
+                                        <p class="text-sm text-gray-600">
+                                            {{ $member->pivot->user_email ?? 'Email no disponible' }}
+                                        </p>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                                                {{ ucfirst($member->pivot->role) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Info de salida -->
+                                <div class="text-right text-sm">
+                                    <p class="text-gray-600">
+                                        <span class="font-medium">Salió:</span>
+                                        {{ $member->pivot->left_at ? \Carbon\Carbon::parse($member->pivot->left_at)->format('d/m/Y H:i') : 'N/A' }}
+                                    </p>
+                                    @if($member->pivot->removed_by)
+                                        @php
+                                            $remover = \App\Models\User::find($member->pivot->removed_by);
+                                        @endphp
+                                        <p class="text-gray-600 mt-1">
+                                            <span class="font-medium">Removido por:</span>
+                                            {{ $remover ? $remover->name : 'Usuario #' . $member->pivot->removed_by }}
+                                        </p>
+                                    @endif
+                                    @if($member->pivot->removal_reason)
+                                        <p class="text-gray-600 mt-1 max-w-xs">
+                                            <span class="font-medium">Razón:</span>
+                                            <span class="italic">{{ $member->pivot->removal_reason }}</span>
+                                        </p>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    </div>
+    @endcan
 
     <!-- Tab Content: Configuración -->
     <div x-show="activeTab === 'settings'">
