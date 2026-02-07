@@ -23,6 +23,12 @@ class User extends Authenticatable
         'stripe_customer_id',
         'stripe_subscription_id',
         'current_period_end',
+        // === campos de plan ===
+        'plan_type',
+        'monthly_email_limit',
+        'billing_cycle_start',
+        'plan_metadata',
+        'plan_upgraded_at',
     ];
 
     protected $hidden = [
@@ -141,5 +147,30 @@ class User extends Authenticatable
         $this->organizations()->updateExistingPivot($organization->id, [
             'is_primary' => true,
         ]);
+    }
+
+    /**
+     * Verificar si el usuario tiene acceso a funcionalidades de organizaciones
+     * Solo el plan Enterprise tiene acceso a organizaciones
+     */
+    public function hasOrganizationAccess(): bool
+    {
+        return $this->plan_type === 'enterprise';
+    }
+
+    /**
+     * Alias de hasOrganizationAccess()
+     */
+    public function canAccessOrganizations(): bool
+    {
+        return $this->hasOrganizationAccess();
+    }
+
+    /**
+     * Verificar si el plan es Enterprise
+     */
+    public function isEnterprise(): bool
+    {
+        return $this->plan_type === 'enterprise';
     }
 }

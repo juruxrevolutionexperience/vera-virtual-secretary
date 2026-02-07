@@ -1421,6 +1421,82 @@ Documentación (2):
 
 ---
 
+**SESIÓN DEL 07/02/2026 (Parte 2) - RESTRICCIÓN DE ORGANIZACIONES A PLAN ENTERPRISE 🎉**
+
+🎯 **TRABAJO REALIZADO:**
+
+**1. Sistema de Planes Actualizado (✅ Completado)**
+- ✅ Agregado plan 'enterprise' al enum de plan_type
+- ✅ Migración ejecutada: `2026_02_07_184812_add_enterprise_plan_to_users_table.php`
+- ✅ 4 planes disponibles: basic, starter, pro, enterprise
+
+**2. Métodos Helper en User Model (✅ Completado)**
+- ✅ `hasOrganizationAccess()` - Verifica si tiene plan enterprise
+- ✅ `canAccessOrganizations()` - Alias del anterior
+- ✅ `isEnterprise()` - Verifica si es plan enterprise
+- ✅ Campos de plan agregados al $fillable
+
+**3. Restricción en Sidebar (✅ Completado)**
+- ✅ Link "Organizaciones" solo visible para plan Enterprise
+- ✅ Planes Basic/Starter/Pro NO ven el link
+- ✅ Archivo: `resources/views/emails/partials/sidebar.blade.php`
+
+**4. Middleware de Protección (✅ Completado)**
+- ✅ Middleware `EnsureHasOrganizationAccess` creado
+- ✅ Registrado como alias `enterprise.access` en bootstrap/app.php
+- ✅ Aplicado a TODAS las rutas de organizaciones
+- ✅ Redirige con mensaje si no tienen plan Enterprise
+- ✅ Responde JSON 403 para peticiones AJAX
+
+**5. Opciones de Compartir Restringidas (✅ Completado)**
+- ✅ Contactos: "🏢 Compartir con mi organización" solo para Enterprise
+- ✅ Templates: "🏢 Compartir con mi organización" solo para Enterprise
+- ✅ Carpetas: "🏢 Compartir con mi organización" solo para Enterprise
+
+**6. Testing Completo de Planes (✅ 100% Exitoso)**
+- ✅ Plan Basic → ❌ NO acceso a organizaciones
+- ✅ Plan Starter → ❌ NO acceso a organizaciones
+- ✅ Plan Pro → ❌ NO acceso a organizaciones
+- ✅ Plan Enterprise → ✅ SÍ acceso completo a organizaciones
+- ✅ Usuario de prueba enterprise creado: empresa@test.com
+- ✅ Verificación visual completada exitosamente
+
+📊 **ESTADÍSTICAS DE LA SESIÓN:**
+- 🔧 9 archivos modificados
+- ➕ 1 migración creada
+- ➕ 1 middleware creado
+- ✅ 3 métodos helper agregados
+- ✅ 4 vistas actualizadas
+- 🧪 4 tests de planes ejecutados (100% exitosos)
+- ⏱️ ~1 hora de desarrollo
+
+🎉 **RESULTADO FINAL:**
+- ✅ Organizaciones 100% RESTRINGIDAS a plan Enterprise
+- ✅ Planes individuales (Basic/Starter/Pro) SIN acceso
+- ✅ Middleware de protección funcionando
+- ✅ UI actualizada correctamente
+- ✅ Testing completo y verificado visualmente
+
+**ARCHIVOS MODIFICADOS:**
+1. `database/migrations/2026_02_07_184812_add_enterprise_plan_to_users_table.php` (NUEVO)
+2. `app/Models/User.php` (métodos + $fillable)
+3. `app/Http/Middleware/EnsureHasOrganizationAccess.php` (NUEVO)
+4. `bootstrap/app.php` (registro middleware)
+5. `routes/web.php` (middleware aplicado)
+6. `resources/views/emails/partials/sidebar.blade.php`
+7. `resources/views/contacts/partials/form-modal.blade.php`
+8. `resources/views/email-templates/index.blade.php`
+9. `resources/views/emails/index.blade.php`
+
+**DECISIÓN ARQUITECTÓNICA CLAVE:**
+🏢 **Organizaciones = Solo Enterprise**
+- Basic, Starter, Pro → Planes INDIVIDUALES (sin organizaciones)
+- Enterprise → Plan EMPRESARIAL (con organizaciones y recursos compartidos)
+
+Esta separación garantiza una clara diferenciación entre uso personal y empresarial.
+
+---
+
 ---
 
 ## 🎊 RESUMEN SUB-FASE 1D - COMPLETADA AL 100%
@@ -1436,6 +1512,7 @@ Documentación (2):
 ✅ Integración de scopes en servicios
 ✅ Privacidad garantizada entre usuarios
 ✅ Validaciones de seguridad (owner protegido)
+✅ **Restricción a plan Enterprise (SOLO empresas tienen organizaciones)** 🎉
 
 **TESTEADO (95%):**
 ✅ 14 escenarios testeados exitosamente
@@ -1497,6 +1574,8 @@ Documentación (2):
 - Privacidad garantizada entre usuarios
 - Frontend completo (2 vistas + modales)
 - Backend 100% funcional con scopes y policies
+- **🏢 Restricción a plan Enterprise (solo empresas tienen organizaciones)**
+- **Middleware de protección y validaciones de plan implementadas**
 
 ### ⏳ LO QUE FALTA (20% del MVP)
 
@@ -1553,4 +1632,4 @@ Documentación (2):
 
 ---
 
-**Última actualización:** 07/02/2026 - SUB-FASE 1D completada al 100%
+**Última actualización:** 07/02/2026 - SUB-FASE 1D completada al 100% + Restricción Enterprise implementada ✅

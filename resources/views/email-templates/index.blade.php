@@ -217,8 +217,8 @@
                     </p>
                 </div>
 
-                <!-- Compartir con Organización -->
-                @if(auth()->user()->organizations()->wherePivot('is_active', true)->exists())
+                <!-- Compartir con Organización (solo plan Enterprise) -->
+                @if(auth()->user()->hasOrganizationAccess() && auth()->user()->organizations()->wherePivot('is_active', true)->exists())
                 <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
                     <label class="flex items-center cursor-pointer">
                         <input type="checkbox" x-model="form.is_organization_shared"

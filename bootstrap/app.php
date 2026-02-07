@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'vera.configured' => \App\Http\Middleware\EnsureVeraConfigured::class,
             'vera.limit' => \App\Http\Middleware\VeraEmailLimitMiddleware::class,
             'organization.access' => \App\Http\Middleware\CheckOrganizationAccess::class,
+            'enterprise.access' => \App\Http\Middleware\EnsureHasOrganizationAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
