@@ -23,6 +23,9 @@
                     <a href="{{ route('billing') }}" class="text-gray-600 hover:text-purple-600 transition-colors duration-200 {{ request()->routeIs('billing') ? 'text-purple-600 font-semibold' : '' }}">
                         Suscripciones
                     </a>
+                    <a href="{{ route('security.sessions.index') }}" class="text-gray-600 hover:text-purple-600 transition-colors duration-200 {{ request()->routeIs('security.sessions.*') ? 'text-purple-600 font-semibold' : '' }}">
+                        🔒 Seguridad
+                    </a>
                 </div>
             </div>
 @auth
@@ -66,6 +69,9 @@
             </a>
             <a href="{{ route('billing') }}" class="block px-4 py-3 rounded-lg text-gray-600 hover:text-purple-600 hover:bg-purple-50 transition-colors duration-200 {{ request()->routeIs('billing') ? 'bg-purple-50 text-purple-600 font-semibold' : '' }}">
                 Suscripciones
+            </a>
+            <a href="{{ route('security.sessions.index') }}" class="block px-4 py-3 rounded-lg text-gray-600 hover:text-purple-600 hover:bg-purple-50 transition-colors duration-200 {{ request()->routeIs('security.sessions.*') ? 'bg-purple-50 text-purple-600 font-semibold' : '' }}">
+                🔒 Seguridad
             </a>
         </div>
 

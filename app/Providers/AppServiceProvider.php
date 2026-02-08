@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Event;
 use Stripe\Stripe;
 use Stripe\ApiRequestor;
 
@@ -34,5 +35,11 @@ class AppServiceProvider extends ServiceProvider
                 ])
             );
         }
+
+        // Registrar listener de sesiones de usuario
+        Event::listen(
+            \Illuminate\Auth\Events\Login::class,
+            \App\Listeners\RecordUserSession::class,
+        );
     }
 }

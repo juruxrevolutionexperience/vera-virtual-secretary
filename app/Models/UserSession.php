@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Casts\Attribute;
+use Jenssegers\Agent\Agent;
 
 class UserSession extends Model
 {
@@ -14,315 +14,201 @@ class UserSession extends Model
         'ip_address',
         'user_agent',
         'device_type',
-        'device_name',
-        'platform',
         'browser',
-        'country',
-        'city',
-        'is_current',
-        'is_trusted',
+        'platform',
+        'location',
         'last_activity',
         'expires_at',
-        'revoked_at',
-        'revoked_reason',
+        'is_current',
     ];
 
     protected $casts = [
-        'is_current' => 'boolean',
-        'is_trusted' => 'boolean',
         'last_activity' => 'datetime',
         'expires_at' => 'datetime',
-        'revoked_at' => 'datetime',
+        'is_current' => 'boolean',
     ];
 
-    // ==========================================
-    // RELATIONSHIPS
-    // ==========================================
-
+    /**
+     * Relación con User
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    // ==========================================
-    // SCOPES
-    // ==========================================
+    /**
+     * Parsear user agent y extraer información
+     */
+    public static function parseUserAgent(string $userAgent): array
+    {
+        $agent = new Agent();
+        $agent->setUserAgent($userAgent);
+
+        return [
+            'device_type' => $agent->isDesktop() ? 'desktop' : ($agent->isTablet() ? 'tablet' : 'mobile'),
+            'browser' => $agent->browser(),
+            'platform' => $agent->platform(),
+        ];
+    }
 
     /**
-     * Sesiones activas (no revocadas y no expiradas)
+     * Verificar si la sesión está activa
+     */
+    public function isActive(): bool
+    {
+        return $this->expires_at === null || $this->expires_at->isFuture();
+    }
+
+    /**
+     * Verificar si la sesión está expirada
+     */
+    public function isExpired(): bool
+    {
+        return !$this->isActive();
+    }
+
+    /**
+     * Obtener icono del dispositivo
+     */
+    public function getDeviceIconAttribute(): string
+    {
+        return match($this->device_type) {
+            'desktop' => '💻',
+            'tablet' => '📱',
+            'mobile' => '📱',
+            default => '🖥️',
+        };
+    }
+
+    /**
+     * Obtener color del badge según estado
+     */
+    public function getBadgeColorAttribute(): string
+    {
+        if ($this->is_current) {
+            return 'green'; // Sesión actual
+        }
+
+        if ($this->isExpired()) {
+            return 'gray'; // Expirada
+        }
+
+        return 'blue'; // Activa
+    }
+
+    /**
+     * Scope: Sesiones activas
      */
     public function scopeActive($query)
     {
-        return $query->whereNull('revoked_at')
-            ->where(function ($q) {
-                $q->whereNull('expires_at')
-                    ->orWhere('expires_at', '>', now());
-            });
+        return $query->where(function ($q) {
+            $q->whereNull('expires_at')
+                ->orWhere('expires_at', '>', now());
+        })->whereNull('revoked_at');
     }
 
     /**
-     * Sesiones revocadas
-     */
-    public function scopeRevoked($query)
-    {
-        return $query->whereNotNull('revoked_at');
-    }
-
-    /**
-     * Sesiones expiradas
-     */
-    public function scopeExpired($query)
-    {
-        return $query->whereNull('revoked_at')
-            ->where('expires_at', '<=', now());
-    }
-
-    /**
-     * Sesiones de un dispositivo específico
-     */
-    public function scopeByDevice($query, string $deviceType)
-    {
-        return $query->where('device_type', $deviceType);
-    }
-
-    /**
-     * Sesiones confiables
-     */
-    public function scopeTrusted($query)
-    {
-        return $query->where('is_trusted', true);
-    }
-
-    /**
-     * Sesiones actuales (la sesión activa del usuario)
-     */
-    public function scopeCurrent($query)
-    {
-        return $query->where('is_current', true);
-    }
-
-    // ==========================================
-    // ACCESSORS
-    // ==========================================
-
-    /**
-     * Nombre legible del dispositivo
-     */
-    protected function deviceInfo(): Attribute
-    {
-        return Attribute::make(
-            get: fn() => sprintf(
-                '%s on %s (%s)',
-                $this->browser ?? 'Unknown Browser',
-                $this->device_name ?? $this->platform ?? 'Unknown Device',
-                $this->device_type ?? 'unknown'
-            ),
-        );
-    }
-
-    /**
-     * Ubicación legible
-     */
-    protected function locationInfo(): Attribute
-    {
-        return Attribute::make(
-            get: function () {
-                $parts = array_filter([$this->city, $this->country]);
-                return !empty($parts) ? implode(', ', $parts) : 'Unknown Location';
-            },
-        );
-    }
-
-    /**
-     * Verifica si la sesión está activa
-     */
-    protected function isActive(): Attribute
-    {
-        return Attribute::make(
-            get: function () {
-                if ($this->revoked_at) {
-                    return false;
-                }
-
-                if ($this->expires_at && $this->expires_at <= now()) {
-                    return false;
-                }
-
-                return true;
-            },
-        );
-    }
-
-    // ==========================================
-    // MÉTODOS ESTÁTICOS
-    // ==========================================
-
-    /**
-     * Crear o actualizar sesión del usuario actual
-     */
-    public static function trackSession(
-        int $userId,
-        string $sessionId,
-        string $ipAddress,
-        string $userAgent
-    ): self {
-        $agent = new \Jenssegers\Agent\Agent();
-        $agent->setUserAgent($userAgent);
-
-        // Buscar sesión existente o crear nueva
-        $session = static::firstOrNew([
-            'user_id' => $userId,
-            'session_id' => $sessionId,
-        ]);
-
-        $session->fill([
-            'ip_address' => $ipAddress,
-            'user_agent' => $userAgent,
-            'device_type' => static::getDeviceType($agent),
-            'device_name' => $agent->device(),
-            'platform' => $agent->platform(),
-            'browser' => $agent->browser(),
-            'is_current' => true,
-            'last_activity' => now(),
-            'expires_at' => now()->addMinutes(config('session.lifetime', 120)),
-        ]);
-
-        // Marcar todas las demás sesiones del usuario como no actuales
-        if ($session->exists) {
-            static::where('user_id', $userId)
-                ->where('id', '!=', $session->id)
-                ->update(['is_current' => false]);
-        }
-
-        $session->save();
-
-        // Marcar las demás sesiones como no actuales
-        if (!$session->wasRecentlyCreated) {
-            static::where('user_id', $userId)
-                ->where('id', '!=', $session->id)
-                ->update(['is_current' => false]);
-        }
-
-        return $session;
-    }
-
-    /**
-     * Obtener tipo de dispositivo
-     */
-    private static function getDeviceType(\Jenssegers\Agent\Agent $agent): string
-    {
-        if ($agent->isRobot()) {
-            return 'robot';
-        }
-        if ($agent->isTablet()) {
-            return 'tablet';
-        }
-        if ($agent->isMobile()) {
-            return 'mobile';
-        }
-        if ($agent->isDesktop()) {
-            return 'desktop';
-        }
-
-        return 'unknown';
-    }
-
-    /**
-     * Revocar sesión
+     * Revocar esta sesión
      */
     public function revoke(string $reason = 'manual'): void
     {
         $this->update([
             'revoked_at' => now(),
             'revoked_reason' => $reason,
-            'is_current' => false,
         ]);
     }
 
     /**
-     * Revocar todas las sesiones del usuario excepto la actual
+     * Revocar todas las sesiones excepto la actual
      */
-    public static function revokeAllExceptCurrent(int $userId, ?string $currentSessionId = null): int
+    public static function revokeAllExceptCurrent(int $userId, string $currentSessionId): int
     {
-        $query = static::where('user_id', $userId)
-            ->active();
-
-        if ($currentSessionId) {
-            $query->where('session_id', '!=', $currentSessionId);
-        } else {
-            $query->where('is_current', false);
-        }
-
-        return $query->update([
-            'revoked_at' => now(),
-            'revoked_reason' => 'logout_all',
-            'is_current' => false,
-        ]);
-    }
-
-    /**
-     * Limpiar sesiones expiradas (para command)
-     */
-    public static function cleanExpired(): int
-    {
-        return static::expired()
+        return static::where('user_id', $userId)
+            ->where('session_id', '!=', $currentSessionId)
             ->whereNull('revoked_at')
             ->update([
                 'revoked_at' => now(),
-                'revoked_reason' => 'expired',
+                'revoked_reason' => 'revoked_all',
             ]);
     }
 
     /**
-     * Obtener estadísticas de sesiones de un usuario
+     * Detectar actividad sospechosa
      */
-    public static function getStats(int $userId): array
+    public static function detectSuspiciousActivity(int $userId): array
     {
-        $sessions = static::where('user_id', $userId)->get();
-
-        return [
-            'total' => $sessions->count(),
-            'active' => $sessions->filter->is_active->count(),
-            'revoked' => $sessions->filter(fn($s) => $s->revoked_at !== null)->count(),
-            'expired' => $sessions->filter(fn($s) => !$s->is_active && !$s->revoked_at)->count(),
-            'trusted' => $sessions->filter->is_trusted->count(),
-            'by_device' => $sessions->groupBy('device_type')->map->count(),
-            'by_platform' => $sessions->groupBy('platform')->map->count(),
-        ];
-    }
-
-    /**
-     * Detectar sesiones sospechosas (múltiples ubicaciones/dispositivos en corto tiempo)
-     */
-    public static function detectSuspiciousActivity(int $userId, int $minutesWindow = 30): array
-    {
-        $recentSessions = static::where('user_id', $userId)
-            ->where('created_at', '>=', now()->subMinutes($minutesWindow))
-            ->orderBy('created_at', 'desc')
-            ->get();
-
         $suspicious = [];
+        $sessions = static::where('user_id', $userId)->active()->get();
 
-        // Múltiples países en corto tiempo
-        $countries = $recentSessions->pluck('country')->filter()->unique();
-        if ($countries->count() > 1) {
+        // Múltiples IPs en poco tiempo
+        $uniqueIps = $sessions->pluck('ip_address')->unique();
+        if ($uniqueIps->count() > 3) {
             $suspicious[] = [
-                'type' => 'multiple_countries',
-                'message' => "Login desde {$countries->count()} países diferentes en {$minutesWindow} minutos",
-                'countries' => $countries->values()->toArray(),
+                'type' => 'multiple_ips',
+                'message' => 'Múltiples IPs detectadas en sesiones activas',
+                'severity' => 'medium',
             ];
         }
 
-        // Múltiples dispositivos en corto tiempo
-        $devices = $recentSessions->pluck('device_type')->filter()->unique();
-        if ($devices->count() > 2) {
+        // Múltiples ubicaciones
+        $locations = $sessions->pluck('location')->filter()->unique();
+        if ($locations->count() > 2) {
             $suspicious[] = [
-                'type' => 'multiple_devices',
-                'message' => "Login desde {$devices->count()} tipos de dispositivos en {$minutesWindow} minutos",
-                'devices' => $devices->values()->toArray(),
+                'type' => 'multiple_locations',
+                'message' => 'Sesiones activas desde múltiples ubicaciones',
+                'severity' => 'high',
             ];
         }
 
         return $suspicious;
+    }
+
+    /**
+     * Limpiar sesiones expiradas
+     */
+    public static function cleanExpired(): int
+    {
+        return static::where('expires_at', '<', now()->subDays(7))
+            ->orWhere('revoked_at', '<', now()->subDays(30))
+            ->delete();
+    }
+
+    /**
+     * Obtener estadísticas de sesiones
+     */
+    public static function getStats(int $userId): array
+    {
+        $sessions = static::where('user_id', $userId);
+
+        return [
+            'total' => $sessions->count(),
+            'active' => $sessions->active()->count(),
+            'trusted' => $sessions->where('is_trusted', true)->count(),
+            'platforms' => $sessions->groupBy('platform')->selectRaw('platform, count(*) as count')->pluck('count', 'platform')->toArray(),
+        ];
+    }
+
+    /**
+     * Atributo: device_info
+     */
+    public function getDeviceInfoAttribute(): string
+    {
+        return "{$this->device_icon} {$this->browser} en {$this->platform}";
+    }
+
+    /**
+     * Atributo: location_info
+     */
+    public function getLocationInfoAttribute(): string
+    {
+        if ($this->city && $this->country) {
+            return "{$this->city}, {$this->country}";
+        }
+
+        if ($this->location) {
+            return $this->location;
+        }
+
+        return $this->ip_address ?? 'Desconocido';
     }
 }

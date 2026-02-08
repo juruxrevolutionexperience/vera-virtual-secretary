@@ -15,18 +15,13 @@ class SessionManagementController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $sessions = $this->sessionService->getActiveSessions($user);
+        $sessions = UserSession::where('user_id', $user->id)
+            ->orderBy('last_activity', 'desc')
+            ->get();
+        $activeSessions = $sessions->filter->isActive();
+        $suspiciousActivity = $this->sessionService->detectSuspiciousActivity($user);
 
-        return Inertia::render('Security/Sessions', [
-            'sessions' => $sessions->map(fn($s) => [
-                'id' => $s->id,
-                'device_info' => $s->device_info,
-                'location_info' => $s->location_info,
-                'is_current' => $s->is_current,
-                'is_trusted' => $s->is_trusted,
-                'last_activity' => $s->last_activity,
-            ]),
-        ]);
+        return view('security.sessions', compact('sessions', 'activeSessions', 'suspiciousActivity'));
     }
 
     public function revoke(Request $request, UserSession $session)

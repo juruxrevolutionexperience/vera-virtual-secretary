@@ -164,6 +164,22 @@ class Kernel extends ConsoleKernel
             ->onFailure(function () {
                 \Log::error('❌ Error sincronizando contactos');
             });
+
+        // ========================================
+        // FASE 1E: SEGURIDAD
+        // ========================================
+
+        // Limpiar sesiones expiradas diariamente a las 4 AM
+        $schedule->command('sessions:clean-expired')
+            ->daily()
+            ->at('04:00')
+            ->name('clean-expired-sessions')
+            ->onSuccess(function () {
+                \Log::info('✅ Sesiones expiradas limpiadas');
+            })
+            ->onFailure(function () {
+                \Log::error('❌ Error limpiando sesiones expiradas');
+            });
     }
 
     /**
