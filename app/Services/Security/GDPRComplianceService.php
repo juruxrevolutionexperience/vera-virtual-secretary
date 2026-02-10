@@ -46,10 +46,11 @@ class GDPRComplianceService
             ];
 
             $json = json_encode($data, JSON_PRETTY_PRINT);
-            $path = "exports/user_{$user->id}_" . time() . ".json";
+            $fileName = "user_{$user->id}_" . time() . ".json";
+            $path = "exports/{$fileName}";
             Storage::disk('local')->put($path, $json);
 
-            $request->markAsCompleted($path, strlen($json));
+            $request->markAsCompleted($path, $fileName, strlen($json));
         } catch (\Exception $e) {
             $request->markAsFailed($e->getMessage());
             throw $e;
@@ -74,7 +75,7 @@ class GDPRComplianceService
 
     public function processDeletion(DataDeletionRequest $request): void
     {
-        if (!$request->isApproved()) {
+        if ($request->requiresApproval() && $request->status !== 'approved') {
             throw new \Exception('Requiere aprobación');
         }
 
@@ -83,12 +84,21 @@ class GDPRComplianceService
         try {
             $user = $request->user;
 
+            $emailsDeleted = Email::where('user_id', $user->id)->count();
+            $contactsDeleted = Contact::where('user_id', $user->id)->count();
+
             Email::where('user_id', $user->id)->delete();
             Contact::where('user_id', $user->id)->delete();
             UserConsent::where('user_id', $user->id)->delete();
 
+            $summary = [
+                'emails_deleted' => $emailsDeleted,
+                'contacts_deleted' => $contactsDeleted,
+                'completed_at' => now()->toISOString(),
+            ];
+
             $user->delete();
-            $request->markAsCompleted();
+            $request->markAsCompleted($summary);
         } catch (\Exception $e) {
             $request->markAsFailed($e->getMessage());
             throw $e;
