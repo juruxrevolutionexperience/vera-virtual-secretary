@@ -27,8 +27,27 @@ class PasswordPolicyController extends Controller
     public function securityData(Request $request)
     {
         $user = $request->user();
-        $policy        = PasswordPolicy::getActive();
-        $sessions      = UserSession::where('user_id', $user->id)->orderBy('last_activity', 'desc')->get();
+
+        // Garantizar que la sesión actual siempre esté registrada
+        $userAgent = $request->userAgent() ?? 'Unknown';
+        $parsedAgent = UserSession::parseUserAgent($userAgent);
+        UserSession::updateOrCreate(
+            ['session_id' => session()->getId()],
+            [
+                'user_id'      => $user->id,
+                'ip_address'   => $request->ip(),
+                'user_agent'   => $userAgent,
+                'device_type'  => $parsedAgent['device_type'],
+                'browser'      => $parsedAgent['browser'],
+                'platform'     => $parsedAgent['platform'],
+                'last_activity'=> now(),
+                'expires_at'   => now()->addMinutes(config('session.lifetime', 120)),
+                'is_current'   => true,
+            ]
+        );
+
+        $policy         = PasswordPolicy::getActive();
+        $sessions       = UserSession::where('user_id', $user->id)->orderBy('last_activity', 'desc')->get();
         $activeSessions = $sessions->filter->isActive();
 
         return response()->json([
@@ -37,7 +56,7 @@ class PasswordPolicyController extends Controller
                 'active'  => $activeSessions->count(),
                 'list'    => $sessions->take(8)->map(fn($s) => [
                     'id'            => $s->id,
-                    'device'        => $s->device_name ?? 'Dispositivo desconocido',
+                    'device'        => $s->device_type ?? 'Dispositivo desconocido',
                     'browser'       => $s->browser ?? '-',
                     'location'      => $s->location ?? 'Ubicación desconocida',
                     'ip'            => $s->ip_address,
