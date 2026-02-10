@@ -1,4 +1,6 @@
-<x-app-layout>
+@extends('layouts.app')
+
+@section('content')
     <div class="py-12" x-data="passwordPolicyApp()">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
 
@@ -333,4 +335,4 @@
         }
     }
     </script>
-</x-app-layout>
+@endsection

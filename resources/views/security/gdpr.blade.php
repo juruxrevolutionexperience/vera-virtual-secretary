@@ -1,4 +1,6 @@
-<x-app-layout>
+@extends('layouts.app')
+
+@section('content')
     <div class="py-12" x-data="gdprApp()">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
 
@@ -318,4 +320,4 @@
         return {}
     }
     </script>
-</x-app-layout>
+@endsection
