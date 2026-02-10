@@ -567,11 +567,26 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{session}/trust', [\App\Http\Controllers\Security\SessionManagementController::class, 'trust'])->name('trust');
     });
 
+    // POLÍTICAS DE CONTRASEÑA
+    Route::prefix('security/password-policy')->name('security.password-policy.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Security\PasswordPolicyController::class, 'index'])->name('index');
+        Route::post('/change', [\App\Http\Controllers\Security\PasswordPolicyController::class, 'changePassword'])->name('change');
+        Route::post('/update-policy', [\App\Http\Controllers\Security\PasswordPolicyController::class, 'updatePolicy'])->name('update');
+    });
+
     // RGPD / PRIVACIDAD
     Route::prefix('gdpr')->name('gdpr.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Security\GDPRController::class, 'index'])->name('index');
         Route::post('/export', [\App\Http\Controllers\Security\GDPRController::class, 'requestExport'])->name('export');
         Route::post('/delete', [\App\Http\Controllers\Security\GDPRController::class, 'requestDeletion'])->name('delete');
+        Route::delete('/deletion/{deletion}/cancel', [\App\Http\Controllers\Security\GDPRController::class, 'cancelDeletion'])->name('deletion.cancel');
+    });
+
+    // AUDITORÍA Y LOGS
+    Route::prefix('security/audit')->name('security.audit.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Security\AuditLogController::class, 'index'])->name('index');
+        Route::get('/{auditLog}', [\App\Http\Controllers\Security\AuditLogController::class, 'show'])->name('show');
+        Route::get('/export/csv', [\App\Http\Controllers\Security\AuditLogController::class, 'export'])->name('export');
     });
 
     // DASHBOARD DE SEGURIDAD
