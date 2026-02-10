@@ -14,18 +14,25 @@ class UserSession extends Model
         'ip_address',
         'user_agent',
         'device_type',
+        'device_name',
         'browser',
         'platform',
-        'location',
+        'city',
+        'country',
         'last_activity',
         'expires_at',
         'is_current',
+        'is_trusted',
+        'revoked_at',
+        'revoked_reason',
     ];
 
     protected $casts = [
         'last_activity' => 'datetime',
-        'expires_at' => 'datetime',
-        'is_current' => 'boolean',
+        'expires_at'    => 'datetime',
+        'revoked_at'    => 'datetime',
+        'is_current'    => 'boolean',
+        'is_trusted'    => 'boolean',
     ];
 
     /**
@@ -56,7 +63,8 @@ class UserSession extends Model
      */
     public function isActive(): bool
     {
-        return $this->expires_at === null || $this->expires_at->isFuture();
+        return is_null($this->revoked_at)
+            && ($this->expires_at === null || $this->expires_at->isFuture());
     }
 
     /**

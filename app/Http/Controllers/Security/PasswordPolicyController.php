@@ -51,6 +51,14 @@ class PasswordPolicyController extends Controller
             ]
         );
 
+        // Limpiar sesiones con datos inválidos (artefactos de CLI/tests)
+        UserSession::where('user_id', $user->id)
+            ->where('session_id', '!=', session()->getId())
+            ->where(function ($q) {
+                $q->where('browser', '0')->orWhere('browser', '');
+            })
+            ->delete();
+
         $policy         = PasswordPolicy::getActive();
         $sessions       = UserSession::where('user_id', $user->id)->orderBy('last_activity', 'desc')->get();
         $activeSessions = $sessions->filter->isActive();
