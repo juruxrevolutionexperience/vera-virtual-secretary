@@ -29,20 +29,24 @@ class PasswordPolicyController extends Controller
         $user = $request->user();
 
         // Garantizar que la sesión actual siempre esté registrada
-        $userAgent = $request->userAgent() ?? 'Unknown';
+        $userAgent   = $request->userAgent() ?? 'Unknown';
         $parsedAgent = UserSession::parseUserAgent($userAgent);
+        $ip          = $request->ip();
+        $location    = $this->resolveLocation($ip);
+
         UserSession::updateOrCreate(
             ['session_id' => session()->getId()],
             [
-                'user_id'      => $user->id,
-                'ip_address'   => $request->ip(),
-                'user_agent'   => $userAgent,
-                'device_type'  => $parsedAgent['device_type'],
-                'browser'      => $parsedAgent['browser'],
-                'platform'     => $parsedAgent['platform'],
-                'last_activity'=> now(),
-                'expires_at'   => now()->addMinutes(config('session.lifetime', 120)),
-                'is_current'   => true,
+                'user_id'       => $user->id,
+                'ip_address'    => $ip,
+                'user_agent'    => $userAgent,
+                'device_type'   => $parsedAgent['device_type'],
+                'browser'       => $parsedAgent['browser'],
+                'platform'      => $parsedAgent['platform'],
+                'location'      => $location,
+                'last_activity' => now(),
+                'expires_at'    => now()->addMinutes(config('session.lifetime', 120)),
+                'is_current'    => true,
             ]
         );
 
@@ -56,14 +60,13 @@ class PasswordPolicyController extends Controller
                 'active'  => $activeSessions->count(),
                 'list'    => $sessions->take(8)->map(fn($s) => [
                     'id'            => $s->id,
-                    'device'        => $s->device_type ?? 'Dispositivo desconocido',
-                    'browser'       => $s->browser ?? '-',
+                    'label'         => $this->formatDeviceLabel($s->browser, $s->platform, $s->device_type),
                     'location'      => $s->location ?? 'Ubicación desconocida',
                     'ip'            => $s->ip_address,
                     'is_current'    => $s->session_id === session()->getId(),
                     'is_active'     => $s->isActive(),
-                    'last_activity' => $s->last_activity?->diffForHumans(),
-                    'created_at'    => $s->created_at?->format('d/m/Y H:i'),
+                    'last_activity' => $s->last_activity?->format('d M Y, H:i'),
+                    'created_at'    => $s->created_at?->format('d M Y, H:i'),
                 ]),
                 'suspicious' => $this->sessionService->detectSuspiciousActivity($user),
             ],
@@ -217,5 +220,59 @@ class PasswordPolicyController extends Controller
         ]);
 
         return back()->with('success', '¡Política de contraseñas actualizada correctamente!');
+    }
+
+    // ==========================================
+    // HELPERS PRIVADOS
+    // ==========================================
+
+    /**
+     * Formatea la etiqueta del dispositivo: "Chrome (Windows)", "Safari (macOS)", etc.
+     */
+    private function formatDeviceLabel(?string $browser, ?string $platform, ?string $deviceType): string
+    {
+        if ($browser && $platform && $platform !== 'Unknown') {
+            return "{$browser} ({$platform})";
+        }
+        if ($browser && $browser !== 'Unknown') {
+            return $browser;
+        }
+        return match ($deviceType) {
+            'mobile'  => 'Dispositivo móvil',
+            'tablet'  => 'Tablet',
+            'desktop' => 'Ordenador',
+            default   => 'Dispositivo desconocido',
+        };
+    }
+
+    /**
+     * Resuelve la ubicación desde una IP usando ipapi.co.
+     * Devuelve null si la IP es local o falla la consulta.
+     */
+    private function resolveLocation(string $ip): ?string
+    {
+        // IPs locales / Docker
+        if (in_array($ip, ['127.0.0.1', '::1', 'localhost']) || str_starts_with($ip, '172.') || str_starts_with($ip, '10.')) {
+            return 'Desarrollo local';
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(3)
+                ->get("https://ipapi.co/{$ip}/json/");
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $city    = $data['city'] ?? null;
+                $region  = $data['region'] ?? null;
+                $country = $data['country_code'] ?? null;
+
+                $parts = array_filter([$city, $region, $country]);
+                return $parts ? implode(', ', $parts) : null;
+            }
+        } catch (\Exception $e) {
+            // Silencioso: la geolocalización no es crítica
+        }
+
+        return null;
     }
 }

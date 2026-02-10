@@ -496,32 +496,70 @@
                                 </button>
                             </div>
 
+                            <!-- Cabecera de tabla -->
+                            <div class="hidden sm:grid grid-cols-4 gap-2 px-5 py-2 bg-gray-50 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                <span>Dispositivo</span>
+                                <span>Ubicación</span>
+                                <span>Creado</span>
+                                <span>Última actividad</span>
+                            </div>
+
                             <div class="divide-y divide-gray-50">
                                 <template x-for="session in (securityData?.sessions?.list ?? [])" :key="session.id">
-                                    <div class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                                                 :class="session.is_current ? 'bg-green-100' : 'bg-gray-100'">
-                                                <svg class="w-4 h-4" :class="session.is_current ? 'text-green-600' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2"/>
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <div class="flex items-center gap-2">
-                                                    <p class="text-sm font-medium text-gray-900" x-text="session.device"></p>
-                                                    <span x-show="session.is_current"
-                                                          class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Actual</span>
-                                                    <span x-show="!session.is_active && !session.is_current"
-                                                          class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Expirada</span>
+                                    <div class="px-5 py-3 hover:bg-gray-50 transition-colors"
+                                         :class="session.is_current ? 'bg-green-50/40' : ''">
+                                        <!-- Layout escritorio: 4 columnas -->
+                                        <div class="hidden sm:grid grid-cols-4 gap-2 items-center">
+                                            <!-- Col 1: Dispositivo -->
+                                            <div class="flex items-center gap-2">
+                                                <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                                                     :class="session.is_current ? 'bg-green-100' : 'bg-gray-100'">
+                                                    <svg class="w-3.5 h-3.5" :class="session.is_current ? 'text-green-600' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2"/>
+                                                    </svg>
                                                 </div>
-                                                <p class="text-xs text-gray-500" x-text="(session.location ?? 'Ubicación desconocida') + ' · ' + (session.last_activity ?? '-')"></p>
+                                                <div>
+                                                    <p class="text-sm font-medium text-gray-900" x-text="session.label"></p>
+                                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                                        <span x-show="session.is_current"
+                                                              class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">Actual</span>
+                                                        <span x-show="!session.is_active && !session.is_current"
+                                                              class="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">Expirada</span>
+                                                        <button x-show="!session.is_current"
+                                                                @click="revokeSession(session.id)"
+                                                                class="text-xs text-red-500 hover:text-red-700 font-medium hover:underline">
+                                                            Cerrar
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
+                                            <!-- Col 2: Ubicación -->
+                                            <div>
+                                                <p class="text-sm text-gray-700" x-text="session.location ?? 'Ubicación desconocida'"></p>
+                                                <p class="text-xs text-gray-400" x-text="session.ip"></p>
+                                            </div>
+                                            <!-- Col 3: Creado -->
+                                            <p class="text-sm text-gray-600" x-text="session.created_at ?? '-'"></p>
+                                            <!-- Col 4: Última actividad -->
+                                            <p class="text-sm text-gray-600" x-text="session.last_activity ?? '-'"></p>
                                         </div>
-                                        <button x-show="!session.is_current"
-                                                @click="revokeSession(session.id)"
-                                                class="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors">
-                                            Cerrar
-                                        </button>
+
+                                        <!-- Layout móvil: compacto -->
+                                        <div class="sm:hidden flex items-start justify-between gap-2">
+                                            <div>
+                                                <div class="flex items-center gap-1.5">
+                                                    <p class="text-sm font-medium text-gray-900" x-text="session.label"></p>
+                                                    <span x-show="session.is_current"
+                                                          class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">Actual</span>
+                                                </div>
+                                                <p class="text-xs text-gray-500 mt-0.5" x-text="(session.location ?? 'Ubicación desconocida') + ' · ' + (session.last_activity ?? '-')"></p>
+                                            </div>
+                                            <button x-show="!session.is_current"
+                                                    @click="revokeSession(session.id)"
+                                                    class="text-xs text-red-500 hover:text-red-700 font-medium flex-shrink-0">
+                                                Cerrar
+                                            </button>
+                                        </div>
                                     </div>
                                 </template>
                                 <div x-show="!securityData?.sessions?.list?.length"
