@@ -99,7 +99,7 @@
                         <span class="font-medium">Notificaciones</span>
                     </button>
 
-                    <button @click="activeCategory = 'account'"
+                    <button @click="activeCategory = 'account'; loadSecurityData()"
                         :class="activeCategory === 'account' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'"
                         class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,6 +107,28 @@
                                 d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span class="font-medium">Cuenta</span>
+                    </button>
+
+                    <!-- PRIVACIDAD -->
+                    <button @click="activeCategory = 'privacy'; loadSecurityData()"
+                        :class="activeCategory === 'privacy' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        <span class="font-medium">Privacidad</span>
+                    </button>
+
+                    <!-- AUDITORÍA -->
+                    <button @click="activeCategory = 'audit'; loadSecurityData()"
+                        :class="activeCategory === 'audit' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <span class="font-medium">Auditoría</span>
                     </button>
                 </nav>
             </div>
@@ -435,10 +457,378 @@
                     </div>
                 </div>
 
-                <!-- Account Settings -->
+                <!-- ============================================================ -->
+                <!-- CUENTA: Sesiones + Contraseña                                -->
+                <!-- ============================================================ -->
                 <div x-show="activeCategory === 'account'" class="space-y-6">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-6">Cuenta</h2>
-                    <p class="text-gray-600">Gestiona tu cuenta y preferencias</p>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Cuenta</h2>
+                    <p class="text-sm text-gray-500 mb-6">Gestiona tus sesiones activas y seguridad de contraseña</p>
+
+                    <!-- Loading -->
+                    <div x-show="!securityData" class="flex justify-center py-12">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    </div>
+
+                    <div x-show="securityData" x-cloak>
+
+                        <!-- Alerta contraseña expirada -->
+                        <div x-show="securityData?.password?.is_expired"
+                             class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg flex items-center">
+                            <svg class="h-5 w-5 text-red-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            <p class="text-sm text-red-700 font-medium">⚠️ Tu contraseña ha expirado. Cámbiala ahora.</p>
+                        </div>
+
+                        <!-- SESIONES ACTIVAS -->
+                        <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-6">
+                            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2"/>
+                                    </svg>
+                                    <h3 class="font-semibold text-gray-900">Sesiones Activas</h3>
+                                    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full" x-text="(securityData?.sessions?.active ?? 0) + ' activas'"></span>
+                                </div>
+                                <button @click="revokeAllSessions()"
+                                        class="text-xs text-red-600 hover:text-red-800 font-medium px-3 py-1.5 border border-red-200 hover:border-red-400 rounded-lg transition-colors">
+                                    Cerrar todas las demás
+                                </button>
+                            </div>
+
+                            <div class="divide-y divide-gray-50">
+                                <template x-for="session in (securityData?.sessions?.list ?? [])" :key="session.id">
+                                    <div class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                                                 :class="session.is_current ? 'bg-green-100' : 'bg-gray-100'">
+                                                <svg class="w-4 h-4" :class="session.is_current ? 'text-green-600' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2"/>
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="text-sm font-medium text-gray-900" x-text="session.device"></p>
+                                                    <span x-show="session.is_current"
+                                                          class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Actual</span>
+                                                    <span x-show="!session.is_active && !session.is_current"
+                                                          class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Expirada</span>
+                                                </div>
+                                                <p class="text-xs text-gray-500" x-text="(session.location ?? 'Ubicación desconocida') + ' · ' + (session.last_activity ?? '-')"></p>
+                                            </div>
+                                        </div>
+                                        <button x-show="!session.is_current"
+                                                @click="revokeSession(session.id)"
+                                                class="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors">
+                                            Cerrar
+                                        </button>
+                                    </div>
+                                </template>
+                                <div x-show="!securityData?.sessions?.list?.length"
+                                     class="px-5 py-6 text-center text-sm text-gray-500">
+                                    Sin sesiones registradas
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CAMBIAR CONTRASEÑA -->
+                        <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                            <div class="flex items-center gap-2 px-5 py-4 border-b border-gray-100 bg-gray-50">
+                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                                </svg>
+                                <h3 class="font-semibold text-gray-900">Cambiar Contraseña</h3>
+                            </div>
+                            <div class="p-5" x-data="{ pwdSuccess: '', pwdError: '', loading: false, newPwd: '', strength: 0 }">
+                                <form @submit.prevent="
+                                    loading = true; pwdSuccess = ''; pwdError = '';
+                                    const fd = new FormData($el);
+                                    fetch('{{ route('settings.security.password') }}', {
+                                        method: 'POST',
+                                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
+                                        body: fd
+                                    }).then(r => r.json()).then(d => {
+                                        loading = false;
+                                        if (d.success || d.message?.includes('correctamente')) { pwdSuccess = '✅ Contraseña actualizada correctamente'; $el.reset(); newPwd = ''; strength = 0; securityData = null; }
+                                        else pwdError = d.message || d.errors?.new_password?.[0] || 'Error al cambiar la contraseña';
+                                    }).catch(() => { loading = false; pwdError = 'Error de conexión'; });
+                                " class="space-y-3">
+                                    <div x-show="pwdSuccess" class="bg-green-50 border border-green-200 text-green-800 rounded-lg px-4 py-2 text-sm" x-text="pwdSuccess"></div>
+                                    <div x-show="pwdError" class="bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-2 text-sm" x-text="pwdError"></div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Contraseña actual</label>
+                                        <input type="password" name="current_password" required
+                                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                                               placeholder="••••••••">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nueva contraseña</label>
+                                        <input type="password" name="new_password" required x-model="newPwd"
+                                               @input="
+                                                   let s=0, p=newPwd;
+                                                   if(p.length>=8)s++; if(p.length>=12)s++;
+                                                   if(/[A-Z]/.test(p)&&/[a-z]/.test(p))s++;
+                                                   if(/[0-9]/.test(p))s++; if(/[^A-Za-z0-9]/.test(p))s++;
+                                                   strength=Math.min(4,Math.ceil(s*4/5));
+                                               "
+                                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                                               placeholder="••••••••">
+                                        <div x-show="newPwd.length > 0" class="mt-1.5 flex gap-1">
+                                            <template x-for="i in 4" :key="i">
+                                                <div class="h-1 flex-1 rounded-full transition-colors"
+                                                     :class="i<=strength ? (strength<=1?'bg-red-500':strength<=2?'bg-yellow-500':strength<=3?'bg-blue-500':'bg-green-500') : 'bg-gray-200'"></div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Confirmar nueva contraseña</label>
+                                        <input type="password" name="new_password_confirmation" required
+                                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                                               placeholder="••••••••">
+                                    </div>
+                                    <button type="submit" :disabled="loading"
+                                            class="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors">
+                                        <span x-show="!loading">Cambiar Contraseña</span>
+                                        <span x-show="loading">Cambiando...</span>
+                                    </button>
+                                    <!-- Requisitos activos -->
+                                    <div x-show="securityData?.password?.has_policy" class="mt-3 p-3 bg-gray-50 rounded-lg">
+                                        <p class="text-xs font-medium text-gray-700 mb-1.5">Requisitos:</p>
+                                        <div class="grid grid-cols-2 gap-1 text-xs">
+                                            <span class="text-gray-600">✓ Mínimo <span x-text="securityData?.password?.min_length ?? 8"></span> caracteres</span>
+                                            <span x-show="securityData?.password?.require_upper" class="text-gray-600">✓ Mayúscula</span>
+                                            <span x-show="securityData?.password?.require_numbers" class="text-gray-600">✓ Número</span>
+                                            <span x-show="securityData?.password?.require_special" class="text-gray-600">✓ Carácter especial</span>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- PRIVACIDAD: Exportar + Eliminar datos (RGPD)                  -->
+                <!-- ============================================================ -->
+                <div x-show="activeCategory === 'privacy'" class="space-y-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Privacidad</h2>
+                    <p class="text-sm text-gray-500 mb-6">Controla tus datos personales conforme al RGPD</p>
+
+                    <!-- Loading -->
+                    <div x-show="!securityData" class="flex justify-center py-12">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    </div>
+
+                    <div x-show="securityData" x-cloak class="space-y-5">
+
+                        <!-- Tus derechos -->
+                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                            <h4 class="text-sm font-semibold text-blue-900 mb-2">Tus derechos bajo el RGPD</h4>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="text-xs text-blue-700 flex items-center gap-1.5"><span>📋</span> Acceso a tus datos</div>
+                                <div class="text-xs text-blue-700 flex items-center gap-1.5"><span>🗑️</span> Derecho al olvido</div>
+                                <div class="text-xs text-blue-700 flex items-center gap-1.5"><span>✏️</span> Rectificación</div>
+                                <div class="text-xs text-blue-700 flex items-center gap-1.5"><span>🔒</span> Portabilidad</div>
+                            </div>
+                        </div>
+
+                        <!-- Exportar datos -->
+                        <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                            <div class="flex items-center gap-2 px-5 py-4 border-b border-gray-100 bg-gray-50">
+                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                                <h3 class="font-semibold text-gray-900">Exportar Mis Datos</h3>
+                            </div>
+                            <div class="p-5" x-data="{ exportLoading: false, exportMsg: '' }">
+                                <p class="text-sm text-gray-600 mb-4">Descarga una copia completa de todos tus datos (emails, contactos, configuración). El archivo expira en 7 días.</p>
+                                <button @click="
+                                    exportLoading = true; exportMsg = '';
+                                    fetch('{{ route('settings.security.export') }}', {
+                                        method: 'POST',
+                                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
+                                    }).then(r => r.json()).then(d => {
+                                        exportLoading = false;
+                                        exportMsg = d.message || 'Solicitud creada. Te notificaremos cuando esté lista.';
+                                        securityData = null;
+                                    }).catch(() => { exportLoading = false; exportMsg = 'Error al crear solicitud'; })
+                                " :disabled="exportLoading"
+                                class="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors flex items-center justify-center gap-2">
+                                    <span x-show="!exportLoading">📦 Solicitar Exportación</span>
+                                    <span x-show="exportLoading">Creando solicitud...</span>
+                                </button>
+                                <p x-show="exportMsg" class="mt-2 text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2" x-text="exportMsg"></p>
+
+                                <!-- Exportaciones anteriores -->
+                                <template x-if="securityData?.gdpr?.export_requests?.length > 0">
+                                    <div class="mt-4 space-y-1.5">
+                                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Exportaciones anteriores</p>
+                                        <template x-for="exp in (securityData?.gdpr?.export_requests ?? [])" :key="exp.id">
+                                            <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-xs text-gray-700" x-text="exp.created_at"></span>
+                                                    <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                                                          :class="exp.status==='completed'?'bg-green-100 text-green-700':exp.status==='pending'?'bg-yellow-100 text-yellow-700':'bg-gray-100 text-gray-600'"
+                                                          x-text="exp.status === 'completed' ? 'Completada' : exp.status === 'pending' ? 'Pendiente' : exp.status"></span>
+                                                </div>
+                                                <a x-show="exp.download_token" :href="'/privacy/download/' + exp.download_token"
+                                                   class="text-xs text-purple-600 hover:text-purple-800 font-medium">Descargar</a>
+                                                <span x-show="!exp.download_token && exp.status==='completed'" class="text-xs text-gray-400">Expirado</span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Eliminar datos -->
+                        <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                            <div class="flex items-center gap-2 px-5 py-4 border-b border-gray-100 bg-gray-50">
+                                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                                <h3 class="font-semibold text-gray-900">Eliminar Datos</h3>
+                            </div>
+                            <div class="p-5" x-data="{ deleteLoading: false, deleteMsg: '', deleteType: 'partial', showForm: false }">
+                                <div x-show="securityData?.gdpr?.has_active_deletion"
+                                     class="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 mb-3">
+                                    <p class="text-sm text-orange-800 font-medium">Tienes una solicitud de eliminación activa en proceso.</p>
+                                </div>
+                                <div x-show="!securityData?.gdpr?.has_active_deletion">
+                                    <p class="text-sm text-gray-600 mb-3">Solicita la eliminación parcial o completa de tus datos de la plataforma.</p>
+                                    <button x-show="!showForm" @click="showForm = true"
+                                            class="w-full border border-red-300 text-red-600 hover:bg-red-50 font-medium py-2 px-4 rounded-lg text-sm transition-colors">
+                                        Solicitar eliminación de datos
+                                    </button>
+                                    <div x-show="showForm" class="space-y-3">
+                                        <div class="flex gap-3">
+                                            <label class="flex-1 cursor-pointer p-3 border rounded-lg text-sm transition-colors"
+                                                   :class="deleteType==='partial' ? 'border-orange-400 bg-orange-50 text-orange-800' : 'border-gray-200 text-gray-700'">
+                                                <input type="radio" x-model="deleteType" value="partial" class="sr-only">
+                                                <p class="font-medium">Eliminación parcial</p>
+                                                <p class="text-xs mt-0.5 opacity-75">Solo datos específicos</p>
+                                            </label>
+                                            <label class="flex-1 cursor-pointer p-3 border rounded-lg text-sm transition-colors"
+                                                   :class="deleteType==='full_account' ? 'border-red-400 bg-red-50 text-red-800' : 'border-gray-200 text-gray-700'">
+                                                <input type="radio" x-model="deleteType" value="full_account" class="sr-only">
+                                                <p class="font-medium">Eliminar cuenta</p>
+                                                <p class="text-xs mt-0.5 opacity-75">⚠️ Irreversible</p>
+                                            </label>
+                                        </div>
+                                        <p x-show="deleteMsg" class="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2" x-text="deleteMsg"></p>
+                                        <div class="flex gap-2">
+                                            <button @click="showForm = false" class="flex-1 border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium py-2 px-4 rounded-lg text-sm transition-colors">
+                                                Cancelar
+                                            </button>
+                                            <button @click="
+                                                if(deleteType==='full_account' && !confirm('⚠️ Esta acción eliminará PERMANENTEMENTE tu cuenta.\n\n¿Estás completamente seguro?')) return;
+                                                deleteLoading = true;
+                                                const fd = new FormData(); fd.append('deletion_type', deleteType);
+                                                fetch('{{ route('settings.security.delete') }}', {
+                                                    method: 'POST',
+                                                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
+                                                    body: fd
+                                                }).then(r => r.json()).then(d => {
+                                                    deleteLoading = false; showForm = false;
+                                                    deleteMsg = d.message || 'Solicitud creada correctamente.';
+                                                    securityData = null;
+                                                }).catch(() => { deleteLoading = false; deleteMsg = 'Error de conexión'; })
+                                            " :disabled="deleteLoading"
+                                            :class="deleteType==='full_account' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'"
+                                            class="flex-1 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-60">
+                                                <span x-show="!deleteLoading">Confirmar</span>
+                                                <span x-show="deleteLoading">Enviando...</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- AUDITORÍA: Historial de actividad                             -->
+                <!-- ============================================================ -->
+                <div x-show="activeCategory === 'audit'" class="space-y-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">Actividad</h2>
+                            <p class="text-sm text-gray-500 mt-1">Historial de acciones en tu cuenta</p>
+                        </div>
+                        <a href="{{ route('security.audit.index') }}" target="_blank"
+                           class="text-sm text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1">
+                            Ver todo
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                        </a>
+                    </div>
+
+                    <!-- Loading -->
+                    <div x-show="!securityData" class="flex justify-center py-12">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    </div>
+
+                    <div x-show="securityData" x-cloak>
+                        <!-- Stats -->
+                        <div class="grid grid-cols-3 gap-3 mb-5">
+                            <div class="bg-white border border-gray-200 rounded-xl p-4 text-center">
+                                <p class="text-2xl font-bold text-gray-900" x-text="securityData?.audit?.total ?? 0"></p>
+                                <p class="text-xs text-gray-500 mt-0.5">Total</p>
+                            </div>
+                            <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
+                                <p class="text-2xl font-bold text-blue-700" x-text="securityData?.audit?.today ?? 0"></p>
+                                <p class="text-xs text-gray-500 mt-0.5">Hoy</p>
+                            </div>
+                            <div class="rounded-xl p-4 text-center border"
+                                 :class="(securityData?.audit?.critical??0)>0 ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'">
+                                <p class="text-2xl font-bold" :class="(securityData?.audit?.critical??0)>0 ? 'text-red-600' : 'text-green-600'"
+                                   x-text="securityData?.audit?.critical ?? 0"></p>
+                                <p class="text-xs text-gray-500 mt-0.5">Críticos</p>
+                            </div>
+                        </div>
+
+                        <!-- Lista actividad reciente -->
+                        <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                            <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                                <p class="text-sm font-medium text-gray-700">Actividad reciente</p>
+                            </div>
+                            <div class="divide-y divide-gray-50">
+                                <template x-for="(log, idx) in (securityData?.audit?.recent ?? [])" :key="idx">
+                                    <div class="flex items-start gap-3 px-5 py-3">
+                                        <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-sm mt-0.5"
+                                             :class="{
+                                                'bg-blue-50': log.category==='auth',
+                                                'bg-purple-50': log.category==='email',
+                                                'bg-red-50': log.category==='security',
+                                                'bg-yellow-50': log.category==='settings',
+                                                'bg-gray-50': !['auth','email','security','settings'].includes(log.category)
+                                             }">
+                                            <span x-text="{'auth':'🔑','email':'📧','security':'🛡️','settings':'⚙️'}[log.category] ?? '📋'"></span>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm text-gray-900 truncate" x-text="log.description"></p>
+                                            <p class="text-xs text-gray-500" x-text="log.time + (log.ip ? ' · ' + log.ip : '')"></p>
+                                        </div>
+                                        <span x-show="log.severity === 'critical'"
+                                              class="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded flex-shrink-0">Crítico</span>
+                                    </div>
+                                </template>
+                                <div x-show="!securityData?.audit?.recent?.length"
+                                     class="px-5 py-8 text-center text-sm text-gray-500">
+                                    Sin actividad registrada aún
+                                </div>
+                            </div>
+                            <div x-show="(securityData?.audit?.total ?? 0) > 6"
+                                 class="px-5 py-3 border-t border-gray-100 bg-gray-50 text-center">
+                                <a href="{{ route('security.audit.index') }}" target="_blank"
+                                   class="text-sm text-purple-600 hover:text-purple-800 font-medium">
+                                    Ver historial completo (<span x-text="securityData?.audit?.total"></span> registros) →
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Usage Settings -->
@@ -829,6 +1219,7 @@
             veraConfig: {},
             usageData: null,
             plansData: null,
+            securityData: null,
             notificationsData: {
                 email_enabled: true,
                 push_enabled: false,
@@ -860,6 +1251,8 @@
                             this.loadUsageData();
                         } else if (e.detail.category === 'plans') {
                             this.loadPlansData();
+                        } else if (['account', 'privacy', 'audit'].includes(e.detail.category)) {
+                            this.loadSecurityData();
                         }
                     }
                 });
@@ -999,6 +1392,47 @@
                     alert('Error al ejecutar análisis');
                     console.error('Error:', error);
                 }
+            },
+
+            // ==========================================
+            // SEGURIDAD - Cargar datos via AJAX
+            // ==========================================
+            async loadSecurityData() {
+                if (this.securityData) return;
+                try {
+                    const response = await fetch('{{ route('settings.security.data') }}', {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                    });
+                    if (!response.ok) throw new Error('Error');
+                    this.securityData = await response.json();
+                } catch (error) {
+                    console.error('Error loading security data:', error);
+                    this.securityData = { sessions: { list: [], active: 0, total: 0 }, password: {}, gdpr: { export_requests: [], deletion_requests: [] }, audit: { recent: [], total: 0, today: 0, critical: 0 } };
+                }
+            },
+
+            async revokeSession(sessionId) {
+                if (!confirm('¿Cerrar esta sesión?')) return;
+                try {
+                    const r = await fetch(`/settings/security/session/${sessionId}`, {
+                        method: 'DELETE',
+                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
+                    });
+                    if (r.ok) { this.securityData = null; this.loadSecurityData(); }
+                    else alert('Error al cerrar la sesión');
+                } catch (e) { alert('Error de conexión'); }
+            },
+
+            async revokeAllSessions() {
+                if (!confirm('¿Cerrar todas las sesiones excepto la actual?')) return;
+                try {
+                    const r = await fetch('{{ route('settings.security.sessions.revoke-all') }}', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
+                    });
+                    if (r.ok) { this.securityData = null; this.loadSecurityData(); }
+                    else alert('Error al cerrar sesiones');
+                } catch (e) { alert('Error de conexión'); }
             },
 
             async loadUsageData() {

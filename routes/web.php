@@ -341,12 +341,20 @@ Route::middleware(['auth'])->prefix('settings')->name('settings.')->group(functi
     Route::get('/notifications/data', [VeraNotificationController::class, 'data'])->name('notifications.data');
     Route::patch('/notifications', [VeraNotificationController::class, 'update'])->name('notifications.update');
 
-    // Configuración de Apariencia (Densidad visual)                                                                                       
+    // Configuración de Apariencia (Densidad visual)
     Route::get('/appearance', [\App\Http\Controllers\Settings\AppearanceController::class, 'index'])->name('appearance');
     Route::post('/appearance/density', [
         \App\Http\Controllers\Settings\AppearanceController::class,
         'updateDensity'
     ])->name('appearance.density');
+
+    // DATOS DE SEGURIDAD (AJAX para modal de ajustes)
+    Route::get('/security/data', [\App\Http\Controllers\Security\PasswordPolicyController::class, 'securityData'])->name('security.data');
+    Route::post('/security/password', [\App\Http\Controllers\Security\PasswordPolicyController::class, 'changePassword'])->name('security.password');
+    Route::post('/security/export', [\App\Http\Controllers\Security\GDPRController::class, 'requestExport'])->name('security.export');
+    Route::post('/security/delete-data', [\App\Http\Controllers\Security\GDPRController::class, 'requestDeletion'])->name('security.delete');
+    Route::delete('/security/session/{session}', [\App\Http\Controllers\Security\SessionManagementController::class, 'revoke'])->name('security.session.revoke');
+    Route::post('/security/sessions/revoke-all', [\App\Http\Controllers\Security\SessionManagementController::class, 'revokeAll'])->name('security.sessions.revoke-all');
 });
 
 // ========================================

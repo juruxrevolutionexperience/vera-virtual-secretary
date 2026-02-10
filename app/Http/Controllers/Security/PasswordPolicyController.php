@@ -4,14 +4,99 @@ namespace App\Http\Controllers\Security;
 
 use App\Http\Controllers\Controller;
 use App\Services\Security\PasswordPolicyService;
+use App\Services\Security\SessionManagementService;
 use App\Models\PasswordPolicy;
 use App\Models\PasswordHistory;
+use App\Models\UserSession;
+use App\Models\AuditLog;
+use App\Models\DataExportRequest;
+use App\Models\DataDeletionRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class PasswordPolicyController extends Controller
 {
-    public function __construct(protected PasswordPolicyService $policyService) {}
+    public function __construct(
+        protected PasswordPolicyService $policyService,
+        protected SessionManagementService $sessionService
+    ) {}
+
+    /**
+     * Endpoint JSON para el modal de ajustes
+     */
+    public function securityData(Request $request)
+    {
+        $user = $request->user();
+        $policy        = PasswordPolicy::getActive();
+        $sessions      = UserSession::where('user_id', $user->id)->orderBy('last_activity', 'desc')->get();
+        $activeSessions = $sessions->filter->isActive();
+
+        return response()->json([
+            'sessions' => [
+                'total'   => $sessions->count(),
+                'active'  => $activeSessions->count(),
+                'list'    => $sessions->take(8)->map(fn($s) => [
+                    'id'            => $s->id,
+                    'device'        => $s->device_name ?? 'Dispositivo desconocido',
+                    'browser'       => $s->browser ?? '-',
+                    'location'      => $s->location ?? 'Ubicación desconocida',
+                    'ip'            => $s->ip_address,
+                    'is_current'    => $s->session_id === session()->getId(),
+                    'is_active'     => $s->isActive(),
+                    'last_activity' => $s->last_activity?->diffForHumans(),
+                    'created_at'    => $s->created_at?->format('d/m/Y H:i'),
+                ]),
+                'suspicious' => $this->sessionService->detectSuspiciousActivity($user),
+            ],
+            'password' => [
+                'has_policy'      => (bool) $policy,
+                'policy_name'     => $policy?->name,
+                'min_length'      => $policy?->min_length ?? 8,
+                'expires'         => $policy?->expires ?? false,
+                'expiry_days'     => $policy?->expiry_days,
+                'is_expired'      => $policy ? $this->policyService->isPasswordExpired($user) : false,
+                'days_until_exp'  => $policy ? $this->policyService->daysUntilExpiry($user) : null,
+                'should_warn'     => $policy ? $this->policyService->shouldWarnAboutExpiry($user) : false,
+                'total_changes'   => PasswordHistory::where('user_id', $user->id)->count(),
+                'last_change'     => PasswordHistory::where('user_id', $user->id)->latest('created_at')->value('created_at'),
+                'require_upper'   => $policy?->require_uppercase ?? true,
+                'require_lower'   => $policy?->require_lowercase ?? true,
+                'require_numbers' => $policy?->require_numbers ?? true,
+                'require_special' => $policy?->require_special_chars ?? false,
+            ],
+            'gdpr' => [
+                'export_requests'   => DataExportRequest::where('user_id', $user->id)->latest()->take(3)->get()->map(fn($e) => [
+                    'id'             => $e->id,
+                    'status'         => $e->status,
+                    'created_at'     => $e->created_at->format('d/m/Y'),
+                    'download_token' => $e->status === 'completed' && !$e->isExpired() ? $e->download_token : null,
+                    'file_size'      => $e->getFileSizeFormatted(),
+                    'is_expired'     => $e->isExpired(),
+                ]),
+                'deletion_requests' => DataDeletionRequest::where('user_id', $user->id)->latest()->take(3)->get()->map(fn($d) => [
+                    'id'            => $d->id,
+                    'status'        => $d->status,
+                    'deletion_type' => $d->deletion_type,
+                    'created_at'    => $d->created_at->format('d/m/Y'),
+                    'can_cancel'    => $d->status === 'pending',
+                ]),
+                'has_active_deletion' => DataDeletionRequest::where('user_id', $user->id)
+                    ->whereIn('status', ['pending', 'approved', 'processing'])->exists(),
+            ],
+            'audit' => [
+                'total'   => AuditLog::where('user_id', $user->id)->count(),
+                'today'   => AuditLog::where('user_id', $user->id)->whereDate('created_at', today())->count(),
+                'critical' => AuditLog::where('user_id', $user->id)->where('severity', 'critical')->count(),
+                'recent'  => AuditLog::where('user_id', $user->id)->latest()->take(6)->get()->map(fn($l) => [
+                    'description' => $l->description ?? $l->event_type ?? 'Acción registrada',
+                    'category'    => $l->event_category ?? 'general',
+                    'severity'    => $l->severity ?? 'info',
+                    'time'        => $l->created_at->diffForHumans(),
+                    'ip'          => $l->ip_address,
+                ]),
+            ],
+        ]);
+    }
 
     /**
      * Vista principal de políticas de contraseña
@@ -49,13 +134,22 @@ class PasswordPolicyController extends Controller
         $user = $request->user();
 
         if (!Hash::check($request->current_password, $user->password)) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'La contraseña actual no es correcta.', 'errors' => ['current_password' => ['La contraseña actual no es correcta.']]], 422);
+            }
             return back()->withErrors(['current_password' => 'La contraseña actual no es correcta.']);
         }
 
         try {
             $this->policyService->changePassword($user, $request->new_password, 'user');
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'message' => '¡Contraseña actualizada correctamente!']);
+            }
             return back()->with('success', '¡Contraseña actualizada correctamente!');
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
             return back()->withErrors(['new_password' => $e->getMessage()]);
         }
     }
