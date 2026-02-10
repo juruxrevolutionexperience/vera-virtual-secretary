@@ -36,32 +36,49 @@ class RecordUserSession
             ->update(['is_current' => false]);
 
         // Crear nueva sesión
+        $ip = $request->ip();
+        $locationParts = $this->getLocationFromIp($ip);
         UserSession::create([
-            'user_id' => $user->id,
-            'session_id' => Session::getId(),
-            'ip_address' => $request->ip(),
-            'user_agent' => $userAgent,
-            'device_type' => $parsedAgent['device_type'],
-            'browser' => $parsedAgent['browser'],
-            'platform' => $parsedAgent['platform'],
-            'location' => $this->getLocationFromIp($request->ip()),
+            'user_id'       => $user->id,
+            'session_id'    => Session::getId(),
+            'ip_address'    => $ip,
+            'user_agent'    => $userAgent,
+            'device_type'   => $parsedAgent['device_type'],
+            'browser'       => $parsedAgent['browser'],
+            'platform'      => $parsedAgent['platform'],
+            'city'          => $locationParts['city'],
+            'country'       => $locationParts['country'],
             'last_activity' => now(),
-            'expires_at' => now()->addMinutes(config('session.lifetime', 120)),
-            'is_current' => true,
+            'expires_at'    => now()->addMinutes(config('session.lifetime', 120)),
+            'is_current'    => true,
         ]);
     }
 
     /**
      * Obtener ubicación aproximada desde IP
      */
-    protected function getLocationFromIp(string $ip): ?string
+    protected function getLocationFromIp(string $ip): array
     {
-        // Para localhost/desarrollo
-        if (in_array($ip, ['127.0.0.1', '::1', 'localhost'])) {
-            return 'Local Development';
+        // IPs locales / Docker
+        if (in_array($ip, ['127.0.0.1', '::1', 'localhost']) || str_starts_with($ip, '172.') || str_starts_with($ip, '10.')) {
+            return ['city' => 'Desarrollo local', 'country' => null];
         }
 
-        // TODO: Integrar con servicio como ipinfo.io, ipapi.co, etc.
-        return null;
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(3)
+                ->get("https://ipapi.co/{$ip}/json/");
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return [
+                    'city'    => isset($data['city'], $data['region']) ? $data['city'] . ', ' . $data['region'] : ($data['city'] ?? null),
+                    'country' => $data['country_code'] ?? null,
+                ];
+            }
+        } catch (\Exception $e) {
+            // Silencioso
+        }
+
+        return ['city' => null, 'country' => null];
     }
 }
