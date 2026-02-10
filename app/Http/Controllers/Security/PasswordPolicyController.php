@@ -43,7 +43,8 @@ class PasswordPolicyController extends Controller
                 'device_type'   => $parsedAgent['device_type'],
                 'browser'       => $parsedAgent['browser'],
                 'platform'      => $parsedAgent['platform'],
-                'location'      => $location,
+                'city'          => $location['city'],
+                'country'       => $location['country'],
                 'last_activity' => now(),
                 'expires_at'    => now()->addMinutes(config('session.lifetime', 120)),
                 'is_current'    => true,
@@ -61,7 +62,7 @@ class PasswordPolicyController extends Controller
                 'list'    => $sessions->take(8)->map(fn($s) => [
                     'id'            => $s->id,
                     'label'         => $this->formatDeviceLabel($s->browser, $s->platform, $s->device_type),
-                    'location'      => $s->location ?? 'Ubicación desconocida',
+                    'location'      => collect([$s->city, $s->country])->filter()->implode(', ') ?: 'Ubicación desconocida',
                     'ip'            => $s->ip_address,
                     'is_current'    => $s->session_id === session()->getId(),
                     'is_active'     => $s->isActive(),
@@ -246,14 +247,14 @@ class PasswordPolicyController extends Controller
     }
 
     /**
-     * Resuelve la ubicación desde una IP usando ipapi.co.
-     * Devuelve null si la IP es local o falla la consulta.
+     * Resuelve la ubicación desde una IP.
+     * Devuelve array ['city' => ..., 'country' => ...].
      */
-    private function resolveLocation(string $ip): ?string
+    private function resolveLocation(string $ip): array
     {
         // IPs locales / Docker
         if (in_array($ip, ['127.0.0.1', '::1', 'localhost']) || str_starts_with($ip, '172.') || str_starts_with($ip, '10.')) {
-            return 'Desarrollo local';
+            return ['city' => 'Desarrollo local', 'country' => null];
         }
 
         try {
@@ -262,17 +263,15 @@ class PasswordPolicyController extends Controller
 
             if ($response->successful()) {
                 $data = $response->json();
-                $city    = $data['city'] ?? null;
-                $region  = $data['region'] ?? null;
-                $country = $data['country_code'] ?? null;
-
-                $parts = array_filter([$city, $region, $country]);
-                return $parts ? implode(', ', $parts) : null;
+                return [
+                    'city'    => isset($data['city'], $data['region']) ? $data['city'] . ', ' . $data['region'] : ($data['city'] ?? null),
+                    'country' => $data['country_code'] ?? null,
+                ];
             }
         } catch (\Exception $e) {
             // Silencioso: la geolocalización no es crítica
         }
 
-        return null;
+        return ['city' => null, 'country' => null];
     }
 }
