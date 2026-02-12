@@ -35,23 +35,25 @@ class RecordUserSession
         UserSession::where('user_id', $user->id)
             ->update(['is_current' => false]);
 
-        // Crear nueva sesión
+        // Crear o actualizar sesión (evita duplicados si la sesión ya existe)
         $ip = $request->ip();
         $locationParts = $this->getLocationFromIp($ip);
-        UserSession::create([
-            'user_id'       => $user->id,
-            'session_id'    => Session::getId(),
-            'ip_address'    => $ip,
-            'user_agent'    => $userAgent,
-            'device_type'   => $parsedAgent['device_type'],
-            'browser'       => $parsedAgent['browser'],
-            'platform'      => $parsedAgent['platform'],
-            'city'          => $locationParts['city'],
-            'country'       => $locationParts['country'],
-            'last_activity' => now(),
-            'expires_at'    => now()->addMinutes(config('session.lifetime', 120)),
-            'is_current'    => true,
-        ]);
+        UserSession::updateOrCreate(
+            ['session_id' => Session::getId()],
+            [
+                'user_id'       => $user->id,
+                'ip_address'    => $ip,
+                'user_agent'    => $userAgent,
+                'device_type'   => $parsedAgent['device_type'],
+                'browser'       => $parsedAgent['browser'],
+                'platform'      => $parsedAgent['platform'],
+                'city'          => $locationParts['city'],
+                'country'       => $locationParts['country'],
+                'last_activity' => now(),
+                'expires_at'    => now()->addMinutes(config('session.lifetime', 120)),
+                'is_current'    => true,
+            ]
+        );
     }
 
     /**

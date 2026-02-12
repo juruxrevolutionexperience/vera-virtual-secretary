@@ -29,6 +29,12 @@ class User extends Authenticatable
         'billing_cycle_start',
         'plan_metadata',
         'plan_upgraded_at',
+        // === 2FA ===
+        'two_factor_secret',
+        'two_factor_enabled',
+        'two_factor_enabled_at',
+        'two_factor_confirmed_at',
+        'two_factor_recovery_codes',
     ];
 
     protected $hidden = [
@@ -43,6 +49,9 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_paid' => 'boolean',
             'current_period_end' => 'datetime',
+            'two_factor_enabled' => 'boolean',
+            'two_factor_enabled_at' => 'datetime',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 

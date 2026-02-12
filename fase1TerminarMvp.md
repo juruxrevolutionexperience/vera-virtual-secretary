@@ -22,8 +22,8 @@ Revisar cada funcionalidad implementada, testearla y documentar bugs/mejoras
 ### 🔧 PARTE 2: MEJORAS Y PULIDO (1 semana) - **PENDIENTE**
 Arreglar bugs, optimizar frontend/backend, mejorar UX/UI
 
-### 🔐 PARTE 3: IMPLEMENTAR 2FA (3-5 días) - **PENDIENTE**
-Completar la única funcionalidad crítica que falta
+### ✅ PARTE 3: IMPLEMENTAR 2FA (3-5 días) - **COMPLETADO 12/02/2026**
+Google Authenticator + recovery codes + challenge en login — testeado y funcional
 
 ### ✅ PARTE 4: TESTING FINAL (2-3 días) - **PENDIENTE**
 Verificar que todo funciona al 100%

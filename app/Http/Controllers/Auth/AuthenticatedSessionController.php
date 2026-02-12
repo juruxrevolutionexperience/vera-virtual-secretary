@@ -26,6 +26,17 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        $user = Auth::user();
+
+        // Si el usuario tiene 2FA activo, redirigir al challenge
+        if ($user->two_factor_enabled && $user->two_factor_confirmed_at) {
+            $userId = $user->id;
+            Auth::logout();
+            $request->session()->regenerate();
+            $request->session()->put('2fa.user_id', $userId);
+            return redirect()->route('2fa.challenge');
+        }
+
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));

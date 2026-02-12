@@ -31,6 +31,10 @@ Route::view('/terms', 'legal.terms')->name('terms');
 Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
 Route::post('/newsletter/unsubscribe', [NewsletterController::class, 'unsubscribe'])->name('newsletter.unsubscribe');
 
+// 2FA Challenge (rutas públicas — usuario no logueado aún)
+Route::get('/2fa/challenge', [\App\Http\Controllers\Security\TwoFactorAuthController::class, 'showChallenge'])->name('2fa.challenge');
+Route::post('/2fa/challenge', [\App\Http\Controllers\Security\TwoFactorAuthController::class, 'verifyChallenge'])->name('2fa.verify');
+
 // Dashboard Principal (requiere autenticación)
 Route::get('/dashboard', function () {
     return view('dashboard');
