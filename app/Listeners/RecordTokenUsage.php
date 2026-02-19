@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\VeraTokensConsumed;
 use App\Models\VeraTokenUsage;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -11,10 +12,15 @@ class RecordTokenUsage implements ShouldQueue
 {
     /**
      * Handle the event.
+     * 1. Guarda el log en vera_token_usage
+     * 2. Descuenta tokens del saldo mensual del usuario
      */
     public function handle(VeraTokensConsumed $event): void
     {
         try {
+            $totalTokens = $event->tokenData['total_tokens'] ?? 0;
+
+            // 1. Guardar log de uso
             VeraTokenUsage::record(
                 userId: $event->userId,
                 actionType: $event->actionType,
@@ -23,18 +29,24 @@ class RecordTokenUsage implements ShouldQueue
                 metadata: $event->metadata
             );
 
-            Log::info('📊 Tokens registrados', [
-                'user_id' => $event->userId,
-                'action_type' => $event->actionType,
-                'total_tokens' => $event->tokenData['total_tokens'] ?? 0,
-                'email_id' => $event->emailId,
+            // 2. Descontar del saldo mensual del usuario
+            $user = User::find($event->userId);
+            if ($user && $totalTokens > 0) {
+                $user->consumeTokens($totalTokens);
+            }
+
+            Log::info('📊 Tokens registrados y descontados', [
+                'user_id'      => $event->userId,
+                'action_type'  => $event->actionType,
+                'total_tokens' => $totalTokens,
+                'email_id'     => $event->emailId,
             ]);
 
         } catch (\Exception $e) {
             Log::error('❌ Error registrando tokens', [
-                'user_id' => $event->userId,
+                'user_id'     => $event->userId,
                 'action_type' => $event->actionType,
-                'error' => $e->getMessage(),
+                'error'       => $e->getMessage(),
             ]);
         }
     }

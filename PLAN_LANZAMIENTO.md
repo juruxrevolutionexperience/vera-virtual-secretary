@@ -179,21 +179,91 @@
 
 ## 🅓 FASE D — SISTEMA DE TOKENS
 
-> **Objetivo:** Implementar el diseño de tokens definido en Google Drive.
-> **Referencia:** Carpeta Google Drive → diseño de tokens
+> **Objetivo:** Implementar trazabilidad de tokens IA + sistema de créditos/planes.
+> **Referencia:** Documento "Planificacion Tokens.docx" (ya analizado el 17/02/2026)
+> **API actual:** Gemini (gratuita) → migración futura a Claude/GPT de pago
+> **Principio clave:** El backend actúa como proxy — el frontend NUNCA llama a la API IA directamente
 
-### Pendiente revisar en Google Drive
-- [ ] Revisar documento de diseño de tokens
-- [ ] Entender la estructura: ¿qué son los tokens en Vera? ¿créditos de IA?
-- [ ] ¿Cómo se consumen? ¿Por email procesado? ¿Por respuesta generada?
-- [ ] ¿Cómo se recargan? ¿Compra, suscripción, plan?
+---
 
-### Implementación (una vez revisado el diseño)
-- [ ] Modelo de datos para tokens
-- [ ] Sistema de consumo automático
-- [ ] Dashboard de tokens para el usuario
-- [ ] Alertas cuando quedan pocos tokens
-- [ ] Sistema de recarga / compra de tokens
+### 📋 CONTEXTO Y DECISIONES TOMADAS (17/02/2026)
+
+**Arquitectura decidida:**
+- Laravel = Cerebro administrativo (verifica créditos, guarda logs)
+- Python (futuro) = Ejecutor de IA (optimización tokens — Fase T3)
+- Por ahora: Laravel llama directamente a Gemini API
+- Servicio abstracto `AIGatewayService` → swappable sin reescribir código
+
+**Situación actual:**
+- ❓ Pendiente confirmar: ¿hay llamadas a Gemini ya implementadas en el proyecto?
+- Esta pregunta es CRÍTICA antes de empezar (integrar vs construir desde cero)
+
+---
+
+### 🔵 FASE T1 — Infraestructura de Trazabilidad ✅ COMPLETADO 18/02/2026
+
+**T1.1 — Migración `usage_logs`**
+- [x] Existe como `vera_token_usage` con todas las columnas necesarias (31 registros reales)
+
+**T1.2 — Modelo `UsageLog`**
+- [x] Existe como `VeraTokenUsage` con scopes, `record()`, `getStatsByUser()`, `detectAnomalies()`
+
+**T1.3 — Servicio `AIGatewayService`**
+- [x] Creado en `app/Services/AI/AIGatewayService.php`
+- [x] Proxy sobre `GeminiProvider` (swappable via `VERA_AI_PROVIDER` en `.env`)
+- [x] Expone `analyze()`, `generateContent()`, `testConnection()`, `getProviderInfo()`
+
+**T1.4 — Integrar en llamadas IA existentes**
+- [x] Ya integrado en `VeraService`, `VeraResponseGenerator`, `VeraChatService`
+- [x] Listener `RecordTokenUsage` registra tokens Y descuenta del saldo mensual
+
+---
+
+### 🟡 FASE T2 — Sistema de Créditos/Planes ✅ COMPLETADO 18/02/2026
+
+**T2.1 — Modelo de datos**
+- [x] Columnas `monthly_tokens_used`, `monthly_tokens_limit`, `tokens_reset_at` en `users`
+- [x] Métodos en User: `tokensAvailable()`, `hasTokensAvailable()`, `consumeTokens()`, `tokensUsagePercent()`
+- [x] Planes: Basic→50k, Starter→200k, Pro→1M, Enterprise→ilimitado
+
+**T2.2 — Control de acceso**
+- [x] Middleware `CheckUserTokens` → bloquear con error 402 si sin tokens
+- [x] Alias `tokens.check` registrado en `bootstrap/app.php`
+
+**T2.3 — Planes y multiplicadores**
+```
+Plan Basic      → 50.000 tokens/mes    → gemini-flash
+Plan Starter    → 200.000 tokens/mes   → gemini-flash
+Plan Pro        → Ilimitado (UI)       → gemini-flash
+Plan Enterprise → Ilimitado            → según contrato
+```
+
+**T2.4 — Dashboard de tokens para el usuario**
+- [x] Widget `<x-tokens-widget />` en dashboard con barra de progreso real
+- [x] Alerta visual cuando > 90% consumido
+- [x] Etiqueta del plan + disponibles restantes
+- [ ] Historial de consumo por fecha/feature (pendiente — T2.4b)
+
+**T2.5 — Recarga de tokens**
+- [ ] Integración Stripe (pendiente — decidir modelo: paquetes vs suscripción mensual)
+
+---
+
+### 🟠 FASE T3 — Optimización con Python (DESPUÉS DE T2)
+> NO se toca hasta tener T1 y T2 funcionando
+
+- [ ] Script Python para estimación previa de tokens (tiktoken para OpenAI / nativo en Anthropic)
+- [ ] Compresión de contexto conversacional (no enviar historial completo)
+- [ ] Laravel invoca Python via `shell_exec()` con `escapeshellarg()`
+- [ ] Python devuelve JSON: `{text, usage: {prompt, completion, total}}`
+
+---
+
+### ⏭️ SIGUIENTE PASO AL RETOMAR (mañana 18/02/2026)
+
+1. **Primero confirmar:** ¿Hay llamadas a Gemini ya implementadas en el proyecto?
+   - Buscar en el código: `gemini`, `GeminiService`, cualquier llamada HTTP a API IA
+2. **Según la respuesta:** empezamos T1.1 (migración) como primer commit
 
 ---
 
@@ -232,34 +302,64 @@
 **F1. `VeraResetMonthlyLimits` no está en el Kernel**
 - Consecuencia: límites mensuales de Vera NUNCA se resetean
 - Fix: añadir al Kernel el día 1 de cada mes
-- Estado: ⏳ Pendiente
+- Estado: ✅ Completado (15/02/2026)
 
 **F2. `ProcessGDPRRequests` no está en el Kernel**
 - Consecuencia: solicitudes RGPD nunca se procesan automáticamente
 - Fix: programar diariamente
-- Estado: ⏳ Pendiente
+- Estado: ✅ Completado (15/02/2026)
 
 **F3. `CheckPasswordExpiry` no está en el Kernel**
 - Consecuencia: política de contraseñas nunca verifica vencimientos
 - Fix: programar diariamente
-- Estado: ⏳ Pendiente
+- Estado: ✅ Completado (15/02/2026)
 
 ### 🟡 Mejoras UX
 
 **F4. `showNotification('info')` muestra en ROJO**
 - "Enviando email..." aparece en rojo → sensación de error
 - Fix: añadir colores info(azul) y warning(amarillo)
-- Estado: ⏳ Pendiente
+- Estado: ✅ Completado (15/02/2026)
 
-**F5. 20 `alert()` en `emails/index.blade.php`**
+**F5. 24 `alert()` en `emails/index.blade.php`**
 - Usar `showNotification()` que ya existe en esa vista
-- Fix: reemplazar los 20 alert() por showNotification()
-- Estado: ⏳ Pendiente
+- Fix: reemplazados todos los alert() por showNotification()
+- Estado: ✅ Completado (15/02/2026)
 
 **F6. `contacts/index` y `organizations/show` usan solo `alert()`**
 - 8 alerts en contacts, 14 en organizations
-- Fix: añadir showNotification() y reemplazar
-- Estado: ⏳ Pendiente
+- Fix: añadida showNotification() y reemplazados todos
+- Estado: ✅ Completado (15/02/2026)
+
+**F7. Emails pospuestos (snooze) seguían apareciendo en el inbox**
+- Al posponer un email, se guardaba en DB pero no desaparecía del inbox
+- Fix: excluir emails con `snoozed_until > now()` de todas las vistas excepto `/emails?filter=snoozed`
+- Estado: ✅ Completado (15/02/2026)
+
+**F8. Bug timezone: snooze "1 hora" expiraba inmediatamente**
+- España = UTC+1. El JS enviaba UTC+1h → servidor comparaba UTC vs Madrid → se cancelaban
+- Fix: `Carbon::parse()->setTimezone(config('app.timezone'))` en EmailWorkflowController::snooze()
+- Estado: ✅ Completado (15/02/2026)
+
+**F9. Bug timezone: due_date — misma raíz que F8**
+- Fechas límite puestas para "hoy" o "mañana" no aparecían en los filtros por el mismo desfase horario
+- Fix: mismo patrón Carbon en EmailWorkflowController::setDueDate()
+- Estado: ✅ Completado (15/02/2026)
+
+**F10. "Vencen esta semana" usaba semana calendario (lun-dom)**
+- Hoy domingo 15 Feb → mañana lunes 16 ya era "semana que viene" → los emails desaparecían
+- Fix: cambiar `startOfWeek→endOfWeek` por `now()→now()+7 días` en todos los filtros de EmailController
+- Estado: ✅ Completado (15/02/2026)
+
+**F11. Alertas de due dates no se cerraban nunca (vencidos)**
+- `persistent = 'manual'` → la alerta de vencidos se quedaba fija en pantalla para siempre
+- Fix: cambiado a `false` → todas las alertas auto-cierran a los 8 segundos
+- Estado: ✅ Completado (15/02/2026)
+
+**F12. Alerta de due dates aparecía en bucle en cada refresco**
+- Al refrescar la página la alerta salía repetidamente
+- Fix: `sessionStorage` con clave `dueDateAlert_X_Y` para mostrarla solo una vez por sesión de pestaña
+- Estado: ✅ Completado (15/02/2026)
 
 ---
 
@@ -300,9 +400,9 @@
 - [ ] `emails:clean-old-trash` — diario 3AM ✅ en Kernel
 - [ ] `sessions:clean-expired` — diario 4AM ✅ en Kernel
 - [ ] `vera:weekly-reanalysis` — semanal domingos 2AM ✅ en Kernel
-- [ ] `vera:reset-monthly-limits` — día 1 cada mes ⏳ (Fase F)
-- [ ] `gdpr:process-requests` — diario ⏳ (Fase F)
-- [ ] `security:check-password-expiry` — diario ⏳ (Fase F)
+- [ ] `vera:reset-monthly-limits` — día 1 cada mes ✅ Completado (Fase F)
+- [ ] `security:process-gdpr` — diario ✅ Completado (Fase F)
+- [ ] `app:check-password-expiry` — diario ✅ Completado (Fase F)
 
 #### Seguridad
 - [ ] No hay vulnerabilidades XSS
@@ -347,13 +447,13 @@
 | A — Testing + grabación | 0% ░░░░░░░░░░ |
 | B — Landing page | 0% ░░░░░░░░░░ |
 | C — Contenido | 0% ░░░░░░░░░░ |
-| D — Tokens | 0% ░░░░░░░░░░ |
+| D — Tokens | 5% ▒░░░░░░░░░ (Planning T1 listo, pendiente implementar) |
 | E — Auditoría seguridad | 0% ░░░░░░░░░░ |
-| F — Fixes + mejoras UX | 0% ░░░░░░░░░░ |
+| F — Fixes + mejoras UX | 100% ██████████ |
 | G — Testing final | 0% ░░░░░░░░░░ |
 
-**Software MVP actual: 90%** ██████████████████░░
+**Software MVP actual: 93%** ██████████████████░░
 
 ---
 
-*Última actualización: 12/02/2026*
+*Última actualización: 17/02/2026 — Planning Tokens T1/T2/T3 definido*

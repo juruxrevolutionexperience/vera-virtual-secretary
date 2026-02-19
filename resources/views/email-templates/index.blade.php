@@ -483,7 +483,7 @@ function templatesApp() {
         showNotification(message, type = 'success') {
             const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
             const notification = document.createElement('div');
-            notification.className = `fixed bottom-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity duration-300`;
+            notification.className = `fixed top-4 left-1/2 -translate-x-1/2 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-[9999] transition-opacity duration-300`;
             notification.textContent = message;
             document.body.appendChild(notification);
             setTimeout(() => {

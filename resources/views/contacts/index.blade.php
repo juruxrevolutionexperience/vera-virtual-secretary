@@ -387,7 +387,7 @@ function contactsApp() {
                 };
             } catch (error) {
                 console.error('Error loading contacts:', error);
-                alert('Error cargando contactos');
+                showNotification('Error cargando contactos', 'error');
             } finally {
                 this.loading = false;
             }
@@ -423,13 +423,13 @@ function contactsApp() {
                 });
 
                 const data = await response.json();
-                alert(`Sincronización completada:\n- Procesados: ${data.stats.processed}\n- Creados: ${data.stats.created}\n- Actualizados: ${data.stats.updated}`);
+                showNotification(`Sincronización completada: ${data.stats.created} creados, ${data.stats.updated} actualizados`, 'success');
 
                 await this.loadStats();
                 await this.loadContacts();
             } catch (error) {
                 console.error('Error syncing:', error);
-                alert('Error sincronizando contactos');
+                showNotification('Error sincronizando contactos', 'error');
             } finally {
                 this.syncing = false;
             }
@@ -482,16 +482,25 @@ function contactsApp() {
                     body: JSON.stringify(this.formData),
                 });
 
+                if (response.status === 422) {
+                    const errorData = await response.json();
+                    const firstError = errorData.errors
+                        ? Object.values(errorData.errors)[0][0]
+                        : (errorData.message || 'Por favor revisa los campos');
+                    showNotification(firstError, 'warning');
+                    return;
+                }
+
                 if (!response.ok) throw new Error('Error saving contact');
 
                 this.modalOpen = false;
                 await this.loadStats();
                 await this.loadContacts();
 
-                alert(this.editingContact ? 'Contacto actualizado' : 'Contacto creado');
+                showNotification(this.editingContact ? 'Contacto actualizado' : 'Contacto creado', 'success');
             } catch (error) {
                 console.error('Error saving contact:', error);
-                alert('Error guardando contacto');
+                showNotification('Error guardando contacto', 'error');
             }
         },
 
@@ -528,7 +537,7 @@ function contactsApp() {
                 const data = await response.json();
                 contact.priority = data.priority;
                 await this.loadStats();
-                alert('Contacto marcado como VIP');
+                showNotification('Contacto marcado como VIP', 'success');
             } catch (error) {
                 console.error('Error marking as VIP:', error);
             }
@@ -574,10 +583,10 @@ function contactsApp() {
 
                 await this.loadStats();
                 await this.loadContacts();
-                alert('Contacto eliminado');
+                showNotification('Contacto eliminado', 'success');
             } catch (error) {
                 console.error('Error deleting contact:', error);
-                alert('Error eliminando contacto');
+                showNotification('Error eliminando contacto', 'error');
             }
         },
 
@@ -633,6 +642,27 @@ function contactsApp() {
             return date.toLocaleDateString('es-ES');
         },
     }
+}
+
+function showNotification(message, type = 'success') {
+    const colors = {
+        success: 'bg-green-500',
+        error:   'bg-red-500',
+        info:    'bg-blue-500',
+        warning: 'bg-yellow-500'
+    };
+    const bgColor = colors[type] || 'bg-gray-500';
+
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 left-1/2 -translate-x-1/2 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-[9999] transition-opacity duration-300`;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
 }
 </script>
 @endsection

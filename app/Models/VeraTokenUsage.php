@@ -142,7 +142,11 @@ class VeraTokenUsage extends Model
             'completion_tokens' => $tokenData['completion_tokens'] ?? 0,
             'total_tokens' => $tokenData['total_tokens'] ?? 0,
             'model' => $tokenData['model'] ?? 'gemini-1.5-flash',
-            'cost' => self::calculateCost($tokenData['total_tokens'] ?? 0),
+            'cost' => self::calculateCost(
+                $tokenData['prompt_tokens']     ?? 0,
+                $tokenData['completion_tokens'] ?? 0,
+                $tokenData['total_tokens']      ?? 0
+            ),
             'metadata' => $metadata,
         ]);
     }
@@ -157,14 +161,28 @@ class VeraTokenUsage extends Model
      * @param int $totalTokens
      * @return float
      */
-    public static function calculateCost(int $totalTokens): float
-    {
-        // Por ahora usamos tier gratuito, costo = 0
-        // Cuando migremos a tier de pago, descomentar:
-        // $costPerMillionTokens = 0.10;
-        // return ($totalTokens / 1000000) * $costPerMillionTokens;
+    /**
+     * Gemini Flash pricing (tier de pago, precios reales Feb 2026):
+     *   Input:  $0.075  por 1M tokens
+     *   Output: $0.300  por 1M tokens
+     *
+     * Aunque ahora usemos tier gratuito, calculamos el coste teórico
+     * para poder calcular rentabilidad de planes.
+     */
+    public static function calculateCost(
+        int $promptTokens = 0,
+        int $completionTokens = 0,
+        int $totalTokens = 0
+    ): float {
+        // Si tenemos desglose input/output, usamos precios diferenciados
+        if ($promptTokens > 0 || $completionTokens > 0) {
+            $inputCost  = ($promptTokens     / 1_000_000) * 0.075;
+            $outputCost = ($completionTokens / 1_000_000) * 0.300;
+            return round($inputCost + $outputCost, 8);
+        }
 
-        return 0.0;
+        // Si solo tenemos total, usamos precio promedio ponderado (~60/40)
+        return round(($totalTokens / 1_000_000) * 0.150, 8);
     }
 
     /**
@@ -248,5 +266,121 @@ class VeraTokenUsage extends Model
             ->with(['user:id,name,email', 'email:id,subject,from_email'])
             ->orderByDesc('total_tokens')
             ->get();
+    }
+
+    // ─── Métodos de negocio (para cálculo de planes y rentabilidad) ───────────
+
+    /**
+     * Coste real acumulado de un usuario en un período.
+     * Recalcula desde los tokens reales (por si los registros antiguos tienen cost=0).
+     */
+    public static function getRealCostByUser(int $userId, int $year, int $month): array
+    {
+        $records = self::byUser($userId)->forMonth($year, $month)->get();
+
+        $inputTokens      = $records->sum('prompt_tokens');
+        $outputTokens     = $records->sum('completion_tokens');
+        $totalTokens      = $records->sum('total_tokens');
+
+        $costUsd = self::calculateCost($inputTokens, $outputTokens, $totalTokens);
+        $costEur = $costUsd * 0.92; // cambio aproximado USD → EUR
+
+        return [
+            'input_tokens'   => $inputTokens,
+            'output_tokens'  => $outputTokens,
+            'total_tokens'   => $totalTokens,
+            'cost_usd'       => $costUsd,
+            'cost_eur'       => $costEur,
+            'calls'          => $records->count(),
+            'avg_cost_per_call_eur' => $records->count() > 0
+                ? round($costEur / $records->count(), 6)
+                : 0,
+        ];
+    }
+
+    /**
+     * Proyección de coste mensual con N usuarios del mismo perfil de uso.
+     * Útil para calcular el precio mínimo de un plan.
+     *
+     * Ejemplo: un usuario Basic gasta X tokens/mes → con 100 usuarios = X*100 tokens → Y€
+     */
+    public static function getCostProjection(int $userId, int $year, int $month): array
+    {
+        $real = self::getRealCostByUser($userId, $year, $month);
+
+        $projections = [];
+        foreach ([10, 50, 100, 500, 1000] as $nUsers) {
+            $totalCostEur   = $real['cost_eur'] * $nUsers;
+            // Precio mínimo por usuario = coste API / usuarios + 60% margen mínimo
+            $minPriceEur    = $nUsers > 0 ? round(($totalCostEur / $nUsers) * 1.6, 2) : 0;
+
+            $projections[] = [
+                'users'           => $nUsers,
+                'total_cost_eur'  => round($totalCostEur, 2),
+                'min_price_eur'   => $minPriceEur,
+            ];
+        }
+
+        return [
+            'base_user_cost_eur' => $real['cost_eur'],
+            'base_tokens'        => $real['total_tokens'],
+            'projections'        => $projections,
+        ];
+    }
+
+    /**
+     * Datos para la calculadora de pricing por plan.
+     * Basada en emails/mes × avg_tokens_per_email (dato real medido).
+     *
+     * Planes definidos según el modelo de negocio real (monthly_email_limit).
+     * Precios Gemini Flash (tier de pago):
+     *   Input:  $0.075 por 1M tokens
+     *   Output: $0.300 por 1M tokens
+     */
+    public static function getPlanPricingData(int $userId): array
+    {
+        // Promedio tokens/email desde datos reales (solo email_analysis)
+        $emailAnalysisData = self::byUser($userId)
+            ->where('action_type', 'email_analysis')
+            ->get();
+
+        $avgTokensPerEmail = $emailAnalysisData->count() > 0
+            ? (int) round($emailAnalysisData->avg('total_tokens'))
+            : 2067; // Fallback: dato real medido (64.095 tokens / 31 llamadas = 2.067)
+
+        // Definición de planes (emails/mes = parámetro real del negocio)
+        $planDefinitions = [
+            'basic'   => ['name' => 'Basic',   'emails_per_month' => 100,  'suggested_price' => 9,  'color' => 'blue'],
+            'starter' => ['name' => 'Starter', 'emails_per_month' => 500,  'suggested_price' => 19, 'color' => 'purple'],
+            'pro'     => ['name' => 'Pro',     'emails_per_month' => 2000, 'suggested_price' => 49, 'color' => 'indigo'],
+        ];
+
+        foreach ($planDefinitions as &$plan) {
+            $tokensPerMonth = $plan['emails_per_month'] * $avgTokensPerEmail;
+            // Gemini Flash: ratio real medido ~85% input / 15% output
+            $inputCost  = ($tokensPerMonth * 0.85 / 1_000_000) * 0.075;
+            $outputCost = ($tokensPerMonth * 0.15 / 1_000_000) * 0.300;
+            $costUsd    = $inputCost + $outputCost;
+
+            $plan['tokens_per_month'] = $tokensPerMonth;
+            $plan['cost_api_usd']     = round($costUsd, 4);
+            $plan['cost_api_eur']     = round($costUsd * 0.92, 4);
+        }
+        unset($plan);
+
+        // Contexto del límite gratuito de Gemini Flash
+        $freeTierDailyLimit  = 1500; // req/día tier gratuito
+        $avgEmailsPerUserDay = 100;  // usuario activo típico con 100 emails/día
+
+        return [
+            'avg_tokens_per_email' => $avgTokensPerEmail,
+            'data_points'          => $emailAnalysisData->count(),
+            'plans'                => $planDefinitions,
+            'free_tier'            => [
+                'daily_limit'    => $freeTierDailyLimit,
+                'emails_per_day' => $avgEmailsPerUserDay,
+                'max_free_users' => (int) floor($freeTierDailyLimit / $avgEmailsPerUserDay),
+            ],
+        ];
     }
 }

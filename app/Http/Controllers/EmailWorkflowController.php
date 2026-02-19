@@ -154,7 +154,9 @@ class EmailWorkflowController extends Controller
             'snoozed_until' => 'required|date|after:now',
         ]);
 
-        $email = $this->workflowService->snoozeEmail($email, new \DateTime($validated['snoozed_until']));
+        // Convertir al timezone de la app para que la comparación `snoozed_until > now()` sea consistente
+        $snoozeDate = \Carbon\Carbon::parse($validated['snoozed_until'])->setTimezone(config('app.timezone'));
+        $email = $this->workflowService->snoozeEmail($email, $snoozeDate);
 
         return response()->json([
             'success' => true,
@@ -194,7 +196,9 @@ class EmailWorkflowController extends Controller
             'due_date' => 'nullable|date|after:now',
         ]);
 
-        $dueDate = $validated['due_date'] ? new \DateTime($validated['due_date']) : null;
+        $dueDate = $validated['due_date']
+            ? \Carbon\Carbon::parse($validated['due_date'])->setTimezone(config('app.timezone'))
+            : null;
         $email = $this->workflowService->setDueDate($email, $dueDate);
 
         return response()->json([

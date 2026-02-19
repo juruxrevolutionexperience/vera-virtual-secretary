@@ -95,7 +95,7 @@ class EmailController extends Controller
                     break;
                 case 'due_this_week':
                     $query->whereNotNull('due_date')
-                        ->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])
+                        ->whereBetween('due_date', [now(), now()->addDays(7)])
                         ->where('workflow_status', '!=', 'completed')
                         ->where('workflow_status', '!=', 'archived')
                         ->orderBy('due_date', 'asc'); // Más urgente primero
@@ -108,6 +108,14 @@ class EmailController extends Controller
             }
         }
 
+        // Ocultar emails pospuestos (activos) de todas las vistas excepto el filtro "snoozed"
+        if (!$request->has('filter') || $request->filter !== 'snoozed') {
+            $query->where(function ($q) {
+                $q->whereNull('snoozed_until')
+                    ->orWhere('snoozed_until', '<=', now());
+            });
+        }
+
         // Aplicar ordenamiento por defecto solo si no hay orden personalizado
         if (!$customOrder && !isset($defaultOrder)) {
             $query->orderBy('received_at', 'desc');
@@ -115,13 +123,13 @@ class EmailController extends Controller
             $query->orderBy('received_at', 'desc');
         }
 
-        // Búsqueda                                                                                                                        
+        // Búsqueda
         if ($request->has('search') && $request->search) {
             $query->search($request->search);
         }
 
-        // ============================================                                                                                    
-        // NUEVOS FILTROS DE BÚSQUEDA AVANZADA                                                                                             
+        // ============================================
+        // NUEVOS FILTROS DE BÚSQUEDA AVANZADA
         // ============================================                                                                                    
 
         // Filtro por campo específico de búsqueda                                                                                         
@@ -198,7 +206,7 @@ class EmailController extends Controller
             ->count();
         $dueThisWeek = (clone $baseQuery)
             ->whereNotNull('due_date')
-            ->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])
+            ->whereBetween('due_date', [now(), now()->addDays(7)])
             ->where('workflow_status', '!=', 'completed')
             ->where('workflow_status', '!=', 'archived')
             ->count();
@@ -262,7 +270,7 @@ class EmailController extends Controller
         $baseQuery = Email::where('user_id', Auth::id())->where('status', 'received');
         $overdue = (clone $baseQuery)->overdue()->count();
         $dueToday = (clone $baseQuery)->whereNotNull('due_date')->whereDate('due_date', today())->where('workflow_status', '!=', 'completed')->where('workflow_status', '!=', 'archived')->count();
-        $dueThisWeek = (clone $baseQuery)->whereNotNull('due_date')->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])->where('workflow_status', '!=', 'completed')->where('workflow_status', '!=', 'archived')->count();
+        $dueThisWeek = (clone $baseQuery)->whereNotNull('due_date')->whereBetween('due_date', [now(), now()->addDays(7)])->where('workflow_status', '!=', 'completed')->where('workflow_status', '!=', 'archived')->count();
         $snoozed = (clone $baseQuery)->snoozed()->count();
 
         $stats = [
@@ -473,7 +481,7 @@ class EmailController extends Controller
 
         $dueThisWeek = (clone $baseQuery)
             ->whereNotNull('due_date')
-            ->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])
+            ->whereBetween('due_date', [now(), now()->addDays(7)])
             ->where('workflow_status', '!=', 'completed')
             ->where('workflow_status', '!=', 'archived')
             ->count();
@@ -537,7 +545,7 @@ class EmailController extends Controller
                     break;
                 case 'due_this_week':
                     $query->whereNotNull('due_date')
-                        ->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])
+                        ->whereBetween('due_date', [now(), now()->addDays(7)])
                         ->where('workflow_status', '!=', 'completed')
                         ->where('workflow_status', '!=', 'archived')
                         ->orderBy('due_date', 'asc'); // Más urgente primero
@@ -550,6 +558,14 @@ class EmailController extends Controller
             }
         }
 
+        // Ocultar emails pospuestos (activos) de todas las vistas excepto el filtro "snoozed"
+        if (!$request->has('filter') || $request->filter !== 'snoozed') {
+            $query->where(function ($q) {
+                $q->whereNull('snoozed_until')
+                    ->orWhere('snoozed_until', '<=', now());
+            });
+        }
+
         // Aplicar ordenamiento por defecto solo si no hay orden personalizado
         if (!$customOrder && !isset($defaultOrder)) {
             $query->orderBy('received_at', 'desc');
@@ -557,13 +573,12 @@ class EmailController extends Controller
             $query->orderBy('received_at', 'desc');
         }
 
-
-        // Búsqueda                                                                                                                        
+        // Búsqueda
         if ($request->has('search') && $request->search) {
             $query->search($request->search);
         }
 
-        // ============================================                                                                                    
+        // ============================================
         // NUEVOS FILTROS DE BÚSQUEDA AVANZADA (AJAX)                                                                                      
         // ============================================                                                                                    
 
@@ -754,7 +769,7 @@ class EmailController extends Controller
             ->count();
         $dueThisWeek = (clone $baseQuery)
             ->whereNotNull('due_date')
-            ->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])
+            ->whereBetween('due_date', [now(), now()->addDays(7)])
             ->where('workflow_status', '!=', 'completed')
             ->where('workflow_status', '!=', 'archived')
             ->count();
@@ -839,7 +854,7 @@ class EmailController extends Controller
             ->count();
         $dueThisWeek = (clone $baseQuery)
             ->whereNotNull('due_date')
-            ->whereBetween('due_date', [now()->startOfWeek(), now()->endOfWeek()])
+            ->whereBetween('due_date', [now(), now()->addDays(7)])
             ->where('workflow_status', '!=', 'completed')
             ->where('workflow_status', '!=', 'archived')
             ->count();
@@ -1302,20 +1317,26 @@ class EmailController extends Controller
             }
 
             if ($sentEmail) {
-                // Registrar actividad
-                \App\Models\VeraActivityLog::create([
-                    'user_id' => Auth::id(),
-                    'activity_type' => 'email_sent',
-                    'email_id' => $sentEmail->id ?? null,
-                    'title' => 'Email enviado',
-                    'description' => 'El usuario envió un nuevo email',
-                    'metadata' => [
-                        'to' => $validated['to_email'],
-                        'subject' => $validated['subject'],
-                        'sent_email_id' => $sentEmail->id ?? null,
-                    ],
-                    'counts_towards_limit' => false,
-                ]);
+                // Registrar actividad (en su propio try-catch para que un fallo de log no rompa el envío)
+                try {
+                    \App\Models\VeraActivityLog::create([
+                        'user_id' => Auth::id(),
+                        'activity_type' => 'email_replied',
+                        'email_id' => $sentEmail->id ?? null,
+                        'title' => 'Email enviado',
+                        'description' => 'El usuario envió un nuevo email',
+                        'metadata' => [
+                            'to' => $validated['to_email'],
+                            'subject' => $validated['subject'],
+                            'sent_email_id' => $sentEmail->id ?? null,
+                        ],
+                        'counts_towards_limit' => false,
+                    ]);
+                } catch (\Exception $logException) {
+                    Log::warning('No se pudo registrar actividad de email enviado', [
+                        'error' => $logException->getMessage(),
+                    ]);
+                }
 
                 return response()->json([
                     'success' => true,

@@ -401,15 +401,14 @@ function organizationShowApp() {
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Mostrar el mensaje tal cual viene del servidor (ya incluye el ícono)
-                    alert(data.message);
+                    showNotification(data.message, 'success');
                     this.showInviteModal = false;
                     this.invitation = { email: '', role: 'member' };
                 } else {
-                    alert('❌ ' + (data.message || 'Error al enviar la invitación'));
+                    showNotification(data.message || 'Error al enviar la invitación', 'error');
                 }
             } catch (error) {
-                alert('❌ Error al enviar la invitación');
+                showNotification('Error al enviar la invitación', 'error');
                 console.error(error);
             } finally {
                 this.inviting = false;
@@ -431,13 +430,13 @@ function organizationShowApp() {
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert('✅ ' + data.message);
+                    showNotification(data.message, 'success');
                     window.location.reload();
                 } else {
-                    alert('❌ ' + (data.message || 'Error al cambiar el rol'));
+                    showNotification(data.message || 'Error al cambiar el rol', 'error');
                 }
             } catch (error) {
-                alert('❌ Error al cambiar el rol');
+                showNotification('Error al cambiar el rol', 'error');
                 console.error(error);
             }
         },
@@ -461,13 +460,13 @@ function organizationShowApp() {
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert('✅ ' + data.message);
+                    showNotification(data.message, 'success');
                     window.location.reload();
                 } else {
-                    alert('❌ ' + (data.message || 'Error al remover el miembro'));
+                    showNotification(data.message || 'Error al remover el miembro', 'error');
                 }
             } catch (error) {
-                alert('❌ Error al remover el miembro');
+                showNotification('Error al remover el miembro', 'error');
                 console.error(error);
             }
         },
@@ -491,13 +490,13 @@ function organizationShowApp() {
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert('✅ ' + data.message);
+                    showNotification(data.message, 'success');
                     window.location.href = '/organizations';
                 } else {
-                    alert('❌ ' + (data.message || 'Error al salir de la organización'));
+                    showNotification(data.message || 'Error al salir de la organización', 'error');
                 }
             } catch (error) {
-                alert('❌ Error al salir de la organización');
+                showNotification('Error al salir de la organización', 'error');
                 console.error(error);
             }
         },
@@ -522,14 +521,35 @@ function organizationShowApp() {
                     window.location.href = '/organizations';
                 } else {
                     const data = await response.json();
-                    alert('❌ ' + (data.message || 'Error al eliminar la organización'));
+                    showNotification(data.message || 'Error al eliminar la organización', 'error');
                 }
             } catch (error) {
-                alert('❌ Error al eliminar la organización');
+                showNotification('Error al eliminar la organización', 'error');
                 console.error(error);
             }
         }
     }
+}
+
+function showNotification(message, type = 'success') {
+    const colors = {
+        success: 'bg-green-500',
+        error:   'bg-red-500',
+        info:    'bg-blue-500',
+        warning: 'bg-yellow-500'
+    };
+    const bgColor = colors[type] || 'bg-gray-500';
+
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 left-1/2 -translate-x-1/2 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-[9999] transition-opacity duration-300`;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
 }
 </script>
 

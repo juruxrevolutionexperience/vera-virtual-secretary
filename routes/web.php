@@ -312,6 +312,9 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
     // Página de respuestas de Vera
     Route::get('/responses', [VeraController::class, 'responsesIndex'])->name('responses');
 
+    // Historial de tokens IA
+    Route::get('/tokens', [\App\Http\Controllers\VeraTokensController::class, 'index'])->name('tokens');
+
     // Respuestas automáticas de Vera (API)
     Route::get('/responses/pending', [VeraController::class, 'getPendingResponses'])->name('responses.pending');
     Route::get('/responses/{response}', [VeraController::class, 'getResponse'])->name('responses.show');

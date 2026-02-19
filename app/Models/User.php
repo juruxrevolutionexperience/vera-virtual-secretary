@@ -29,6 +29,10 @@ class User extends Authenticatable
         'billing_cycle_start',
         'plan_metadata',
         'plan_upgraded_at',
+        // === tokens IA ===
+        'monthly_tokens_used',
+        'monthly_tokens_limit',
+        'tokens_reset_at',
         // === 2FA ===
         'two_factor_secret',
         'two_factor_enabled',
@@ -52,7 +56,94 @@ class User extends Authenticatable
             'two_factor_enabled' => 'boolean',
             'two_factor_enabled_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
+            'tokens_reset_at' => 'date',
+            'monthly_tokens_used' => 'integer',
+            'monthly_tokens_limit' => 'integer',
         ];
+    }
+
+    // ─── Métodos de control de tokens IA ─────────────────────────────────────
+
+    /**
+     * Tokens disponibles este mes (null = ilimitado en Enterprise)
+     */
+    public function tokensAvailable(): ?int
+    {
+        if ($this->plan_type === 'enterprise') {
+            return null; // ilimitado
+        }
+
+        if ($this->plan_type === 'pro') {
+            return null; // cuota muy alta, tratar como ilimitado en UI
+        }
+
+        $this->resetTokensIfNewMonth();
+
+        $available = $this->monthly_tokens_limit - $this->monthly_tokens_used;
+        return max(0, $available);
+    }
+
+    /**
+     * ¿Tiene tokens disponibles para hacer una llamada IA?
+     */
+    public function hasTokensAvailable(): bool
+    {
+        if (in_array($this->plan_type, ['enterprise', 'pro'])) {
+            return true; // pro y enterprise tienen cuota muy alta o ilimitada
+        }
+
+        return $this->tokensAvailable() > 0;
+    }
+
+    /**
+     * Descontar tokens usados del saldo mensual
+     */
+    public function consumeTokens(int $tokens): void
+    {
+        $this->resetTokensIfNewMonth();
+        $this->increment('monthly_tokens_used', $tokens);
+    }
+
+    /**
+     * Porcentaje de tokens usados este mes (0-100)
+     */
+    public function tokensUsagePercent(): float
+    {
+        if ($this->monthly_tokens_limit === 0) {
+            return 0;
+        }
+
+        return min(100, round(($this->monthly_tokens_used / $this->monthly_tokens_limit) * 100, 1));
+    }
+
+    /**
+     * Resetear contador si empezó un nuevo mes
+     */
+    private function resetTokensIfNewMonth(): void
+    {
+        $now = now()->startOfMonth()->toDateString();
+
+        if ($this->tokens_reset_at === null || $this->tokens_reset_at->toDateString() !== $now) {
+            $this->update([
+                'monthly_tokens_used' => 0,
+                'tokens_reset_at' => $now,
+            ]);
+            $this->refresh();
+        }
+    }
+
+    /**
+     * Límite de tokens según plan
+     */
+    public static function tokenLimitForPlan(string $plan): int
+    {
+        return match ($plan) {
+            'basic'      => 50000,
+            'starter'    => 200000,
+            'pro'        => 1000000,
+            'enterprise' => 0, // ilimitado
+            default      => 50000,
+        };
     }
 
     // Acceso activo al app (flag + periodo vigente)

@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'vera.limit' => \App\Http\Middleware\VeraEmailLimitMiddleware::class,
             'organization.access' => \App\Http\Middleware\CheckOrganizationAccess::class,
             'enterprise.access' => \App\Http\Middleware\EnsureHasOrganizationAccess::class,
+            'tokens.check' => \App\Http\Middleware\CheckUserTokens::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

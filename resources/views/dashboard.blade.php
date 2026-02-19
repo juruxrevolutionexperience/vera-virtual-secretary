@@ -598,27 +598,8 @@
                         </div>
                     </div>
 
-                    <!-- Stat Card 3 - Enhanced -->
-                    <div class="bg-white border border-gray-200 rounded-lg p-5 hover-lift cursor-pointer group">
-                        <div class="flex items-center justify-between mb-3">
-                            <div
-                                class="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center group-hover:bg-green-100 transition-colors">
-                                <svg class="w-4 h-4 text-gray-600 group-hover:text-green-600 transition-colors"
-                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                </svg>
-                            </div>
-                            <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full font-medium">Hoy</span>
-                        </div>
-                        <p class="text-3xl font-semibold text-gray-900 mb-1 stat-number">8</p>
-                        <p class="text-sm text-gray-500 mb-2">Llamadas atendidas</p>
-                        <div class="flex items-center gap-1.5">
-                            <span class="text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full">✓
-                                100%</span>
-                            <span class="text-xs text-gray-400">contestadas</span>
-                        </div>
-                    </div>
+                    <!-- Stat Card 3 - Tokens IA (datos reales) -->
+                    <x-tokens-widget />
                 </div>
 
                 <!-- Main Grid Layout -->

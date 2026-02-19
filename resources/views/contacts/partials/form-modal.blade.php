@@ -51,7 +51,7 @@
                            x-model="formData.email"
                            :readonly="editingContact !== null"
                            required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
                            :class="editingContact ? 'bg-gray-100 cursor-not-allowed' : ''"
                            placeholder="contacto@ejemplo.com">
                     <p x-show="editingContact" class="text-xs text-gray-500 mt-1">
@@ -66,7 +66,7 @@
                     </label>
                     <input type="text"
                            x-model="formData.name"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
                            placeholder="Juan Pérez">
                 </div>
 
@@ -77,7 +77,7 @@
                     </label>
                     <input type="text"
                            x-model="formData.company"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
                            placeholder="Acme Inc.">
                 </div>
 
@@ -88,7 +88,7 @@
                     </label>
                     <input type="tel"
                            x-model="formData.phone"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
                            placeholder="+34 600 000 000">
                 </div>
 
@@ -98,7 +98,7 @@
                         Prioridad
                     </label>
                     <select x-model="formData.priority"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900">
                         <option value="low">Baja</option>
                         <option value="normal">Normal</option>
                         <option value="high">Alta</option>
@@ -129,7 +129,7 @@
                     </label>
                     <textarea x-model="formData.notes"
                               rows="4"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
                               placeholder="Notas adicionales sobre el contacto..."></textarea>
                 </div>
             </div>

@@ -218,6 +218,13 @@ class EmailAccountController extends Controller
         // Eliminar la cuenta
         $emailAccount->delete();
 
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Cuenta desconectada exitosamente',
+            ]);
+        }
+
         return redirect()->route('email-accounts.index')
             ->with('success', 'Cuenta desconectada exitosamente y todos sus emails han sido eliminados.');
     }

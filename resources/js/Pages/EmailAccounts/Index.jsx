@@ -61,33 +61,38 @@ export default function Index({ accounts, flash }) {
         }
     };
 
-    const handleDelete = (accountId, email) => {
-        console.log('handleDelete called with:', { accountId, email });
-
+    const handleDelete = async (accountId, email) => {
         if (!accountId) {
-            console.error('Account ID is missing');
-            alert('Error: No se puede desconectar la cuenta. ID de cuenta no disponible.');
+            alert('Error: No se puede desconectar la cuenta. ID no disponible.');
             return;
         }
 
-        if (confirm(`¿Estás seguro de desconectar la cuenta ${email}?`)) {
-            const url = `/email-accounts/${accountId}`;
-            console.log('Attempting DELETE request to:', url);
+        if (!confirm(`¿Estás seguro de desconectar la cuenta ${email}?\nSe eliminarán todos los emails asociados a esta cuenta.`)) {
+            return;
+        }
 
-            router.delete(url, {
-                preserveScroll: true,
-                onBefore: () => {
-                    console.log('DELETE request starting...');
-                },
-                onError: (errors) => {
-                    console.error('Delete error:', errors);
-                    console.error('Full error object:', JSON.stringify(errors, null, 2));
-                    alert('Error al desconectar la cuenta: ' + (errors.message || 'Error desconocido'));
-                },
-                onSuccess: () => {
-                    console.log('Cuenta desconectada exitosamente');
+        setProcessingId(accountId);
+        try {
+            const response = await fetch(`/email-accounts/${accountId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
                 },
             });
+
+            if (response.ok) {
+                window.location.href = '/email-accounts';
+            } else {
+                const data = await response.json();
+                alert('Error al desconectar la cuenta: ' + (data.message || 'Error desconocido'));
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Error al desconectar la cuenta');
+        } finally {
+            setProcessingId(null);
         }
     };
 
@@ -185,7 +190,7 @@ export default function Index({ accounts, flash }) {
                         <div className="flex gap-4">
                             <a
                                 href="/email-accounts/google/redirect"
-                                className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                                className="inline-flex items-center px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                             >
                                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -198,7 +203,7 @@ export default function Index({ accounts, flash }) {
 
                             <a
                                 href="/email-accounts/microsoft/redirect"
-                                className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                                className="inline-flex items-center px-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                             >
                                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                                     <path fill="#f25022" d="M0 0h11v11H0z"/>

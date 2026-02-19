@@ -557,37 +557,41 @@
         // NOTIFICACIONES DE DUE DATES AL CARGAR
         // ==========================================
         document.addEventListener('DOMContentLoaded', function () {
-            // Inicializar stats del servidor (para evitar notificaciones duplicadas)
             const overdue = {{ $stats['overdue'] ?? 0 }};
             const dueToday = {{ $stats['due_today'] ?? 0 }};
 
-            // Establecer estado inicial
             lastNotifiedStats = { overdue, due_today: dueToday };
 
-            // Mostrar notificación inicial si hay emails vencidos o que vencen hoy
-            if (overdue > 0 && dueToday > 0) {
-                currentNotificationAlert = showDueDateAlert(
-                    `🚨 Tienes ${overdue} email(s) vencido(s) y ${dueToday} que vencen hoy`,
-                    'error',
-                    'manual'
-                );
-            } else if (overdue > 0) {
-                currentNotificationAlert = showDueDateAlert(
-                    `🚨 Tienes ${overdue} email(s) vencido(s)`,
-                    'error',
-                    'manual'
-                );
-            } else if (dueToday > 0) {
-                currentNotificationAlert = showDueDateAlert(
-                    `⏰ Tienes ${dueToday} email(s) que vencen hoy`,
-                    'warning',
-                    false
-                );
+            // Mostrar solo una vez por sesión (tab). Si refrescas, no vuelve a salir.
+            // Se resetea automáticamente cuando cambien los números (nuevo email vencido).
+            const alertKey = `dueDateAlert_${overdue}_${dueToday}`;
+            if (!sessionStorage.getItem(alertKey) && (overdue > 0 || dueToday > 0)) {
+                sessionStorage.setItem(alertKey, '1');
+
+                if (overdue > 0 && dueToday > 0) {
+                    currentNotificationAlert = showDueDateAlert(
+                        `🚨 Tienes ${overdue} email(s) vencido(s) y ${dueToday} que vencen hoy`,
+                        'error',
+                        false
+                    );
+                } else if (overdue > 0) {
+                    currentNotificationAlert = showDueDateAlert(
+                        `🚨 Tienes ${overdue} email(s) vencido(s)`,
+                        'error',
+                        false
+                    );
+                } else if (dueToday > 0) {
+                    currentNotificationAlert = showDueDateAlert(
+                        `⏰ Tienes ${dueToday} email(s) que vencen hoy`,
+                        'warning',
+                        false
+                    );
+                }
             }
         });
 
         // Función para mostrar alertas de due dates
-        // persistent: false = auto-cierra en 8s, true = no se cierra, 'manual' = solo cierra con botón X
+        // persistent: false = auto-cierra en 8s, true = no se cierra, false = solo cierra con botón X
         function showDueDateAlert(message, type = 'warning', persistent = false) {
             const bgColor = type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-orange-500' : 'bg-blue-500';
             const borderColor = type === 'error' ? 'border-red-600' : type === 'warning' ? 'border-orange-600' : 'border-blue-600';
@@ -637,7 +641,7 @@
 
             document.body.appendChild(alert);
 
-            // Auto-cerrar después de 8 segundos si no es persistente (ni true ni 'manual')
+            // Auto-cerrar después de 8 segundos si no es persistente (ni true ni false)
             if (persistent === false) {
                 setTimeout(() => {
                     alert.style.opacity = '0';
@@ -1657,7 +1661,7 @@
                         }));
                     } catch (error) {
                         console.error('Error:', error);
-                        alert('Error al cargar los datos de la carpeta');
+                        showNotification('Error al cargar los datos de la carpeta', 'error');
                     }
                 },
 
@@ -1693,10 +1697,10 @@
                         await this.loadFolders();
 
                         // Mensaje de éxito
-                        alert('Carpeta eliminada correctamente');
+                        showNotification('Carpeta eliminada correctamente', 'success');
                     } catch (error) {
                         console.error('❌ Error al eliminar carpeta:', error);
-                        alert('Error al eliminar la carpeta. Por favor, inténtalo de nuevo.');
+                        showNotification('Error al eliminar la carpeta. Por favor, inténtalo de nuevo.', 'error');
                     }
                 },
 
@@ -1738,7 +1742,7 @@
 
             } catch (error) {
                 console.error('❌ Error al cambiar estado de workflow:', error);
-                alert('Error al cambiar el estado. Por favor, inténtalo de nuevo.');
+                showNotification('Error al cambiar el estado. Por favor, inténtalo de nuevo.', 'error');
             }
         }
 
@@ -1774,7 +1778,7 @@
 
             } catch (error) {
                 console.error('❌ Error al mover email a carpeta:', error);
-                alert('Error al mover el email. Por favor, inténtalo de nuevo.');
+                showNotification('Error al mover el email. Por favor, inténtalo de nuevo.', 'error');
             }
         }
 
@@ -1905,13 +1909,13 @@
                 currentNotificationAlert = showDueDateAlert(
                     `🚨 Tienes ${overdue} email(s) vencido(s) y ${dueToday} que vencen hoy`,
                     'error',
-                    'manual'
+                    false
                 );
             } else if (overdue > 0) {
                 currentNotificationAlert = showDueDateAlert(
                     `🚨 Tienes ${overdue} email(s) vencido(s)`,
                     'error',
-                    'manual'
+                    false
                 );
             } else if (dueToday > 0) {
                 currentNotificationAlert = showDueDateAlert(
@@ -2144,7 +2148,7 @@
 
             } catch (error) {
                 console.error('❌ Error al establecer fecha límite:', error);
-                alert('Error al establecer la fecha límite. Por favor, inténtalo de nuevo.');
+                showNotification('Error al establecer la fecha límite. Por favor, inténtalo de nuevo.', 'error');
             }
         }
 
@@ -2209,7 +2213,7 @@
 
             } catch (error) {
                 console.error('❌ Error al establecer fecha límite personalizada:', error);
-                alert('Error al establecer la fecha límite. Por favor, inténtalo de nuevo.');
+                showNotification('Error al establecer la fecha límite. Por favor, inténtalo de nuevo.', 'error');
             }
         }
 
@@ -2277,7 +2281,7 @@
 
             } catch (error) {
                 console.error('❌ Error al quitar fecha límite:', error);
-                alert('Error al quitar la fecha límite. Por favor, inténtalo de nuevo.');
+                showNotification('Error al quitar la fecha límite. Por favor, inténtalo de nuevo.', 'error');
             }
         }
 
@@ -2368,7 +2372,7 @@
 
             } catch (error) {
                 console.error('❌ Error al posponer email:', error);
-                alert('Error al posponer el email. Por favor, inténtalo de nuevo.');
+                showNotification('Error al posponer el email. Por favor, inténtalo de nuevo.', 'error');
             }
         }
 
@@ -2432,7 +2436,7 @@
 
             } catch (error) {
                 console.error('❌ Error al posponer email:', error);
-                alert('Error al posponer el email. Por favor, inténtalo de nuevo.');
+                showNotification('Error al posponer el email. Por favor, inténtalo de nuevo.', 'error');
             }
         }
 
@@ -2498,7 +2502,7 @@
 
             } catch (error) {
                 console.error('❌ Error al despertar email:', error);
-                alert('Error al despertar el email. Por favor, inténtalo de nuevo.');
+                showNotification('Error al despertar el email. Por favor, inténtalo de nuevo.', 'error');
             }
         }
 
@@ -2508,7 +2512,7 @@
         async function bulkSetDueDate(preset) {
             const selectedIds = Alpine.store ? Alpine.store('emails')?.selectedEmails : [];
             if (!selectedIds || selectedIds.length === 0) {
-                alert('No hay emails seleccionados');
+                showNotification('No hay emails seleccionados', 'warning');
                 return;
             }
 
@@ -2591,7 +2595,7 @@
 
             } catch (error) {
                 console.error('❌ Error en bulk set due date:', error);
-                alert('Error al establecer fecha límite. Por favor, inténtalo de nuevo.');
+                showNotification('Error al establecer fecha límite. Por favor, inténtalo de nuevo.', 'error');
             }
         }
 
@@ -2601,7 +2605,7 @@
         async function bulkSnooze(preset) {
             const selectedIds = Alpine.store ? Alpine.store('emails')?.selectedEmails : [];
             if (!selectedIds || selectedIds.length === 0) {
-                alert('No hay emails seleccionados');
+                showNotification('No hay emails seleccionados', 'warning');
                 return;
             }
 
@@ -2680,7 +2684,7 @@
 
             } catch (error) {
                 console.error('❌ Error en bulk snooze:', error);
-                alert('Error al posponer emails. Por favor, inténtalo de nuevo.');
+                showNotification('Error al posponer emails. Por favor, inténtalo de nuevo.', 'error');
             }
         }
 
@@ -2719,7 +2723,7 @@
 
             } catch (error) {
                 console.error('❌ Error al mover a papelera:', error);
-                alert('Error al mover el email a papelera. Por favor, inténtalo de nuevo.');
+                showNotification('Error al mover el email a papelera. Por favor, inténtalo de nuevo.', 'error');
             }
         }
 
@@ -2729,7 +2733,7 @@
         async function bulkMoveToTrash() {
             const selectedIds = Alpine.store ? Alpine.store('emails')?.selectedEmails : [];
             if (!selectedIds || selectedIds.length === 0) {
-                alert('No hay emails seleccionados');
+                showNotification('No hay emails seleccionados', 'warning');
                 return;
             }
 
@@ -2777,7 +2781,7 @@
 
             } catch (error) {
                 console.error('❌ Error en bulk move to trash:', error);
-                alert('Error al mover emails a papelera. Por favor, inténtalo de nuevo.');
+                showNotification('Error al mover emails a papelera. Por favor, inténtalo de nuevo.', 'error');
             }
         }
 
@@ -2789,7 +2793,7 @@
             const selectedOption = selector.options[selector.selectedIndex];
 
             if (!selectedOption.value) {
-                alert('Por favor selecciona un template primero');
+                showNotification('Por favor selecciona un template primero', 'warning');
                 return;
             }
 
@@ -2855,14 +2859,14 @@
 
                 // Validación básica                                                                                                       
                 if (!to || !subject || !body) {
-                    alert('Por favor completa todos los campos');
+                    showNotification('Por favor completa todos los campos', 'warning');
                     return;
                 }
 
-                // Validar formato de email                                                                                                
+                // Validar formato de email
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (!emailRegex.test(to)) {
-                    alert('Por favor ingresa un email válido');
+                    showNotification('Por favor ingresa un email válido', 'warning');
                     return;
                 }
 
@@ -2913,7 +2917,7 @@
 
             } catch (error) {
                 console.error('❌ Error al guardar borrador:', error);
-                alert('Error al guardar el borrador: ' + error.message);
+                showNotification('Error al guardar el borrador: ' + error.message, 'error');
             }
         }
 
@@ -2929,14 +2933,14 @@
 
                 // Validación básica
                 if (!to || !subject || !body) {
-                    alert('Por favor completa todos los campos');
+                    showNotification('Por favor completa todos los campos', 'warning');
                     return;
                 }
 
                 // Validar formato de email
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (!emailRegex.test(to)) {
-                    alert('Por favor ingresa un email válido');
+                    showNotification('Por favor ingresa un email válido', 'warning');
                     return;
                 }
 
@@ -3001,10 +3005,16 @@
         // FUNCIÓN: MOSTRAR NOTIFICACIÓN
         // ==========================================
         function showNotification(message, type = 'success') {
-            const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+            const colors = {
+                success: 'bg-green-500',
+                error:   'bg-red-500',
+                info:    'bg-blue-500',
+                warning: 'bg-yellow-500'
+            };
+            const bgColor = colors[type] || 'bg-gray-500';
 
             const notification = document.createElement('div');
-            notification.className = `fixed bottom-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity duration-300`;
+            notification.className = `fixed top-4 left-1/2 -translate-x-1/2 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-[9999] transition-opacity duration-300`;
             notification.textContent = message;
 
             document.body.appendChild(notification);
@@ -3261,7 +3271,7 @@
                         this.closeModal();
                     } catch (error) {
                         console.error('Error:', error);
-                        alert('Error al guardar la carpeta. Por favor, inténtalo de nuevo.');
+                        showNotification('Error al guardar la carpeta. Por favor, inténtalo de nuevo.', 'error');
                     } finally {
                         this.submitting = false;
                     }
