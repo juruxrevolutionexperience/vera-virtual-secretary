@@ -146,6 +146,81 @@ class User extends Authenticatable
         };
     }
 
+    // ── Límites de emails por plan ────────────────────────────────────────────
+
+    /**
+     * Emails/mes que permite el plan actual. null = ilimitado.
+     */
+    public function planEmailLimit(): ?int
+    {
+        return match ($this->plan_type ?? 'free_trial') {
+            'free_trial'  => 30,
+            'solo'        => 400,
+            'pro'         => 1200,
+            'business'    => null,   // ilimitado
+            'enterprise'  => null,   // ilimitado (legacy)
+            default       => 30,
+        };
+    }
+
+    /**
+     * Emails procesados por Vera en el ciclo de facturación actual.
+     * Usa billing_cycle_start si existe, si no, inicio del mes natural.
+     */
+    public function monthlyEmailsUsed(): int
+    {
+        $cycleDay = $this->billing_cycle_start ?? 1;
+        $start    = \Carbon\Carbon::now()->startOfMonth()->setDay((int) $cycleDay);
+
+        if ($start->isFuture()) {
+            $start->subMonth();
+        }
+
+        return \App\Models\VeraTokenUsage::byUser($this->id)
+            ->where('action_type', 'email_analysis')
+            ->where('created_at', '>=', $start)
+            ->count();
+    }
+
+    /**
+     * ¿Puede Vera procesar más emails este mes?
+     */
+    public function hasEmailsAvailable(): bool
+    {
+        $limit = $this->planEmailLimit();
+        if ($limit === null) {
+            return true;
+        }
+        return $this->monthlyEmailsUsed() < $limit;
+    }
+
+    /**
+     * Emails restantes este mes. null = ilimitado.
+     */
+    public function emailsRemaining(): ?int
+    {
+        $limit = $this->planEmailLimit();
+        if ($limit === null) {
+            return null;
+        }
+        return max(0, $limit - $this->monthlyEmailsUsed());
+    }
+
+    /**
+     * Nombre legible del plan actual.
+     */
+    public function planName(): string
+    {
+        return match ($this->plan_type ?? 'free_trial') {
+            'free_trial' => 'Free Trial',
+            'solo'       => 'Solo',
+            'pro'        => 'Pro',
+            'business'   => 'Business',
+            'enterprise' => 'Business',
+            default      => 'Free Trial',
+        };
+    }
+
     // Acceso activo al app (flag + periodo vigente)
     public function getHasActiveAccessAttribute(): bool
     {

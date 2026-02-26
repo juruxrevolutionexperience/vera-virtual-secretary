@@ -349,10 +349,12 @@ class VeraTokenUsage extends Model
             : 2067; // Fallback: dato real medido (64.095 tokens / 31 llamadas = 2.067)
 
         // Definición de planes (emails/mes = parámetro real del negocio)
+        // Business = sin límite → usamos 3.000 emails como base de cálculo de coste
         $planDefinitions = [
-            'basic'   => ['name' => 'Basic',   'emails_per_month' => 100,  'suggested_price' => 9,  'color' => 'blue'],
-            'starter' => ['name' => 'Starter', 'emails_per_month' => 500,  'suggested_price' => 19, 'color' => 'purple'],
-            'pro'     => ['name' => 'Pro',     'emails_per_month' => 2000, 'suggested_price' => 49, 'color' => 'indigo'],
+            'free_trial' => ['name' => 'Free Trial', 'emails_per_month' => 30,   'suggested_price' => 0,  'color' => 'gray',   'unlimited' => false],
+            'solo'       => ['name' => 'Solo',       'emails_per_month' => 400,  'suggested_price' => 29, 'color' => 'blue',   'unlimited' => false],
+            'pro'        => ['name' => 'Pro',        'emails_per_month' => 1200, 'suggested_price' => 59, 'color' => 'purple', 'unlimited' => false],
+            'business'   => ['name' => 'Business',  'emails_per_month' => 3000, 'suggested_price' => 99, 'color' => 'indigo', 'unlimited' => true],
         ];
 
         foreach ($planDefinitions as &$plan) {

@@ -64,6 +64,19 @@ class ProcessEmailWithVera implements ShouldQueue
             return;
         }
 
+        // Verificar límite de emails del plan
+        $user = $this->email->user;
+        if ($user && !$user->hasEmailsAvailable()) {
+            Log::info('⛔ Límite de plan alcanzado, saltando procesamiento', [
+                'email_id'  => $this->email->id,
+                'user_id'   => $user->id,
+                'plan'      => $user->plan_type,
+                'used'      => $user->monthlyEmailsUsed(),
+                'limit'     => $user->planEmailLimit(),
+            ]);
+            return;
+        }
+
         try {
             Log::info('🤖 Procesando email con Vera', [
                 'email_id' => $this->email->id,

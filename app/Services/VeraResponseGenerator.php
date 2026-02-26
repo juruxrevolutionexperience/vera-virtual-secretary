@@ -8,6 +8,7 @@ use App\Models\VeraEmailAction;
 use App\Models\CommunicationProfile;
 use App\Services\AI\GeminiProvider;
 use App\Services\VeraUsageService;
+use App\Services\VeraRAGService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -20,12 +21,14 @@ class VeraResponseGenerator
     protected GeminiProvider $gemini;
     protected VeraUsageService $usageService;
     protected VeraActivityService $activityService;
+    protected VeraRAGService $ragService;
 
     public function __construct()
     {
         $this->gemini = new GeminiProvider();
         $this->usageService = new VeraUsageService();
         $this->activityService = new VeraActivityService();
+        $this->ragService = new VeraRAGService();
     }
 
     /**
@@ -516,8 +519,11 @@ class VeraResponseGenerator
             throw new \Exception('Gemini no está configurado');
         }
 
-        $systemPrompt = $this->buildSystemPrompt($config, $profile);
-        $userPrompt = $this->buildUserPrompt($email, $context);
+        // RAG: obtener solo el contexto relevante para este email
+        $ragContext = $this->ragService->getRelevantContext($email);
+
+        $systemPrompt = $this->buildSystemPrompt($config, $profile, $ragContext['context_text']);
+        $userPrompt   = $this->buildUserPrompt($email, $context);
 
         // Llamar a Gemini con registro automático de tokens
         $response = $this->gemini->analyze(
@@ -527,10 +533,12 @@ class VeraResponseGenerator
             emailId: $email->id,
             actionType: 'response_generation',
             metadata: [
-                'subject' => $email->subject,
-                'from' => $email->from_email,
+                'subject'        => $email->subject,
+                'from'           => $email->from_email,
                 'content_length' => strlen($email->body_text ?? $email->body_html ?? ''),
                 'context_emails' => $context->count(),
+                'rag_chunks'     => $ragContext['chunks_used'],
+                'rag_tokens_est' => $ragContext['token_estimate'],
             ]
         );
 
@@ -540,7 +548,7 @@ class VeraResponseGenerator
     /**
      * Construir prompt del sistema
      */
-    protected function buildSystemPrompt(VeraConfig $config, ?CommunicationProfile $profile): string
+    protected function buildSystemPrompt(VeraConfig $config, ?CommunicationProfile $profile, string $ragContext = ''): string
     {
         $writingStyle = $config->writing_style;
 
@@ -570,6 +578,11 @@ PERFIL DEL REMITENTE:
 PROFILE;
         }
 
+        // Bloque de contexto RAG (solo si hay chunks relevantes)
+        $ragBlock = !empty($ragContext)
+            ? "\n{$ragContext}\n"
+            : '';
+
         return <<<PROMPT
 Eres un asistente que genera respuestas de email imitando EXACTAMENTE el estilo de escritura del usuario.
 
@@ -580,8 +593,7 @@ ESTILO DEL USUARIO:
 - Nivel de formalidad: {$formalityLevel} (0=muy casual, 1=muy formal)
 - Usa emojis: {$this->formatBoolean($usesEmojis)}
 - Longitud promedio de emails: {$avgLength} caracteres
-{$profileInfo}
-
+{$profileInfo}{$ragBlock}
 INSTRUCCIONES CRÍTICAS:
 1. Genera una respuesta que suene EXACTAMENTE como el usuario escribiría
 2. Usa SOLO los saludos y despedidas que el usuario usa habitualmente
@@ -589,8 +601,9 @@ INSTRUCCIONES CRÍTICAS:
 4. Ajusta la longitud según el tipo de email
 5. Si el usuario usa emojis, úsalos tú también (pero con moderación)
 6. Si el usuario NO usa emojis, NO los uses
-7. Sé natural, humano y auténtico
-8. NO seas genérico ni robótico
+7. Si hay CONTEXTO RELEVANTE DE TU MEMORIA, úsalo para dar respuestas más precisas
+8. Sé natural, humano y auténtico
+9. NO seas genérico ni robótico
 
 FORMATO DE RESPUESTA:
 Responde SOLO con un JSON válido. IMPORTANTE: Usa \\n para saltos de línea dentro del content, NO uses saltos de línea reales en el JSON:

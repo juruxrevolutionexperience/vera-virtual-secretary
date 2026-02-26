@@ -1,3 +1,14 @@
+@php
+    $ws = is_array($config->writing_style ?? null) ? $config->writing_style : [];
+    $styleProfileData = !empty($ws['analyzed_at']) ? [
+        'tone'             => ucfirst($ws['tone'] ?? 'professional'),
+        'tone_raw'         => $ws['tone'] ?? 'professional',
+        'formality'        => round(($ws['formality_score'] ?? 0.5) * 100) . '%',
+        'greetings'        => $ws['greetings'] ?? [],
+        'closings'         => $ws['closings'] ?? [],
+        'analysis_summary' => $ws['analysis_summary'] ?? '',
+    ] : null;
+@endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -55,13 +66,23 @@
 
         <!-- Config Form -->
         <form @submit.prevent="saveConfig" class="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">🎯 Configuración General</h2>
 
-            <div class="space-y-8">
+            {{-- ══════════════════════════════════════════════════
+                 SECCIÓN 1 — COMPORTAMIENTO: ¿Cuándo y qué hace Vera?
+            ══════════════════════════════════════════════════ --}}
+            <div class="mb-8">
+                <div class="flex items-center gap-3 mb-1">
+                    <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-lg">🎯</div>
+                    <h2 class="text-xl font-bold text-gray-900">Comportamiento de Vera</h2>
+                </div>
+                <p class="text-sm text-gray-500 ml-11">Controla <strong>cuándo</strong> actúa Vera y <strong>qué</strong> hace con tus emails</p>
+            </div>
+
+            <div class="space-y-6 mb-10">
                 <!-- Objetivo Principal -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-800 mb-2">
-                        Objetivo Principal de Vera
+                        Objetivo Principal
                     </label>
                     <select x-model="formData.primary_goal"
                             class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2.5 shadow-sm">
@@ -72,23 +93,23 @@
                     <p class="text-xs text-gray-500 mt-1">Define el enfoque principal de Vera</p>
                 </div>
 
-                <!-- Modo de Respuesta Automática -->
+                <!-- Modo de Respuesta -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-800 mb-2">
-                        Modo de Respuesta Automática
+                        Modo de Respuesta
                     </label>
                     <select x-model="formData.response_mode"
                             class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2.5 shadow-sm">
                         <option value="no">🔒 No responder automáticamente</option>
                         <option value="ask_first">❓ Solo emails con preguntas directas</option>
                         <option value="important_only">⭐ Solo emails importantes</option>
-                        <option value="suggest_responses">💡 Sugerir respuestas (requiere aprobación)</option>
-                        <option value="always">🤖 Siempre responder automáticamente</option>
+                        <option value="suggest_responses">💡 Sugerir respuestas (requiere tu aprobación)</option>
+                        <option value="always">🤖 Responder automáticamente siempre</option>
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">Control sobre cuándo Vera genera respuestas</p>
+                    <p class="text-xs text-gray-500 mt-1">¿Cuándo genera Vera una respuesta?</p>
                 </div>
 
-                <!-- Nivel de Autonomía -->
+                <!-- Nivel de Autonomía + Umbral -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-800 mb-2">
                         Nivel de Autonomía
@@ -96,28 +117,177 @@
                     <select x-model="formData.autonomy_level"
                             @change="updateConfidenceThreshold()"
                             class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2.5 shadow-sm">
-                        <option value="conservative">🛡️ Conservador - Preguntarme casi todo (90% confianza)</option>
-                        <option value="moderate">⚖️ Moderado - Balance recomendado (75% confianza)</option>
-                        <option value="aggressive">🚀 Agresivo - Máxima autonomía (60% confianza)</option>
+                        <option value="conservative">🛡️ Conservador — Preguntarme casi todo (90% confianza)</option>
+                        <option value="moderate">⚖️ Moderado — Balance recomendado (75% confianza)</option>
+                        <option value="aggressive">🚀 Agresivo — Máxima autonomía (60% confianza)</option>
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">Umbral de confianza: <span class="font-semibold" x-text="Math.round(formData.confidence_threshold * 100) + '%'"></span></p>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Vera actuará sola cuando su confianza supere el
+                        <span class="font-semibold text-purple-600" x-text="Math.round(formData.confidence_threshold * 100) + '%'"></span>
+                    </p>
+
+                    {{-- Slider de ajuste fino — visible justo debajo --}}
+                    <div class="mt-3 bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs font-medium text-gray-600">🎯 Ajuste fino del umbral</span>
+                            <span class="text-sm font-bold text-purple-600" x-text="Math.round(formData.confidence_threshold * 100) + '%'"></span>
+                        </div>
+                        <input type="range"
+                               x-model.number="formData.confidence_threshold"
+                               min="0.5"
+                               max="1"
+                               step="0.05"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600">
+                        <div class="flex justify-between text-xs text-gray-400 mt-1">
+                            <span>50% (más permisivo)</span>
+                            <span>100% (más estricto)</span>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Writing Style -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-800 mb-2">
-                        Estilo de Escritura
+                <!-- Opciones adicionales inline -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    <label class="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-colors group">
+                        <input type="checkbox"
+                               x-model="formData.auto_response_enabled"
+                               class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-4 h-4 shrink-0">
+                        <div>
+                            <span class="text-sm font-medium text-gray-800">🤖 Respuestas automáticas</span>
+                            <p class="text-xs text-gray-500">Vera puede enviar sin que apruebes cada una</p>
+                        </div>
                     </label>
-                    <select x-model="formData.writing_style"
-                            class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2.5 shadow-sm">
-                        <option value="formal">👔 Formal</option>
-                        <option value="professional">💼 Profesional</option>
-                        <option value="casual">😊 Casual</option>
-                    </select>
-                    <p class="text-xs text-gray-500 mt-1">Tono de las respuestas generadas</p>
+                    <label class="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-colors group">
+                        <input type="checkbox"
+                               x-model="formData.auto_archive_newsletters"
+                               class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-4 h-4 shrink-0">
+                        <div>
+                            <span class="text-sm font-medium text-gray-800">📬 Archivar newsletters</span>
+                            <p class="text-xs text-gray-500">Bandeja limpia automáticamente</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            {{-- ══════════════════════════════════════════════════
+                 SECCIÓN 2 — ESTILO: ¿Cómo escribe Vera?
+            ══════════════════════════════════════════════════ --}}
+            <div class="border-t border-gray-100 pt-8 mb-8">
+                <div class="flex items-center gap-3 mb-1">
+                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-lg">✍️</div>
+                    <h2 class="text-xl font-bold text-gray-900">Cómo Escribe Vera</h2>
+                </div>
+                <p class="text-sm text-gray-500 ml-11">Controla <strong>cómo</strong> redacta Vera cuando responde en tu nombre</p>
+            </div>
+
+            <div class="space-y-6 mb-10">
+
+                {{-- Estado A: Perfil YA aprendido --}}
+                <div x-show="styleProfile">
+                    {{-- Card del perfil aprendido --}}
+                    <div class="rounded-xl border-2 border-green-200 bg-green-50 p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-green-600 text-lg">✓</span>
+                                <span class="font-semibold text-green-800">Vera conoce tu estilo de escritura</span>
+                            </div>
+                            <button type="button"
+                                    @click="analyzeStyle()"
+                                    :disabled="styleLoading"
+                                    class="text-xs text-green-700 border border-green-300 rounded-lg px-3 py-1 hover:bg-green-100 transition-colors disabled:opacity-50 flex items-center gap-1">
+                                <span x-show="!styleLoading">🔄 Re-analizar</span>
+                                <span x-show="styleLoading" class="flex items-center gap-1">
+                                    <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 14.627 0 12 0v4a8 8 0 00-8 8H0z"></path>
+                                    </svg>
+                                    Analizando...
+                                </span>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                            <div>
+                                <span class="text-gray-500 text-xs uppercase tracking-wide">Tono</span>
+                                <p class="font-semibold text-gray-800" x-text="styleProfile?.tone"></p>
+                            </div>
+                            <div>
+                                <span class="text-gray-500 text-xs uppercase tracking-wide">Formalidad</span>
+                                <p class="font-semibold text-gray-800" x-text="styleProfile?.formality"></p>
+                            </div>
+                            <div>
+                                <span class="text-gray-500 text-xs uppercase tracking-wide">Así sueles saludar</span>
+                                <p class="font-medium text-gray-700 italic" x-text="(styleProfile?.greetings || []).join(' · ')"></p>
+                            </div>
+                            <div>
+                                <span class="text-gray-500 text-xs uppercase tracking-wide">Así sueles despedirte</span>
+                                <p class="font-medium text-gray-700 italic" x-text="(styleProfile?.closings || []).join(' · ')"></p>
+                            </div>
+                        </div>
+                        <p x-show="styleProfile?.analysis_summary"
+                           class="mt-3 text-xs text-gray-500 border-t border-green-200 pt-2 italic"
+                           x-text="styleProfile?.analysis_summary"></p>
+                    </div>
+
+                    {{-- Toggle sobrescribir manualmente --}}
+                    <div class="mt-3">
+                        <button type="button"
+                                @click="showStyleOverride = !showStyleOverride"
+                                class="text-sm text-gray-500 hover:text-purple-600 flex items-center gap-1 transition-colors">
+                            <span x-text="showStyleOverride ? '▲ Ocultar ajuste manual' : '▼ Sobrescribir manualmente'"></span>
+                        </button>
+                        <div x-show="showStyleOverride" x-transition class="mt-2">
+                            <select x-model="formData.writing_style"
+                                    class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2.5 shadow-sm">
+                                <option value="formal">👔 Formal</option>
+                                <option value="professional">💼 Profesional</option>
+                                <option value="casual">😊 Casual</option>
+                            </select>
+                            <p class="text-xs text-amber-600 mt-1">⚠️ Esto sobrescribe el tono aprendido automáticamente. El resto del perfil (saludos, despedidas) se mantiene.</p>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Newsletter Handling -->
+                {{-- Estado B: Sin perfil todavía --}}
+                <div x-show="!styleProfile">
+                    <div class="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-center">
+                        <p class="text-3xl mb-2">🤔</p>
+                        <p class="font-semibold text-gray-700 mb-1">Vera aún no conoce tu estilo</p>
+                        <p class="text-sm text-gray-500 mb-4">Analiza tus emails enviados y Vera aprenderá a escribir exactamente como tú: tu tono, tus saludos, cómo te despides...</p>
+                        <button type="button"
+                                @click="analyzeStyle()"
+                                :disabled="styleLoading"
+                                class="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">
+                            <span x-show="!styleLoading">✨ Analizar mis emails enviados</span>
+                            <span x-show="styleLoading" class="flex items-center gap-2">
+                                <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 14.627 0 12 0v4a8 8 0 00-8 8H0z"></path>
+                                </svg>
+                                Analizando tus emails enviados...
+                            </span>
+                        </button>
+                        <p class="text-xs text-gray-400 mt-2">Analiza ~50 emails enviados · Coste: &lt;€0.01</p>
+                    </div>
+
+                    {{-- Fallback manual si no hay perfil --}}
+                    <div class="mt-4">
+                        <label class="block text-sm font-semibold text-gray-800 mb-2">
+                            Tono de respaldo (hasta que Vera aprenda)
+                        </label>
+                        <select x-model="formData.writing_style"
+                                class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2.5 shadow-sm">
+                            <option value="formal">👔 Formal</option>
+                            <option value="professional">💼 Profesional</option>
+                            <option value="casual">😊 Casual</option>
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Error --}}
+                <div x-show="styleError" x-transition
+                     class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"
+                     x-text="styleError"></div>
+
+                <!-- Gestión de Newsletters -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-800 mb-2">
                         Gestión de Newsletters
@@ -131,73 +301,35 @@
                     </select>
                     <p class="text-xs text-gray-500 mt-1">Cómo manejar emails promocionales y newsletters</p>
                 </div>
+            </div>
 
-                <!-- Horario de Disponibilidad -->
+            {{-- ══════════════════════════════════════════════════
+                 SECCIÓN 3 — DISPONIBILIDAD
+            ══════════════════════════════════════════════════ --}}
+            <div class="border-t border-gray-100 pt-8 mb-6">
+                <div class="flex items-center gap-3 mb-1">
+                    <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-lg">⏰</div>
+                    <h2 class="text-xl font-bold text-gray-900">Disponibilidad</h2>
+                </div>
+                <p class="text-sm text-gray-500 ml-11">Vera solo procesará emails dentro de este horario</p>
+            </div>
+
+            <div class="space-y-6 mb-10">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-800 mb-2">
-                            ⏰ Hora Inicio
-                        </label>
+                        <label class="block text-sm font-semibold text-gray-800 mb-2">Hora Inicio</label>
                         <input type="time"
                                x-model="formData.active_hours_start"
                                class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2.5 shadow-sm">
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-800 mb-2">
-                            🌙 Hora Fin
-                        </label>
+                        <label class="block text-sm font-semibold text-gray-800 mb-2">Hora Fin</label>
                         <input type="time"
                                x-model="formData.active_hours_end"
                                class="w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white px-4 py-2.5 shadow-sm">
                     </div>
                 </div>
-                <p class="text-xs text-gray-500 -mt-4">Vera solo procesará emails dentro de este horario</p>
-
-                <!-- Opciones Adicionales -->
-                <div class="border-t pt-6 space-y-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">⚡ Opciones Adicionales</h3>
-
-                    <label class="flex items-center gap-3 cursor-pointer group">
-                        <input type="checkbox"
-                               x-model="formData.auto_response_enabled"
-                               class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-5 h-5">
-                        <div>
-                            <span class="text-sm font-medium text-gray-800 group-hover:text-purple-600">
-                                🤖 Activar respuestas automáticas
-                            </span>
-                            <p class="text-xs text-gray-500">Permitir que Vera genere y envíe respuestas</p>
-                        </div>
-                    </label>
-
-                    <label class="flex items-center gap-3 cursor-pointer group">
-                        <input type="checkbox"
-                               x-model="formData.auto_archive_newsletters"
-                               class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-5 h-5">
-                        <div>
-                            <span class="text-sm font-medium text-gray-800 group-hover:text-purple-600">
-                                📬 Archivar newsletters automáticamente
-                            </span>
-                            <p class="text-xs text-gray-500">Mantener la bandeja limpia</p>
-                        </div>
-                    </label>
-                </div>
-
-                <!-- Confidence Threshold Manual -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-800 mb-2">
-                        🎯 Umbral de Confianza Personalizado
-                    </label>
-                    <div class="flex items-center gap-4">
-                        <input type="range"
-                               x-model.number="formData.confidence_threshold"
-                               min="0.5"
-                               max="1"
-                               step="0.05"
-                               class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                        <span class="text-lg font-bold text-purple-600 w-16 text-right" x-text="Math.round(formData.confidence_threshold * 100) + '%'"></span>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Solo enviar respuestas con este nivel de confianza o superior</p>
-                </div>
+            </div>
 
                 <!-- Filtros de Respuesta Automática (NUEVO) -->
                 <div class="border-t pt-6 space-y-6">
@@ -623,6 +755,12 @@
                 newAllowedSender: '',
                 newBlockedKeyword: '',
 
+                // Writing style analyzer
+                styleLoading: false,
+                styleError: null,
+                showStyleOverride: false,
+                styleProfile: @json($styleProfileData),
+
                 // NUEVO: Variables para selectores inteligentes
                 contactsBlockedShow: false,
                 contactsBlockedLoading: true,
@@ -840,6 +978,39 @@
                     }
                 },
 
+                async analyzeStyle() {
+                    this.styleLoading = true;
+                    this.styleError   = null;
+
+                    try {
+                        const response = await fetch('{{ route('vera.analyze.writing.style') }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                            },
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            // 1. Actualizar el select al tono detectado
+                            this.formData.writing_style = data.profile.tone_raw;
+                            // 2. Mostrar el perfil completo (persistente)
+                            this.styleProfile = data.profile;
+                            // 3. Notificación de éxito
+                            this.showNotification('success', '✨ ' + data.message);
+                        } else {
+                            this.styleError = data.message || 'Error al analizar el estilo.';
+                        }
+                    } catch (err) {
+                        this.styleError = 'Error de conexión. Inténtalo de nuevo.';
+                    } finally {
+                        this.styleLoading = false;
+                    }
+                },
+
                 async runAnalysis() {
                     console.log('🔄 Ejecutando análisis...');
                     this.analyzing = true;
@@ -984,6 +1155,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             console.log('📄 DOM cargado completamente');
         });
+
     </script>
 </body>
 </html>

@@ -286,6 +286,7 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
     // Configuración de Vera
     Route::get('/config', [VeraController::class, 'config'])->name('config');
     Route::patch('/config', [VeraController::class, 'updateConfig'])->name('config.update');
+    Route::post('/analyze-writing-style', [VeraController::class, 'analyzeWritingStyle'])->name('analyze.writing.style');
 
     // Filtros de respuesta automática (NUEVO)
     Route::get('/filters', [VeraController::class, 'getResponseFilters'])->name('filters.get');

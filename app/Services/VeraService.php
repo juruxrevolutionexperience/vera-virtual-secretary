@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Email;
 use App\Services\AI\GeminiProvider;
 use App\Services\VeraUsageService;
+use App\Services\VeraRAGService;
 use App\Exceptions\UsageLimitExceededException;
 use Illuminate\Support\Facades\Log;
 
@@ -18,6 +19,7 @@ class VeraService
 {
     protected VeraRulesService $rulesService;
     protected VeraUsageService $usageService;
+    protected VeraRAGService $ragService;
     protected ?GeminiProvider $geminiProvider = null;
     protected string $aiProvider;
 
@@ -25,6 +27,7 @@ class VeraService
     {
         $this->rulesService = new VeraRulesService();
         $this->usageService = new VeraUsageService();
+        $this->ragService   = new VeraRAGService();
         $this->aiProvider = config('vera.ai_provider', 'gemini');
 
         // Inicializar provider de IA si está habilitado
@@ -154,8 +157,11 @@ class VeraService
     protected function analyzeWithAI(Email $email): array
     {
         try {
+            // RAG: obtener contexto relevante para este email
+            $ragContext = $this->ragService->getRelevantContext($email);
+
             // Construir prompts
-            $systemPrompt = $this->getSystemPrompt();
+            $systemPrompt = $this->getSystemPrompt($ragContext['context_text']);
             $userPrompt = $this->buildAnalysisPrompt($email);
 
             // Llamar a Gemini con registro automático de tokens
@@ -169,6 +175,7 @@ class VeraService
                     'subject' => $email->subject,
                     'from' => $email->from_email,
                     'content_length' => strlen($email->body_text ?? $email->body_html ?? ''),
+                'rag_chunks'     => $ragContext['chunks_used'],
                 ]
             );
 
@@ -244,9 +251,13 @@ PROMPT;
      *
      * @return string
      */
-    protected function getSystemPrompt(): string
+    protected function getSystemPrompt(string $ragContext = ''): string
     {
         $personality = config('vera.personality');
+
+        $ragBlock = !empty($ragContext)
+            ? "\n{$ragContext}\n"
+            : '';
 
         return <<<SYSTEM
 Eres {$personality['name']}, {$personality['role']}.
@@ -257,7 +268,7 @@ Características:
 - Eres precisa y concisa
 - Entiendes contexto y emociones
 - Detectas prioridades y urgencias
-
+{$ragBlock}
 Tu tarea:
 Analizar emails y proporcionar insights útiles en formato JSON.
 Siempre respondes en JSON válido, sin markdown ni explicaciones adicionales.

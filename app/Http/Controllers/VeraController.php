@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Services\VeraIntelligentAnalyzer;
 use App\Services\VeraOnboardingService;
 use App\Services\VeraReportGenerator;
+use App\Services\VeraWritingStyleService;
+use App\Services\VeraMemoryService;
 use App\Models\VeraConfig;
 use App\Models\Email;
 use App\Models\EmailAccount;
@@ -115,6 +117,13 @@ class VeraController extends Controller
                 'last_analysis_at' => now(),
             ]
         );
+
+        // RAG: re-indexar memoria con la nueva configuración
+        try {
+            (new VeraMemoryService())->indexUserConfig($user);
+        } catch (\Exception $e) {
+            Log::warning('⚠️  No se pudo indexar memoria RAG al guardar config', ['error' => $e->getMessage()]);
+        }
 
         return response()->json([
             'success' => true,
@@ -909,5 +918,57 @@ class VeraController extends Controller
             'last_analysis' => $config->last_analysis_at,
             'config' => $config,
         ];
+    }
+
+    /**
+     * Analiza el estilo de escritura del usuario desde sus emails enviados (Gmail SENT)
+     * y guarda el perfil en vera_configs.writing_style
+     */
+    public function analyzeWritingStyle(VeraWritingStyleService $service)
+    {
+        $user = Auth::user();
+
+        try {
+            $result = $service->analyzeAndSave($user->id);
+            $profile = $result['profile'];
+
+            $toneLabels = [
+                'formal'       => 'Formal',
+                'professional' => 'Profesional',
+                'casual'       => 'Casual',
+                'friendly'     => 'Amigable',
+            ];
+
+            $toneRaw = $profile['tone'] ?? 'professional';
+            // Normalizar: 'friendly' no existe en el select, mapear a 'casual'
+            $toneForSelect = in_array($toneRaw, ['formal', 'professional', 'casual'])
+                ? $toneRaw
+                : 'professional';
+
+            return response()->json([
+                'success' => true,
+                'message' => "Vera ha aprendido tu estilo analizando {$result['emails_analyzed']} emails enviados.",
+                'profile' => [
+                    'tone'             => $toneLabels[$toneRaw] ?? ucfirst($toneRaw),
+                    'tone_raw'         => $toneForSelect,
+                    'formality'        => round(($profile['formality_score'] ?? 0.5) * 100) . '%',
+                    'uses_emojis'      => $profile['uses_emojis'] ?? false,
+                    'greetings'        => $profile['greetings'] ?? [],
+                    'closings'         => $profile['closings'] ?? [],
+                    'analysis_summary' => $profile['analysis_summary'] ?? '',
+                    'emails_analyzed'  => $result['emails_analyzed'],
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en analyzeWritingStyle', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
 }

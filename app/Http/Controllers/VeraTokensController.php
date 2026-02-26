@@ -17,6 +17,21 @@ class VeraTokensController extends Controller
         $year  = (int) $request->get('year',  $now->year);
         $month = (int) $request->get('month', $now->month);
 
+        // ── Estado del plan actual ────────────────────────────────────────────
+        $emailsUsed      = $user->monthlyEmailsUsed();
+        $emailsLimit     = $user->planEmailLimit();
+        $emailsRemaining = $user->emailsRemaining();
+        $planStatus = [
+            'name'           => $user->planName(),
+            'plan_type'      => $user->plan_type ?? 'free_trial',
+            'emails_used'    => $emailsUsed,
+            'emails_limit'   => $emailsLimit,
+            'emails_remaining' => $emailsRemaining,
+            'unlimited'      => $emailsLimit === null,
+            'usage_pct'      => $emailsLimit ? min(100, round($emailsUsed / $emailsLimit * 100)) : 0,
+            'at_limit'       => $emailsLimit !== null && $emailsUsed >= $emailsLimit,
+        ];
+
         // ── Stats básicas del mes ─────────────────────────────────────────────
         $stats = VeraTokenUsage::getStatsByUser($user->id, $year, $month);
 
@@ -62,7 +77,7 @@ class VeraTokensController extends Controller
         return view('vera.tokens.index', compact(
             'user', 'stats', 'realCost', 'projection', 'planPricing',
             'history', 'dailyUsage', 'availableMonths',
-            'actionLabels', 'year', 'month'
+            'actionLabels', 'year', 'month', 'planStatus'
         ));
     }
 }
