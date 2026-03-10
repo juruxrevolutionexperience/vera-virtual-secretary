@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "laravel-specialist": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "05120c40b8ba7be02b913fc719c0d26fdab42126b061f5b36679fe07de45231f"
+    }
+  }
+}

@@ -21,20 +21,24 @@ class CheckUserTokens
             return $next($request);
         }
 
-        if (!$user->hasTokensAvailable()) {
+        // Fuente única de verdad: límite por emails (igual que vera.limit middleware)
+        if (!$user->hasEmailsAvailable()) {
+            $used  = $user->monthlyEmailsUsed();
+            $limit = $user->planEmailLimit();
+
             if ($request->expectsJson()) {
                 return response()->json([
-                    'error'   => 'sin_tokens',
-                    'message' => 'Has alcanzado el límite mensual de tokens IA de tu plan.',
+                    'error'   => 'limite_alcanzado',
+                    'message' => 'Has alcanzado el límite mensual de emails de tu plan.',
                     'plan'    => $user->plan_type,
-                    'used'    => $user->monthly_tokens_used,
-                    'limit'   => $user->monthly_tokens_limit,
+                    'used'    => $used,
+                    'limit'   => $limit,
                 ], 402);
             }
 
             return redirect()->back()->with(
                 'error',
-                'Has alcanzado el límite mensual de tokens IA. Actualiza tu plan para continuar.'
+                'Has alcanzado el límite mensual de emails de tu plan. Actualiza tu plan para continuar.'
             );
         }
 

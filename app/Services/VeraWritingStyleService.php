@@ -248,10 +248,21 @@ PROMPT;
 
         if ($client->isAccessTokenExpired() && $account->refresh_token) {
             $newToken = $client->fetchAccessTokenWithRefreshToken($account->refresh_token);
+
+            if (isset($newToken['error'])) {
+                $account->update(['sync_status' => 'error']);
+
+                throw new \RuntimeException(
+                    "Tu cuenta de Gmail ({$account->email_address}) necesita reconectarse. " .
+                    "Ve a Configuración → Cuentas y vuelve a conectar Gmail."
+                );
+            }
+
             if (isset($newToken['access_token'])) {
                 $account->update([
-                    'access_token'    => $newToken['access_token'],
+                    'access_token'     => $newToken['access_token'],
                     'token_expires_at' => now()->addSeconds($newToken['expires_in'] ?? 3600),
+                    'sync_status'      => 'active',
                 ]);
             }
         }

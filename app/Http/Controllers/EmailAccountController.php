@@ -130,6 +130,17 @@ class EmailAccountController extends Controller
 
             \Log::info('Initial sync job dispatched', ['account_id' => $account->id]);
 
+            // Activar Gmail Push Notifications si está configurado
+            // En desarrollo falla silenciosamente; en producción activa el webhook instantáneo
+            try {
+                $gmailService = new \App\Services\GmailSyncService();
+                $gmailService->setupWatch($account);
+            } catch (\Exception $e) {
+                \Log::info('Gmail watch no activado al conectar cuenta (normal en desarrollo)', [
+                    'account_id' => $account->id,
+                ]);
+            }
+
             // Limpiar sesión de OAuth
             session()->forget('oauth_user_id');
 

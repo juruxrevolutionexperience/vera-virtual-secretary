@@ -47,6 +47,12 @@ class Kernel extends ConsoleKernel
             ->at('02:00')
             ->name('vera-weekly-reanalysis');
 
+        // 📬 Renovar Gmail watches antes de que expiren (duran 7 días máx)
+        $schedule->command('gmail:renew-watches')
+            ->dailyAt('06:00')
+            ->withoutOverlapping()
+            ->name('gmail-renew-watches');
+
         // 🤖 NIVEL 2: Procesamiento automático de emails con Vera
         // Ejecutar cada 5 minutos para generar respuestas automáticas
         $schedule->command('vera:process-emails --recent=10 --limit=100')

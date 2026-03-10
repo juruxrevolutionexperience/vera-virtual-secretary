@@ -21,6 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
 
+        // Excluir webhooks externos del CSRF (Google PubSub no envía token CSRF)
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/gmail',
+            'stripe/webhook',
+        ]);
     })
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([

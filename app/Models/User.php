@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Cashier\Billable;
@@ -63,36 +64,27 @@ class User extends Authenticatable
     }
 
     // ─── Métodos de control de tokens IA ─────────────────────────────────────
+    // NOTA: el gate real es hasEmailsAvailable() (sistema de emails).
+    // Estos métodos delegan a él para mantener una sola fuente de verdad.
+    // monthly_tokens_used / monthly_tokens_limit son datos informativos
+    // que alimentan la calculadora de pricing en /vera/tokens.
 
     /**
-     * Tokens disponibles este mes (null = ilimitado en Enterprise)
-     */
-    public function tokensAvailable(): ?int
-    {
-        if ($this->plan_type === 'enterprise') {
-            return null; // ilimitado
-        }
-
-        if ($this->plan_type === 'pro') {
-            return null; // cuota muy alta, tratar como ilimitado en UI
-        }
-
-        $this->resetTokensIfNewMonth();
-
-        $available = $this->monthly_tokens_limit - $this->monthly_tokens_used;
-        return max(0, $available);
-    }
-
-    /**
-     * ¿Tiene tokens disponibles para hacer una llamada IA?
+     * ¿Tiene capacidad disponible para una llamada IA este mes?
+     * Delega al sistema de emails (fuente única de verdad).
      */
     public function hasTokensAvailable(): bool
     {
-        if (in_array($this->plan_type, ['enterprise', 'pro'])) {
-            return true; // pro y enterprise tienen cuota muy alta o ilimitada
-        }
+        return $this->hasEmailsAvailable();
+    }
 
-        return $this->tokensAvailable() > 0;
+    /**
+     * Emails disponibles este mes. null = ilimitado (Enterprise).
+     * Alias semántico para compatibilidad con código legacy.
+     */
+    public function tokensAvailable(): ?int
+    {
+        return $this->emailsRemaining();
     }
 
     /**
@@ -133,15 +125,28 @@ class User extends Authenticatable
     }
 
     /**
-     * Límite de tokens según plan
+     * Relación con el plan (foreign key plan_type → slug)
+     */
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class, 'plan_type', 'slug');
+    }
+
+    /**
+     * Límite de tokens según plan (lee BD, fallback hardcoded)
      */
     public static function tokenLimitForPlan(string $plan): int
     {
+        $p = \App\Models\Plan::findBySlug($plan);
+        if ($p) {
+            return $p->token_limit ?? 0; // null = ilimitado, tratamos como 0
+        }
+
         return match ($plan) {
             'basic'      => 50000,
             'starter'    => 200000,
             'pro'        => 1000000,
-            'enterprise' => 0, // ilimitado
+            'enterprise' => 0,
             default      => 50000,
         };
     }
@@ -150,16 +155,22 @@ class User extends Authenticatable
 
     /**
      * Emails/mes que permite el plan actual. null = ilimitado.
+     * Lee de BD, fallback a hardcoded si la tabla está vacía.
      */
     public function planEmailLimit(): ?int
     {
-        return match ($this->plan_type ?? 'free_trial') {
-            'free_trial'  => 30,
-            'solo'        => 400,
-            'pro'         => 1200,
-            'business'    => null,   // ilimitado
-            'enterprise'  => null,   // ilimitado (legacy)
-            default       => 30,
+        $p = $this->plan;
+        if ($p) {
+            return $p->email_limit; // null = ilimitado
+        }
+
+        return match ($this->plan_type ?? 'basic') {
+            'free_trial' => 30,
+            'basic'      => 100,
+            'starter'    => 500,
+            'pro'        => 2000,
+            'enterprise' => null,
+            default      => 100,
         };
     }
 
@@ -208,17 +219,11 @@ class User extends Authenticatable
 
     /**
      * Nombre legible del plan actual.
+     * Lee de BD, fallback a ucfirst del slug.
      */
     public function planName(): string
     {
-        return match ($this->plan_type ?? 'free_trial') {
-            'free_trial' => 'Free Trial',
-            'solo'       => 'Solo',
-            'pro'        => 'Pro',
-            'business'   => 'Business',
-            'enterprise' => 'Business',
-            default      => 'Free Trial',
-        };
+        return $this->plan?->name ?? ucfirst($this->plan_type ?? 'Basic');
     }
 
     // Acceso activo al app (flag + periodo vigente)

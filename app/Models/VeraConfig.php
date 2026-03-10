@@ -29,6 +29,7 @@ class VeraConfig extends Model
         'last_analysis_at',
         'last_re_analysis_at',
         'analysis_summary',
+        'weekly_suggestions',
         'onboarding_completed',
         'onboarding_completed_at',
     ];
@@ -37,6 +38,7 @@ class VeraConfig extends Model
         'writing_style' => 'array',
         'important_contacts' => 'array',
         'analysis_summary' => 'array',
+        'weekly_suggestions' => 'array',
         'response_allowed_categories' => 'array',
         'response_blocked_categories' => 'array',
         'blocked_keywords' => 'array',

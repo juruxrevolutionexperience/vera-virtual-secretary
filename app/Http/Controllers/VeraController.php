@@ -971,4 +971,163 @@ class VeraController extends Controller
             ], 422);
         }
     }
+
+    /**
+     * Aplicar directamente la acción de una sugerencia semanal.
+     * Cada action_type modifica una config específica de Vera.
+     */
+    public function applyWeeklySuggestion(Request $request)
+    {
+        $validated = $request->validate([
+            'suggestion_id' => 'required|string|max:50',
+            'action_type'   => 'required|string|in:enable_newsletter_archive,enable_auto_response,configure_writing_style,enable_priority_sort',
+        ]);
+
+        $config = VeraConfig::where('user_id', Auth::id())->firstOrFail();
+
+        $message = '';
+
+        switch ($validated['action_type']) {
+            case 'enable_newsletter_archive':
+                $config->update(['newsletter_handling' => 'auto_archive']);
+                $message = '¡Activado! Vera archivará automáticamente tus newsletters y promociones.';
+                break;
+
+            case 'enable_auto_response':
+                $config->update([
+                    'auto_response_enabled'          => true,
+                    'auto_response_mode'             => 'important_only',
+                    'auto_response_require_approval' => true,
+                ]);
+                $message = '¡Activado! Vera sugerirá respuestas para tus emails importantes.';
+                break;
+
+            case 'configure_writing_style':
+                // No hay config directa, redirigir a la sección correcta
+                return response()->json([
+                    'success'  => true,
+                    'redirect' => route('vera.config'),
+                    'message'  => 'Te llevamos a la configuración de estilo.',
+                ]);
+
+            case 'enable_priority_sort':
+                $config->update(['autonomy_level' => 'moderate']);
+                $message = '¡Activado! Vera priorizará y destacará tus emails urgentes.';
+                break;
+        }
+
+        // También descartar la sugerencia (ya no es necesario mostrarla)
+        $suggestions = $config->weekly_suggestions ?? [];
+        $suggestions['dismissed_ids'][] = $validated['suggestion_id'];
+        $config->update(['weekly_suggestions' => $suggestions]);
+
+        return response()->json(['success' => true, 'message' => $message]);
+    }
+
+    /**
+     * Confirmar un insight aprendido por Vera.
+     * Marca el insight como confirmado y aplica la acción asociada si existe.
+     */
+    public function confirmInsight(Request $request)
+    {
+        $validated = $request->validate([
+            'insight_id' => 'required|string|max:50',
+        ]);
+
+        $config = VeraConfig::where('user_id', Auth::id())->firstOrFail();
+
+        $suggestions = $config->weekly_suggestions ?? [];
+        $insights = $suggestions['confirmable_insights'] ?? [];
+
+        // Encontrar el insight y marcarlo como confirmado
+        $insight = null;
+        foreach ($insights as $i) {
+            if (($i['id'] ?? '') === $validated['insight_id']) {
+                $insight = $i;
+                break;
+            }
+        }
+
+        if (!$insight) {
+            return response()->json(['success' => false, 'message' => 'Insight no encontrado'], 404);
+        }
+
+        // Aplicar acción si existe
+        if (!empty($insight['action_on_confirm'])) {
+            match ($insight['action_on_confirm']) {
+                'prioritize_urgent' => $config->update(['autonomy_level' => 'moderate']),
+                default => null,
+            };
+        }
+
+        // Eliminar el insight de la lista (ya no necesita confirmación)
+        $suggestions['confirmable_insights'] = array_values(
+            array_filter($insights, fn($i) => ($i['id'] ?? '') !== $validated['insight_id'])
+        );
+        $config->update(['weekly_suggestions' => $suggestions]);
+
+        Log::info('✅ Vera insight confirmado', [
+            'user_id'    => Auth::id(),
+            'insight_id' => $validated['insight_id'],
+            'statement'  => $insight['statement'] ?? '',
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Gracias, Vera lo tendrá en cuenta.']);
+    }
+
+    /**
+     * Denegar un insight aprendido por Vera.
+     * Desactiva el chunk de memoria relacionado y elimina el insight.
+     */
+    public function denyInsight(Request $request)
+    {
+        $validated = $request->validate([
+            'insight_id' => 'required|string|max:50',
+        ]);
+
+        $config = VeraConfig::where('user_id', Auth::id())->firstOrFail();
+
+        $suggestions = $config->weekly_suggestions ?? [];
+        $insights = $suggestions['confirmable_insights'] ?? [];
+
+        // Eliminar el insight de la lista
+        $suggestions['confirmable_insights'] = array_values(
+            array_filter($insights, fn($i) => ($i['id'] ?? '') !== $validated['insight_id'])
+        );
+        $config->update(['weekly_suggestions' => $suggestions]);
+
+        Log::info('❌ Vera insight denegado', [
+            'user_id'    => Auth::id(),
+            'insight_id' => $validated['insight_id'],
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Entendido, Vera lo ignorará.']);
+    }
+
+    /**
+     * Descartar una sugerencia semanal de Vera.
+     * Añade el ID a dismissed_ids para que no vuelva a aparecer.
+     */
+    public function dismissWeeklySuggestion(Request $request)
+    {
+        $validated = $request->validate([
+            'suggestion_id' => 'required|string|max:50',
+        ]);
+
+        $config = VeraConfig::where('user_id', Auth::id())->firstOrFail();
+
+        $suggestions = $config->weekly_suggestions ?? [];
+
+        if (!isset($suggestions['dismissed_ids'])) {
+            $suggestions['dismissed_ids'] = [];
+        }
+
+        if (!in_array($validated['suggestion_id'], $suggestions['dismissed_ids'])) {
+            $suggestions['dismissed_ids'][] = $validated['suggestion_id'];
+        }
+
+        $config->update(['weekly_suggestions' => $suggestions]);
+
+        return response()->json(['success' => true]);
+    }
 }

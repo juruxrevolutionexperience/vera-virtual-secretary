@@ -47,6 +47,8 @@ class Email extends Model
         'vera_summary',
         'vera_tags',
         'vera_sentiment_score',
+        'vera_sentimiento_tono',
+        'vera_badge_sugerido',
         'vera_action_required',
         'vera_processed',
         'vera_processed_at',

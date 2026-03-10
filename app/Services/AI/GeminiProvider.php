@@ -51,6 +51,16 @@ class GeminiProvider
 
             $endpoint = "models/{$this->model}:generateContent";
 
+            $generationConfig = [
+                'temperature' => $options['temperature'] ?? 0.7,
+                'maxOutputTokens' => $options['maxOutputTokens'] ?? 2000,
+            ];
+
+            // Deshabilitar thinking si se solicita (para clasificaciones rápidas)
+            if (!empty($options['disableThinking'])) {
+                $generationConfig['thinkingConfig'] = ['thinkingBudget' => 0];
+            }
+
             $payload = [
                 'contents' => [
                     [
@@ -59,10 +69,7 @@ class GeminiProvider
                         ]
                     ]
                 ],
-                'generationConfig' => [
-                    'temperature' => $options['temperature'] ?? 0.7,
-                    'maxOutputTokens' => $options['maxOutputTokens'] ?? 2000,
-                ]
+                'generationConfig' => $generationConfig,
             ];
 
             $response = $this->client->post($endpoint, [
@@ -167,6 +174,96 @@ class GeminiProvider
             ]);
 
             throw $e;
+        }
+    }
+
+    /**
+     * Clasificación rápida con prompt mínimo (~80-100 tokens)
+     * Decide si vale la pena un análisis completo.
+     *
+     * @param string $subject Asunto del email
+     * @param string $bodyPreview Primeros 200 caracteres del cuerpo
+     * @param string $fromEmail Remitente
+     * @param int|null $userId Para registrar tokens
+     * @param int|null $emailId Para registrar tokens
+     * @return array ['needs_full_analysis' => bool, 'reason' => string, 'tokens_used' => int]
+     */
+    public function quickClassify(
+        string $subject,
+        string $bodyPreview,
+        string $fromEmail,
+        ?int $userId = null,
+        ?int $emailId = null
+    ): array {
+        $prompt = <<<PROMPT
+Clasifica este email. Responde SOLO con JSON, sin markdown.
+
+De: {$fromEmail}
+Asunto: {$subject}
+Inicio: {$bodyPreview}
+
+Reglas:
+- ANALIZAR = email de persona real que puede necesitar respuesta o acción
+- IGNORAR = newsletter, marketing, notificación automática, confirmación de pedido, auto-reply, OTP, factura automática
+
+{"decision": "ANALIZAR|IGNORAR", "motivo": "una frase corta"}
+PROMPT;
+
+        try {
+            $response = $this->generateContent($prompt, [
+                'temperature'    => 0.1,
+                'maxOutputTokens' => 80,
+                'disableThinking' => true,
+            ]);
+
+            $tokensUsed = $response['usage']['total_tokens'] ?? 0;
+
+            if ($userId) {
+                event(new VeraTokensConsumed(
+                    userId: $userId,
+                    actionType: 'quick_classify',
+                    tokenData: [
+                        'prompt_tokens' => $response['usage']['prompt_tokens'] ?? 0,
+                        'completion_tokens' => $response['usage']['completion_tokens'] ?? 0,
+                        'total_tokens' => $tokensUsed,
+                        'model' => $this->model,
+                    ],
+                    emailId: $emailId,
+                    metadata: ['subject' => $subject]
+                ));
+            }
+
+            $text = preg_replace('/```json\s*|\s*```/', '', $response['text']);
+            $data = json_decode(trim($text), true);
+
+            $needsFullAnalysis = isset($data['decision']) && $data['decision'] === 'ANALIZAR';
+
+            Log::info('⚡ quickClassify completado', [
+                'email_id'  => $emailId,
+                'decision'  => $data['decision'] ?? 'unknown',
+                'motivo'    => $data['motivo'] ?? '',
+                'tokens'    => $tokensUsed,
+            ]);
+
+            return [
+                'needs_full_analysis' => $needsFullAnalysis,
+                'reason'   => $data['motivo'] ?? '',
+                'decision' => $data['decision'] ?? 'IGNORAR',
+                'tokens_used' => $tokensUsed,
+            ];
+
+        } catch (\Exception $e) {
+            Log::warning('⚠️ quickClassify falló, asumiendo ANALIZAR (fail-safe)', [
+                'email_id' => $emailId,
+                'error'    => $e->getMessage(),
+            ]);
+
+            return [
+                'needs_full_analysis' => true,
+                'reason'   => 'classify_error_failsafe',
+                'decision' => 'ANALIZAR',
+                'tokens_used' => 0,
+            ];
         }
     }
 

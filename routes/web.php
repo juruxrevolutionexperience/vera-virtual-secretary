@@ -59,6 +59,9 @@ Route::middleware(['auth'])->group(function () {
 // Webhook de Stripe (no requiere autenticación)
 Route::post('/stripe/webhook', [WebhookController::class, 'handleWebhook'])->name('cashier.webhook');
 
+// Webhook de Gmail Push Notifications (no requiere autenticación ni CSRF)
+Route::post('/webhooks/gmail', [\App\Http\Controllers\Webhooks\GmailWebhookController::class, 'handle'])->name('webhooks.gmail');
+
 // ========================================
 // RUTAS DE VIRTUAL SECRETARY
 // ========================================
@@ -316,6 +319,10 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
     // Historial de tokens IA
     Route::get('/tokens', [\App\Http\Controllers\VeraTokensController::class, 'index'])->name('tokens');
 
+    // Sugerencias semanales — aplicar acción directa / descartar
+    Route::post('/weekly-suggestion/apply',   [VeraController::class, 'applyWeeklySuggestion'])->name('weekly-suggestion.apply');
+    Route::post('/weekly-suggestion/dismiss', [VeraController::class, 'dismissWeeklySuggestion'])->name('weekly-suggestion.dismiss');
+
     // Respuestas automáticas de Vera (API)
     Route::get('/responses/pending', [VeraController::class, 'getPendingResponses'])->name('responses.pending');
     Route::get('/responses/{response}', [VeraController::class, 'getResponse'])->name('responses.show');
@@ -419,6 +426,14 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
 
     // API: Resumen ejecutivo completo
     Route::get('/analytics/api/summary', [VeraAnalyticsController::class, 'apiExecutiveSummary'])->name('analytics.api.summary');
+});
+
+// ========================================
+// RUTAS DE VERA - INSIGHTS CONFIRMABLES (GAP 3)
+// ========================================
+Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
+    Route::post('/insight/confirm', [\App\Http\Controllers\VeraController::class, 'confirmInsight'])->name('insight.confirm');
+    Route::post('/insight/deny',    [\App\Http\Controllers\VeraController::class, 'denyInsight'])->name('insight.deny');
 });
 
 // ========================================

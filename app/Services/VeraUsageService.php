@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Email;
 use App\Models\VeraTokenUsage;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -109,8 +110,9 @@ class VeraUsageService
      */
     public function getRemainingEmails(User $user): int
     {
-        $used = $this->getEmailsProcessedThisMonth($user);
-        return max(0, $user->monthly_email_limit - $used);
+        $used  = $this->getEmailsProcessedThisMonth($user);
+        $limit = $user->planEmailLimit() ?? PHP_INT_MAX;
+        return max(0, $limit - $used);
     }
 
     /**
@@ -180,28 +182,31 @@ class VeraUsageService
      */
     public function recordEmailProcessing(User $user, Email $email, string $actionType): void
     {
-        // Solo marcar si no está ya marcado en este ciclo
-        if ($email->processed_this_billing_cycle) {
-            Log::info('ℹ️  Email ya procesado este ciclo, no se cuenta de nuevo', [
-                'email_id' => $email->id,
-                'user_id' => $user->id,
+        DB::transaction(function () use ($user, $email, $actionType) {
+            // Releer la fila con bloqueo para evitar race conditions
+            $fresh = Email::lockForUpdate()->find($email->id);
+
+            if (!$fresh || $fresh->processed_this_billing_cycle) {
+                Log::info('ℹ️  Email ya procesado este ciclo, no se cuenta de nuevo', [
+                    'email_id' => $email->id,
+                    'user_id'  => $user->id,
+                ]);
+                return;
+            }
+
+            $fresh->update([
+                'processed_this_billing_cycle' => true,
+                'last_processed_at'            => now(),
             ]);
-            return;
-        }
 
-        // Marcar email como procesado
-        $email->update([
-            'processed_this_billing_cycle' => true,
-            'last_processed_at' => now(),
-        ]);
-
-        Log::info('✅ Email marcado como procesado', [
-            'email_id' => $email->id,
-            'user_id' => $user->id,
-            'action_type' => $actionType,
-            'emails_used' => $this->getEmailsProcessedThisMonth($user),
-            'emails_remaining' => $this->getRemainingEmails($user),
-        ]);
+            Log::info('✅ Email marcado como procesado', [
+                'email_id'         => $email->id,
+                'user_id'          => $user->id,
+                'action_type'      => $actionType,
+                'emails_used'      => $this->getEmailsProcessedThisMonth($user),
+                'emails_remaining' => $this->getRemainingEmails($user),
+            ]);
+        });
     }
 
     /**

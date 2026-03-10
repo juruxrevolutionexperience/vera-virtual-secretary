@@ -70,10 +70,10 @@
                                 <span class="text-sm font-semibold text-gray-900">Plan actual:</span>
                                 @php
                                     $planBadgeColor = match($planStatus['plan_type']) {
-                                        'solo'       => 'bg-blue-100 text-blue-700',
+                                        'basic'      => 'bg-blue-100 text-blue-700',
+                                        'starter'    => 'bg-indigo-100 text-indigo-700',
                                         'pro'        => 'bg-purple-100 text-purple-700',
-                                        'business'   => 'bg-indigo-100 text-indigo-700',
-                                        'enterprise' => 'bg-indigo-100 text-indigo-700',
+                                        'enterprise' => 'bg-emerald-100 text-emerald-700',
                                         default      => 'bg-gray-100 text-gray-600',
                                     };
                                 @endphp
@@ -224,15 +224,17 @@
                 x-data="{
                     prices: {
                         free_trial: 0,
-                        solo:       {{ $planPricing['plans']['solo']['suggested_price'] }},
+                        basic:      {{ $planPricing['plans']['basic']['suggested_price'] }},
+                        starter:    {{ $planPricing['plans']['starter']['suggested_price'] }},
                         pro:        {{ $planPricing['plans']['pro']['suggested_price'] }},
-                        business:   {{ $planPricing['plans']['business']['suggested_price'] }}
+                        enterprise: {{ $planPricing['plans']['enterprise']['suggested_price'] }}
                     },
                     costs: {
                         free_trial: {{ $planPricing['plans']['free_trial']['cost_api_eur'] }},
-                        solo:       {{ $planPricing['plans']['solo']['cost_api_eur'] }},
+                        basic:      {{ $planPricing['plans']['basic']['cost_api_eur'] }},
+                        starter:    {{ $planPricing['plans']['starter']['cost_api_eur'] }},
                         pro:        {{ $planPricing['plans']['pro']['cost_api_eur'] }},
-                        business:   {{ $planPricing['plans']['business']['cost_api_eur'] }}
+                        enterprise: {{ $planPricing['plans']['enterprise']['cost_api_eur'] }}
                     },
                     marginEur(plan) {
                         return (this.prices[plan] - this.costs[plan]).toFixed(2);
@@ -321,8 +323,8 @@
                                     <td class="px-5 py-4 text-right font-bold text-gray-400">CAC</td>
                                 </tr>
 
-                                {{-- Plan Solo --}}
-                                @php $p = $planPricing['plans']['solo']; @endphp
+                                {{-- Plan Basic --}}
+                                @php $p = $planPricing['plans']['basic']; @endphp
                                 <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-5 py-4">
                                         <span class="inline-flex items-center gap-1.5">
@@ -336,13 +338,37 @@
                                     <td class="px-5 py-4 text-center">
                                         <div class="inline-flex items-center border border-purple-200 rounded-lg overflow-hidden bg-white shadow-sm">
                                             <span class="px-2 text-gray-400 text-xs bg-gray-50 border-r border-purple-200 py-2">€</span>
-                                            <input type="number" x-model.number="prices.solo" min="0" step="1"
+                                            <input type="number" x-model.number="prices.basic" min="0" step="1"
                                                 class="w-20 text-center text-sm font-semibold text-gray-900 px-2 py-1.5 focus:outline-none focus:bg-purple-50">
                                             <span class="px-2 text-gray-400 text-xs bg-gray-50 border-l border-purple-200 py-2">/mes</span>
                                         </div>
                                     </td>
-                                    <td class="px-5 py-4 text-right font-semibold" :class="marginColor('solo')" x-text="'€' + marginEur('solo')"></td>
-                                    <td class="px-5 py-4 text-right font-bold" :class="marginColor('solo')" x-text="marginPct('solo') + '%'"></td>
+                                    <td class="px-5 py-4 text-right font-semibold" :class="marginColor('basic')" x-text="'€' + marginEur('basic')"></td>
+                                    <td class="px-5 py-4 text-right font-bold" :class="marginColor('basic')" x-text="marginPct('basic') + '%'"></td>
+                                </tr>
+
+                                {{-- Plan Starter --}}
+                                @php $p = $planPricing['plans']['starter']; @endphp
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-5 py-4">
+                                        <span class="inline-flex items-center gap-1.5">
+                                            <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+                                            <span class="font-semibold text-gray-900">{{ $p['name'] }}</span>
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-4 text-right text-gray-600">{{ number_format($p['emails_per_month']) }}</td>
+                                    <td class="px-5 py-4 text-right text-gray-500 text-xs">{{ number_format($p['tokens_per_month']) }}</td>
+                                    <td class="px-5 py-4 text-right font-medium text-red-500">€{{ number_format($p['cost_api_eur'], 4) }}</td>
+                                    <td class="px-5 py-4 text-center">
+                                        <div class="inline-flex items-center border border-purple-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                                            <span class="px-2 text-gray-400 text-xs bg-gray-50 border-r border-purple-200 py-2">€</span>
+                                            <input type="number" x-model.number="prices.starter" min="0" step="1"
+                                                class="w-20 text-center text-sm font-semibold text-gray-900 px-2 py-1.5 focus:outline-none focus:bg-purple-50">
+                                            <span class="px-2 text-gray-400 text-xs bg-gray-50 border-l border-purple-200 py-2">/mes</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-5 py-4 text-right font-semibold" :class="marginColor('starter')" x-text="'€' + marginEur('starter')"></td>
+                                    <td class="px-5 py-4 text-right font-bold" :class="marginColor('starter')" x-text="marginPct('starter') + '%'"></td>
                                 </tr>
 
                                 {{-- Plan Pro --}}
@@ -370,17 +396,17 @@
                                     <td class="px-5 py-4 text-right font-bold" :class="marginColor('pro')" x-text="marginPct('pro') + '%'"></td>
                                 </tr>
 
-                                {{-- Plan Business --}}
-                                @php $p = $planPricing['plans']['business']; @endphp
+                                {{-- Plan Enterprise --}}
+                                @php $p = $planPricing['plans']['enterprise']; @endphp
                                 <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-5 py-4">
                                         <span class="inline-flex items-center gap-1.5">
-                                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                                             <span class="font-semibold text-gray-900">{{ $p['name'] }}</span>
                                         </span>
                                     </td>
                                     <td class="px-5 py-4 text-right text-gray-600">
-                                        <span class="text-xs text-indigo-600 font-medium">Sin límite</span>
+                                        <span class="text-xs text-emerald-600 font-medium">Sin límite</span>
                                         <span class="block text-xs text-gray-400">est. {{ number_format($p['emails_per_month']) }}/mes</span>
                                     </td>
                                     <td class="px-5 py-4 text-right text-gray-500 text-xs">{{ number_format($p['tokens_per_month']) }}</td>
@@ -388,13 +414,13 @@
                                     <td class="px-5 py-4 text-center">
                                         <div class="inline-flex items-center border border-purple-200 rounded-lg overflow-hidden bg-white shadow-sm">
                                             <span class="px-2 text-gray-400 text-xs bg-gray-50 border-r border-purple-200 py-2">€</span>
-                                            <input type="number" x-model.number="prices.business" min="0" step="1"
+                                            <input type="number" x-model.number="prices.enterprise" min="0" step="1"
                                                 class="w-20 text-center text-sm font-semibold text-gray-900 px-2 py-1.5 focus:outline-none focus:bg-purple-50">
                                             <span class="px-2 text-gray-400 text-xs bg-gray-50 border-l border-purple-200 py-2">/mes</span>
                                         </div>
                                     </td>
-                                    <td class="px-5 py-4 text-right font-semibold" :class="marginColor('business')" x-text="'€' + marginEur('business')"></td>
-                                    <td class="px-5 py-4 text-right font-bold" :class="marginColor('business')" x-text="marginPct('business') + '%'"></td>
+                                    <td class="px-5 py-4 text-right font-semibold" :class="marginColor('enterprise')" x-text="'€' + marginEur('enterprise')"></td>
+                                    <td class="px-5 py-4 text-right font-bold" :class="marginColor('enterprise')" x-text="marginPct('enterprise') + '%'"></td>
                                 </tr>
 
                             </tbody>

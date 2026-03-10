@@ -348,14 +348,34 @@ class VeraTokenUsage extends Model
             ? (int) round($emailAnalysisData->avg('total_tokens'))
             : 2067; // Fallback: dato real medido (64.095 tokens / 31 llamadas = 2.067)
 
-        // Definición de planes (emails/mes = parámetro real del negocio)
-        // Business = sin límite → usamos 3.000 emails como base de cálculo de coste
-        $planDefinitions = [
-            'free_trial' => ['name' => 'Free Trial', 'emails_per_month' => 30,   'suggested_price' => 0,  'color' => 'gray',   'unlimited' => false],
-            'solo'       => ['name' => 'Solo',       'emails_per_month' => 400,  'suggested_price' => 29, 'color' => 'blue',   'unlimited' => false],
-            'pro'        => ['name' => 'Pro',        'emails_per_month' => 1200, 'suggested_price' => 59, 'color' => 'purple', 'unlimited' => false],
-            'business'   => ['name' => 'Business',  'emails_per_month' => 3000, 'suggested_price' => 99, 'color' => 'indigo', 'unlimited' => true],
-        ];
+        // Cargar planes desde BD; si la tabla está vacía, usar fallback hardcoded
+        $dbPlans = \App\Models\Plan::active()->orderBy('price_eur')->get();
+
+        if ($dbPlans->isNotEmpty()) {
+            $planDefinitions = [];
+            $colors = ['free_trial' => 'gray', 'basic' => 'blue', 'starter' => 'indigo', 'pro' => 'purple', 'enterprise' => 'emerald'];
+
+            foreach ($dbPlans as $plan) {
+                // Enterprise sin límite → usamos 3.000 emails como base de cálculo de coste
+                $emailsBase = $plan->email_limit ?? 3000;
+                $planDefinitions[$plan->slug] = [
+                    'name'            => $plan->name,
+                    'emails_per_month'=> $emailsBase,
+                    'suggested_price' => (float) $plan->price_eur,
+                    'color'           => $colors[$plan->slug] ?? 'gray',
+                    'unlimited'       => $plan->isUnlimited(),
+                ];
+            }
+        } else {
+            // Fallback hardcoded
+            $planDefinitions = [
+                'free_trial' => ['name' => 'Free Trial', 'emails_per_month' => 30,   'suggested_price' => 0,  'color' => 'gray',   'unlimited' => false],
+                'basic'      => ['name' => 'Basic',      'emails_per_month' => 100,  'suggested_price' => 5,  'color' => 'blue',   'unlimited' => false],
+                'starter'    => ['name' => 'Starter',    'emails_per_month' => 500,  'suggested_price' => 15, 'color' => 'indigo', 'unlimited' => false],
+                'pro'        => ['name' => 'Pro',        'emails_per_month' => 2000, 'suggested_price' => 30, 'color' => 'purple', 'unlimited' => false],
+                'enterprise' => ['name' => 'Enterprise', 'emails_per_month' => 3000, 'suggested_price' => 99, 'color' => 'emerald', 'unlimited' => true],
+            ];
+        }
 
         foreach ($planDefinitions as &$plan) {
             $tokensPerMonth = $plan['emails_per_month'] * $avgTokensPerEmail;
@@ -370,9 +390,8 @@ class VeraTokenUsage extends Model
         }
         unset($plan);
 
-        // Contexto del límite gratuito de Gemini Flash
-        $freeTierDailyLimit  = 1500; // req/día tier gratuito
-        $avgEmailsPerUserDay = 100;  // usuario activo típico con 100 emails/día
+        $freeTierDailyLimit  = 1500;
+        $avgEmailsPerUserDay = 100;
 
         return [
             'avg_tokens_per_email' => $avgTokensPerEmail,

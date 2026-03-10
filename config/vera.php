@@ -62,4 +62,10 @@ return [
         'min_for_suggestion' => 0.60,   // 60% para sugerencia
     ],
 
+    // Gmail Push Notifications (Webhooks)
+    // Vacío en desarrollo → polling como fallback
+    // En producción: configurar en Google Cloud Console
+    'gmail_pubsub_topic'    => env('GMAIL_PUBSUB_TOPIC', ''),
+    'gmail_webhook_secret'  => env('GMAIL_WEBHOOK_SECRET', ''),
+
 ];

@@ -57,10 +57,27 @@ class GmailSyncService
         if ($this->client->isAccessTokenExpired() && $account->refresh_token) {
             $newToken = $this->client->fetchAccessTokenWithRefreshToken($account->refresh_token);
 
+            if (isset($newToken['error'])) {
+                // Token revocado o expirado definitivamente — marcar cuenta como error
+                $account->update(['sync_status' => 'error']);
+
+                Log::error('❌ Gmail token inválido (invalid_grant). El usuario debe reconectar su cuenta.', [
+                    'account_id' => $account->id,
+                    'email'      => $account->email,
+                    'error'      => $newToken['error'],
+                ]);
+
+                throw new \RuntimeException(
+                    "Gmail token revocado para la cuenta {$account->email}. " .
+                    "El usuario debe reconectar su cuenta de Gmail."
+                );
+            }
+
             if (isset($newToken['access_token'])) {
                 $account->update([
-                    'access_token' => $newToken['access_token'],
+                    'access_token'     => $newToken['access_token'],
                     'token_expires_at' => now()->addSeconds($newToken['expires_in'] ?? 3600),
+                    'sync_status'      => 'active', // Restaurar si estaba en error
                 ]);
             }
         }
@@ -804,5 +821,83 @@ class GmailSyncService
         $mime .= "--{$boundary}--";
 
         return base64_encode($mime);
+    }
+
+    // =========================================================
+    // GMAIL PUSH NOTIFICATIONS (Webhook / Watch)
+    // =========================================================
+
+    /**
+     * Registra un watch en Gmail para recibir notificaciones push.
+     * En desarrollo falla silenciosamente (no hay URL pública).
+     * En producción activa el webhook instantáneo.
+     *
+     * @param EmailAccount $account
+     * @return bool  true si el watch se activó, false si no (development/error)
+     */
+    public function setupWatch(EmailAccount $account): bool
+    {
+        $topic = config('vera.gmail_pubsub_topic');
+
+        if (!$topic) {
+            Log::info('📭 Gmail watch no configurado (GMAIL_PUBSUB_TOPIC vacío)', [
+                'account_id' => $account->id,
+            ]);
+            return false;
+        }
+
+        try {
+            $this->initializeClient($account);
+
+            $watchRequest = new \Google\Service\Gmail\WatchRequest();
+            $watchRequest->setTopicName($topic);
+            $watchRequest->setLabelIds(['INBOX']);
+
+            $result = $this->gmail->users->watch('me', $watchRequest);
+
+            $account->update([
+                'last_history_id' => $result->getHistoryId(),
+                'watch_expires_at' => now()->addDays(7),
+            ]);
+
+            Log::info('✅ Gmail watch activado', [
+                'account_id' => $account->id,
+                'email'      => $account->email_address,
+                'history_id' => $result->getHistoryId(),
+                'expires_at' => now()->addDays(7)->toDateTimeString(),
+            ]);
+
+            return true;
+
+        } catch (\Exception $e) {
+            // Normal en desarrollo — no hay URL pública para recibir notificaciones
+            Log::info('📭 Gmail watch no activado (normal en desarrollo)', [
+                'account_id' => $account->id,
+                'reason'     => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Detiene el watch de Gmail para una cuenta.
+     * Se llama cuando el usuario desconecta su Gmail.
+     */
+    public function stopWatch(EmailAccount $account): void
+    {
+        try {
+            $this->initializeClient($account);
+            $this->gmail->users->stop('me');
+
+            $account->update(['watch_expires_at' => null]);
+
+            Log::info('🛑 Gmail watch detenido', ['account_id' => $account->id]);
+
+        } catch (\Exception $e) {
+            Log::warning('⚠️ Error deteniendo Gmail watch', [
+                'account_id' => $account->id,
+                'error'      => $e->getMessage(),
+            ]);
+        }
     }
 }

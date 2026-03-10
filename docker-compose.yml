@@ -25,14 +25,14 @@ services:
             - mysql
             - redis
             - mailpit
-    queue:
+    horizon:
         build:
             context: ./docker/8.3
             dockerfile: Dockerfile
             args:
                 WWWGROUP: '${WWWGROUP}'
         image: sail-8.3/app
-        command: php artisan queue:work --tries=3 --timeout=1800
+        command: php artisan horizon
         environment:
             WWWUSER: '${WWWUSER}'
             LARAVEL_SAIL: 1

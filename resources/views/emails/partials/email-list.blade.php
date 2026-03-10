@@ -239,6 +239,47 @@
                                             </span>
                                         @endif
 
+                                        <!-- Vera: Badge sugerido -->
+                                        @if($email->vera_badge_sugerido)
+                                            @php
+                                                $badgeColors = [
+                                                    'Urgente'     => 'bg-red-100 text-red-700',
+                                                    'Cliente'     => 'bg-blue-100 text-blue-700',
+                                                    'Proveedor'   => 'bg-orange-100 text-orange-700',
+                                                    'Reunión'     => 'bg-indigo-100 text-indigo-700',
+                                                    'Seguimiento' => 'bg-yellow-100 text-yellow-700',
+                                                    'Factura'     => 'bg-green-100 text-green-700',
+                                                    'Soporte'     => 'bg-cyan-100 text-cyan-700',
+                                                    'Trabajo'     => 'bg-purple-100 text-purple-700',
+                                                    'Personal'    => 'bg-pink-100 text-pink-700',
+                                                ];
+                                                $badgeClass = $badgeColors[$email->vera_badge_sugerido] ?? 'bg-gray-100 text-gray-600';
+                                            @endphp
+                                            <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium {{ $badgeClass }}">
+                                                {{ $email->vera_badge_sugerido }}
+                                            </span>
+                                        @endif
+
+                                        <!-- Vera: Tono emocional del remitente -->
+                                        @if($email->vera_sentimiento_tono && !in_array($email->vera_sentimiento_tono, ['neutro', 'neutral']))
+                                            @php
+                                                $tonoConfig = [
+                                                    'urgente'      => ['🔴', 'text-red-600'],
+                                                    'presionado'   => ['😰', 'text-orange-600'],
+                                                    'molesto'      => ['😠', 'text-red-500'],
+                                                    'agresivo'     => ['⚡', 'text-red-700'],
+                                                    'amistoso'     => ['😊', 'text-green-600'],
+                                                    'entusiasta'   => ['🎉', 'text-blue-600'],
+                                                    'formal'       => ['🎩', 'text-gray-600'],
+                                                ];
+                                                $tono = $tonoConfig[$email->vera_sentimiento_tono] ?? ['💬', 'text-gray-500'];
+                                            @endphp
+                                            <span class="inline-flex items-center gap-0.5 text-[10px] font-medium {{ $tono[1] }}"
+                                                  title="Tono detectado: {{ $email->vera_sentimiento_tono }}">
+                                                {{ $tono[0] }} {{ ucfirst($email->vera_sentimiento_tono) }}
+                                            </span>
+                                        @endif
+
                                         <!-- Vera Response Badge -->
                                         @php
                                             $hasVeraResponse = $email->veraActions()

@@ -818,6 +818,9 @@
 
                     <!-- Right Column - Sidebar Widgets (1/3) -->
                     <div class="lg:col-span-1 space-y-6" x-data="usageWidget()">
+                        <!-- Vera Weekly Insights -->
+                        <x-vera-weekly-insights />
+
                         <!-- Usage Widget - NEW -->
                         <div class="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-5 hover-lift cursor-pointer"
                              @click="openUsageModal()">
