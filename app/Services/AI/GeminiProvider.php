@@ -4,6 +4,7 @@ namespace App\Services\AI;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Events\VeraTokensConsumed;
 
@@ -41,8 +42,50 @@ class GeminiProvider
      * @return array
      * @throws \Exception
      */
+    /**
+     * Rate limiter: máximo 14 requests/minuto para respetar el free tier de Gemini (15 RPM).
+     * Si se supera el límite, espera hasta que haya hueco en la ventana.
+     */
+    protected function enforceRateLimit(): void
+    {
+        $key    = 'gemini_rpm_window';
+        $maxRpm = 14; // margen de seguridad sobre el límite real (15 RPM)
+
+        // Obtener la lista de timestamps de requests en el último minuto
+        $timestamps = Cache::get($key, []);
+        $now        = microtime(true);
+        $windowStart = $now - 60;
+
+        // Filtrar solo los del último minuto
+        $timestamps = array_filter($timestamps, fn($ts) => $ts > $windowStart);
+
+        if (count($timestamps) >= $maxRpm) {
+            // Calcular cuánto tiempo queda hasta que salga el más antiguo de la ventana
+            $oldest   = min($timestamps);
+            $waitSecs = ($oldest + 60) - $now;
+
+            if ($waitSecs > 0) {
+                Log::info('⏳ Gemini rate limit: esperando ' . round($waitSecs, 2) . 's antes de llamar', [
+                    'requests_in_window' => count($timestamps),
+                    'max_rpm'            => $maxRpm,
+                ]);
+                // usleep acepta microsegundos
+                usleep((int) ($waitSecs * 1_000_000));
+                $now = microtime(true);
+                $windowStart = $now - 60;
+                $timestamps = array_filter($timestamps, fn($ts) => $ts > $windowStart);
+            }
+        }
+
+        // Registrar este request
+        $timestamps[] = microtime(true);
+        Cache::put($key, array_values($timestamps), 120); // TTL 2 min
+    }
+
     public function generateContent(string $prompt, array $options = []): array
     {
+        $this->enforceRateLimit();
+
         try {
             Log::info('🤖 Llamando a Gemini API', [
                 'model' => $this->model,

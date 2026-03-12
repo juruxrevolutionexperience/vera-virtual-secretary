@@ -370,38 +370,44 @@ class VeraResponseGenerator
             return false;
         }
 
-        $isAutomated = str_contains($content, 'no-reply')
-                    || str_contains($content, 'unsubscribe')
+        // Categorías automáticas guardadas por Vera (nombres reales del sistema)
+        $autoCategories = ['promotional', 'newsletter', 'social', 'transactional'];
+        $emailCategory  = $email->category ?? '';
+
+        // Si la categoría ya fue clasificada como automática → nunca responder
+        if (in_array($emailCategory, $autoCategories)) {
+            Log::info('🚫 Categoría automática bloqueada', [
+                'email_id' => $email->id,
+                'category' => $emailCategory,
+            ]);
+            return false;
+        }
+
+        // Si vera_action_required es 'archive' → no responder (Vera decidió que no es necesario)
+        if ($email->vera_action_required === 'archive') {
+            Log::info('🚫 Vera marcó el email para archivar, no responder', [
+                'email_id' => $email->id,
+                'vera_action_required' => $email->vera_action_required,
+            ]);
+            return false;
+        }
+
+        // Detección adicional por contenido y remitente para emails sin categoría clara
+        $isAutomated = str_contains($content, 'unsubscribe')
                     || str_contains($content, 'darse de baja')
                     || str_contains($content, 'cancelar suscripción')
                     || str_contains($fromEmail, 'noreply')
                     || str_contains($fromEmail, 'no-reply')
                     || str_contains($fromEmail, 'donotreply')
-                    || str_contains($fromEmail, 'notification')
-                    || str_contains($fromEmail, 'automated')
-                    || $email->category === 'promotions'
-                    || $email->category === 'updates';
+                    || str_contains($fromEmail, 'notifications@')
+                    || str_contains($fromEmail, 'automated@')
+                    || str_contains($fromEmail, 'mailer@')
+                    || str_contains($fromEmail, 'alerts@');
 
         if ($isAutomated) {
-            Log::info('🚫 Email automático/newsletter detectado', [
+            Log::info('🚫 Email automático detectado por contenido/remitente', [
                 'email_id' => $email->id,
                 'from' => $email->from_email,
-                'category' => $email->category,
-            ]);
-            return false;
-        }
-
-        // 3.4. NUEVO: Si llegó hasta aquí, es una PERSONA REAL
-        // Solo verificamos categoría para promociones/newsletters (que ya filtramos arriba)
-        // Para personas reales, respondemos sin importar si es reunión, consulta, soporte, etc.
-        $category = $email->category ?? $email->vera_tags[0] ?? null;
-
-        // Solo bloquear si es una categoría claramente promocional/automática
-        $autoCategories = ['promociones', 'newsletters', 'notificaciones', 'updates', 'promotions'];
-        if (in_array($category, $autoCategories)) {
-            Log::info('🚫 Categoría automática bloqueada', [
-                'email_id' => $email->id,
-                'category' => $category,
             ]);
             return false;
         }
@@ -421,7 +427,7 @@ class VeraResponseGenerator
         Log::info('✅ Email de persona real detectado', [
             'email_id' => $email->id,
             'from' => $email->from_email,
-            'category' => $category,
+            'category' => $emailCategory,
         ]);
 
         // 5. Detectar agradecimientos simples (NO responder)

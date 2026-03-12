@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
  */
 class AIGatewayService
 {
-    protected GeminiProvider $provider;
+    protected GeminiProvider|GroqProvider $provider;
     protected string $providerName;
 
     // ── Circuit Breaker config ──────────────────────────────────────────────
@@ -30,6 +30,7 @@ class AIGatewayService
         $this->providerName = config('vera.ai_provider', 'gemini');
 
         $this->provider = match ($this->providerName) {
+            'groq'   => new GroqProvider(),
             'gemini' => new GeminiProvider(),
             default  => new GeminiProvider(),
         };

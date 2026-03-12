@@ -129,7 +129,7 @@
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <!-- Resumen de Vera (si existe) -->
                 <div x-show="email.vera_processed && email.vera_summary"
-                    class="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
                     <div class="flex items-start gap-3">
                         <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
                             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,6 +140,76 @@
                         <div class="flex-1">
                             <p class="text-sm font-semibold text-purple-900 mb-1">✨ Resumen de Vera</p>
                             <p class="text-sm text-purple-800" x-text="email.vera_summary"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bloque aprobación Vera: aparece cuando hay respuesta pendiente -->
+                <div x-data="veraApproval()"
+                     x-init="init()"
+                     x-show="pendingAction"
+                     x-transition
+                     class="mb-6 rounded-xl border-2 border-purple-300 bg-white shadow-sm overflow-hidden">
+
+                    <!-- Header -->
+                    <div class="flex items-center justify-between px-4 py-3 bg-purple-600">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            <span class="text-sm font-semibold text-white">Vera preparó una respuesta</span>
+                            <span class="text-xs text-purple-200" x-text="pendingAction ? Math.round(pendingAction.confidence_score * 100) + '% confianza' : ''"></span>
+                        </div>
+                        <button @click="pendingAction = null" class="text-purple-200 hover:text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Respuesta editable -->
+                    <div class="p-4">
+                        <textarea
+                            x-model="responseText"
+                            rows="5"
+                            class="w-full text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg p-3 focus:border-purple-500 focus:ring-purple-500 focus:ring-1 resize-none outline-none"
+                            placeholder="Respuesta generada por Vera...">
+                        </textarea>
+
+                        <!-- Acciones -->
+                        <div class="flex items-center gap-2 mt-3">
+                            <!-- Aprobar y Enviar -->
+                            <button @click="approve()"
+                                :disabled="sending"
+                                class="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors">
+                                <svg x-show="!sending" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                </svg>
+                                <svg x-show="sending" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
+                                <span x-text="sending ? 'Enviando...' : 'Aprobar y Enviar'"></span>
+                            </button>
+
+                            <!-- Rechazar -->
+                            <button @click="reject()"
+                                :disabled="sending"
+                                class="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 disabled:opacity-60 text-gray-700 text-sm font-medium rounded-lg border border-gray-300 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                Descartar
+                            </button>
+
+                            <!-- Feedback enviado -->
+                            <span x-show="sent" x-transition class="text-sm text-green-600 font-medium flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Enviado
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -198,3 +268,104 @@
     </div>
 
 </div>
+
+<script>
+function veraApproval() {
+    return {
+        pendingAction: null,
+        responseText: '',
+        sending: false,
+        sent: false,
+
+        init() {
+            // Escucha cuando se carga un email para buscar su respuesta pendiente
+            window.addEventListener('load-email', (e) => {
+                this.pendingAction = null;
+                this.sent = false;
+            });
+
+            this.$watch('$root.__x?.$data?.email', (email) => {
+                this.checkPendingAction(email);
+            });
+
+            // También escucha el evento global que lanza emailPreview al cargar
+            window.addEventListener('vera-check-pending', (e) => {
+                this.checkPendingAction(e.detail);
+            });
+        },
+
+        checkPendingAction(email) {
+            if (!email || !email.vera_actions) {
+                this.pendingAction = null;
+                return;
+            }
+            const pending = email.vera_actions.find(a =>
+                a.action_type === 'replied' && a.user_feedback === 'pending' && !a.response_sent
+            );
+            this.pendingAction = pending || null;
+            this.responseText  = pending ? pending.generated_response : '';
+            this.sent = false;
+        },
+
+        async approve() {
+            if (!this.pendingAction || this.sending) return;
+            this.sending = true;
+
+            try {
+                // 1. Actualizar el texto si fue editado
+                if (this.responseText !== this.pendingAction.generated_response) {
+                    await fetch(`/vera/responses/${this.pendingAction.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({ generated_response: this.responseText })
+                    });
+                }
+
+                // 2. Aprobar y enviar
+                const res = await fetch(`/vera/responses/${this.pendingAction.id}/approve`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                });
+
+                // 3. Enviar el email
+                await fetch(`/vera/responses/${this.pendingAction.id}/send`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                });
+
+                this.sent = true;
+                this.pendingAction = null;
+
+                // Notificación
+                if (window.showToast) window.showToast('Respuesta enviada correctamente', 'success');
+
+            } catch (err) {
+                console.error(err);
+                if (window.showToast) window.showToast('Error al enviar la respuesta', 'error');
+            } finally {
+                this.sending = false;
+            }
+        },
+
+        async reject() {
+            if (!this.pendingAction || this.sending) return;
+            this.sending = true;
+            try {
+                await fetch(`/vera/responses/${this.pendingAction.id}/reject`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                });
+                this.pendingAction = null;
+                if (window.showToast) window.showToast('Respuesta descartada', 'info');
+            } catch(err) {
+                console.error(err);
+            } finally {
+                this.sending = false;
+            }
+        }
+    }
+}
+</script>

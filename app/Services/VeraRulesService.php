@@ -64,49 +64,86 @@ class VeraRulesService
      */
     protected function detectCategory(Email $email): string
     {
-        $body = strtolower($email->body_text ?? $email->body_html ?? '');
+        $body    = strtolower($email->body_text ?? strip_tags($email->body_html ?? ''));
         $subject = strtolower($email->subject ?? '');
-        $from = strtolower($email->from_email);
+        $from    = strtolower($email->from_email ?? '');
 
-        // 1. PROMOCIONES - alta prioridad de detección
-        $promoIndicators = [
-            'unsubscribe',
-            'darse de baja',
-            'cancelar suscripción',
-            'promoción',
-            'oferta',
-            'descuento',
-            'rebaja',
-            '% off',
-            'compra ahora',
-            'ofertas',
-            'black friday',
-            'cyber monday',
-            'últimas unidades',
-            'stock limitado'
+        // 0. TRANSACCIONAL - recibos, facturas automáticas, OTP, confirmaciones
+        $transactionalIndicators = [
+            'your receipt',
+            'tu recibo',
+            'order confirmation',
+            'confirmación de pedido',
+            'payment confirmation',
+            'confirmación de pago',
+            'invoice #',
+            'factura #',
+            'verification code',
+            'código de verificación',
+            'otp',
+            'one-time password',
+            'your account',
+            'password reset',
+            'restablecimiento de contraseña',
         ];
-
-        foreach ($promoIndicators as $indicator) {
-            if (str_contains($body, $indicator) || str_contains($subject, $indicator)) {
-                return 'promotional';
+        foreach ($transactionalIndicators as $indicator) {
+            if (str_contains($subject, $indicator) || str_contains($body, $indicator)) {
+                return 'transactional';
             }
         }
 
-        // 2. NEWSLETTERS
-        $newsletterIndicators = [
-            'newsletter',
-            'noreply',
-            'no-reply',
-            'info@',
-            'news@',
-            'boletin',
-            'boletín',
-            'suscripción'
+        // Remitentes típicos de sistemas automáticos transaccionales
+        $transactionalSenders = [
+            'receipt@', 'billing@', 'invoices@', 'payments@',
+            'noreply@', 'no-reply@', 'donotreply@',
+            'notifications@', 'automated@', 'alerts@',
+            'support@stripe', 'support@paypal',
         ];
+        foreach ($transactionalSenders as $sender) {
+            if (str_contains($from, $sender)) {
+                return 'transactional';
+            }
+        }
 
-        foreach ($newsletterIndicators as $indicator) {
+        // 1. NEWSLETTERS - detectar por contenido y remitente
+        $newsletterBodyIndicators = [
+            'unsubscribe',
+            'darse de baja',
+            'cancelar suscripción',
+            'opt-out',
+            'ver en el navegador',
+            'view in browser',
+            'view this email',
+            'newsletter',
+            'boletín',
+        ];
+        foreach ($newsletterBodyIndicators as $indicator) {
+            if (str_contains($body, $indicator)) {
+                return 'newsletter';
+            }
+        }
+
+        $newsletterSenders = [
+            'newsletter', 'news@', 'bulletin@', 'digest@',
+            'updates@', 'weekly@', 'monthly@', 'boletin@',
+        ];
+        foreach ($newsletterSenders as $indicator) {
             if (str_contains($from, $indicator)) {
                 return 'newsletter';
+            }
+        }
+
+        // 2. PROMOCIONES - ofertas, descuentos, marketing
+        $promoIndicators = [
+            'promoción', 'oferta', 'descuento', 'rebaja',
+            '% off', '% de descuento', 'compra ahora', 'ofertas',
+            'black friday', 'cyber monday', 'últimas unidades',
+            'stock limitado', 'envío gratis', 'free shipping',
+            'deal', 'sale ends', 'expires soon',
+        ];
+        foreach ($promoIndicators as $indicator) {
+            if (str_contains($body, $indicator) || str_contains($subject, $indicator)) {
+                return 'promotional';
             }
         }
 
@@ -479,38 +516,59 @@ class VeraRulesService
      */
     public function needsAI(Email $email, array $rulesAnalysis): bool
     {
-        // 1. Emails cortos y simples NO necesitan IA
+        // 1. Emails automáticos NUNCA necesitan IA (reglas son suficientes)
+        if (in_array($rulesAnalysis['category'], ['promotional', 'newsletter', 'social', 'transactional'])) {
+            return false;
+        }
+
+        // 2. Emails vacíos/basura no necesitan IA
         $bodyLength = strlen($email->body_text ?? $email->body_html ?? '');
-        if ($bodyLength < 100) {
+        if ($bodyLength < 20) {
             return false;
         }
 
-        // 2. Promociones y newsletters NO necesitan IA
-        if (in_array($rulesAnalysis['category'], ['promotional', 'newsletter', 'social'])) {
-            return false;
+        $text = strtolower(($email->body_text ?? '') . ' ' . ($email->subject ?? ''));
+
+        // 3. Emails con preguntas directas SÍ necesitan IA (independientemente del tamaño)
+        $hasQuestion = str_contains($text, '?')
+            || str_contains($text, 'información')
+            || str_contains($text, 'saber más')
+            || str_contains($text, 'me podrías')
+            || str_contains($text, 'podrías')
+            || str_contains($text, 'puedes')
+            || str_contains($text, 'cómo funciona')
+            || str_contains($text, 'qué es')
+            || str_contains($text, 'cuánto')
+            || str_contains($text, 'cuanto')
+            || str_contains($text, 'tell me')
+            || str_contains($text, 'can you')
+            || str_contains($text, 'could you');
+
+        if ($hasQuestion) {
+            return true;
         }
 
-        // 3. Emails urgentes SÍ necesitan IA (mejor análisis)
+        // 4. Emails urgentes SÍ necesitan IA
         if ($rulesAnalysis['priority'] === 'urgent') {
             return true;
         }
 
-        // 4. Emails importantes y largos SÍ necesitan IA
-        if ($rulesAnalysis['priority'] === 'high' && $bodyLength > 500) {
-            return true;
-        }
-
-        // 5. Emails personales largos SÍ necesitan IA (para resumir)
-        if ($rulesAnalysis['category'] === 'personal' && $bodyLength > 1000) {
-            return true;
-        }
-
-        // 6. Emails de trabajo SÍ necesitan IA (contexto importante)
+        // 5. Emails de trabajo SÍ necesitan IA
         if ($rulesAnalysis['category'] === 'work') {
             return true;
         }
 
-        // 7. Por defecto: NO necesita IA (ahorrar costes)
+        // 6. Emails de alta prioridad SÍ necesitan IA
+        if ($rulesAnalysis['priority'] === 'high') {
+            return true;
+        }
+
+        // 7. Emails personales con cuerpo sustancial SÍ necesitan IA
+        if ($rulesAnalysis['category'] === 'personal' && $bodyLength > 200) {
+            return true;
+        }
+
+        // 8. Por defecto: NO necesita IA (ahorrar costes)
         return false;
     }
 

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Email;
 use App\Services\AI\GeminiProvider;
+use App\Services\AI\GroqProvider;
 use App\Services\AI\AIGatewayService;
 use App\Services\VeraUsageService;
 use App\Services\VeraRAGService;
@@ -22,7 +23,7 @@ class VeraService
     protected VeraUsageService $usageService;
     protected VeraRAGService $ragService;
     protected AIGatewayService $aiGateway;
-    protected ?GeminiProvider $geminiProvider = null;
+    protected GeminiProvider|GroqProvider|null $geminiProvider = null;
     protected string $aiProvider;
 
     public function __construct()
@@ -31,11 +32,14 @@ class VeraService
         $this->usageService = new VeraUsageService();
         $this->ragService   = new VeraRAGService();
         $this->aiGateway    = new AIGatewayService();
-        $this->aiProvider = config('vera.ai_provider', 'gemini');
+        $this->aiProvider   = config('vera.ai_provider', 'gemini');
 
         // Inicializar provider de IA si está habilitado
-        if ($this->isEnabled() && $this->aiProvider === 'gemini') {
-            $this->geminiProvider = new GeminiProvider();
+        if ($this->isEnabled()) {
+            $this->geminiProvider = match ($this->aiProvider) {
+                'groq'  => new GroqProvider(),
+                default => new GeminiProvider(),
+            };
         }
     }
 
@@ -201,9 +205,12 @@ class VeraService
             // RAG: obtener contexto relevante para este email
             $ragContext = $this->ragService->getRelevantContext($email);
 
+            // Cargar config de Vera del usuario para personalizar el análisis
+            $veraConfig = \App\Models\VeraConfig::where('user_id', $email->user_id)->first();
+
             // Construir prompts
             $systemPrompt = $this->getSystemPrompt($ragContext['context_text']);
-            $userPrompt = $this->buildAnalysisPrompt($email);
+            $userPrompt = $this->buildAnalysisPrompt($email, $veraConfig);
 
             // Llamar a Gemini con registro automático de tokens
             $response = $this->geminiProvider->analyze(
@@ -249,11 +256,15 @@ class VeraService
      * Construir prompt de análisis
      *
      * @param Email $email
+     * @param \App\Models\VeraConfig|null $veraConfig Configuración del usuario para personalizar análisis
      * @return string
      */
-    protected function buildAnalysisPrompt(Email $email): string
+    protected function buildAnalysisPrompt(Email $email, ?\App\Models\VeraConfig $veraConfig = null): string
     {
         $content = $this->getEmailContent($email);
+
+        // Contexto de configuración del usuario
+        $userConfigContext = $this->buildUserConfigContext($veraConfig);
 
         return <<<PROMPT
 Analiza el siguiente email y devuelve un JSON con esta estructura EXACTA:
@@ -269,9 +280,26 @@ Analiza el siguiente email y devuelve un JSON con esta estructura EXACTA:
   "confidence": 0.0 a 1.0,
   "sentimiento_tono": "neutro|amistoso|urgente|presionado|molesto|entusiasta|formal|agresivo",
   "badge_sugerido": "Trabajo|Personal|Urgente|Cliente|Proveedor|Reunión|Seguimiento|Factura|Soporte",
-  "aprender_de_esto": "Una frase corta (máx 120 chars) sobre preferencias del remitente o patrón útil para futuras respuestas. null si no hay nada relevante.",
-  "suggested_reply": "Texto completo del borrador de respuesta en el idioma y tono del usuario, usando el estilo de escritura proporcionado como contexto. null si action_required no es 'reply'."
+  "aprender_de_esto": "Una frase corta (máx 120 chars) sobre preferencias del remitente o patrón útil. null si no aplica.",
+  "suggested_reply": "Borrador completo de respuesta o null"
 }
+
+{$userConfigContext}
+
+REGLAS DE CATEGORIZACIÓN (críticas):
+- "newsletter": tiene enlace para darse de baja, es un boletín periódico, bulk email
+- "promotional": oferta, descuento, marketing, publicidad
+- "transactional": recibo, factura, confirmación de pedido, OTP, reset de contraseña
+- "social": notificación de LinkedIn, Twitter, Facebook, Instagram
+- "work": email de trabajo de persona real (dominio corporativo, contexto laboral)
+- "personal": email personal de persona real
+
+REGLAS PARA action_required (MUY IMPORTANTE):
+- "reply": si category es "work" o "personal" → SIEMPRE "reply". Las personas reales SIEMPRE merecen respuesta, sin excepción.
+- "archive": si category es newsletter, promotional, transactional o social → SIEMPRE "archive"
+- "schedule": si es work/personal Y menciona explícitamente una cita, reunión o evento concreto con fecha
+- "none": SOLO para emails automáticos sin categoría clara. NUNCA para work/personal.
+- NUNCA uses "reply" para newsletters, promociones o emails automáticos
 
 EMAIL A ANALIZAR:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -285,14 +313,53 @@ Contenido:
 
 IMPORTANTE:
 - Responde SOLO con el JSON, sin markdown, sin explicaciones
-- El summary debe ser en español y muy conciso
-- Si detectas urgencia, usa sentiment_label: "urgent"
-- Los topics deben ser palabras clave relevantes en español
-- sentimiento_tono: el tono emocional del remitente en este email concreto
-- badge_sugerido: la etiqueta visual más útil para clasificar este email de un vistazo
-- aprender_de_esto: patrón de comportamiento del remitente útil para Vera (o null)
-- suggested_reply: Si action_required es 'reply', redacta un borrador de respuesta completo usando el estilo de escritura del usuario que se te ha proporcionado como contexto RAG. Si no hay estilo definido, usa un tono profesional en español. null si action_required no es 'reply'
+- suggested_reply: Solo si action_required es 'reply'. Usa el estilo del usuario del contexto RAG. null en cualquier otro caso.
 PROMPT;
+    }
+
+    /**
+     * Construir contexto de configuración del usuario para el prompt
+     */
+    protected function buildUserConfigContext(?\App\Models\VeraConfig $config): string
+    {
+        if (!$config) {
+            return '';
+        }
+
+        $mode = $config->auto_response_mode ?? 'ask_first';
+        $objective = $config->main_objective ?? '';
+
+        $modeDescription = match ($mode) {
+            'always'           => 'Responder automáticamente a todos los emails de personas reales.',
+            'suggest_responses'=> 'Sugerir respuestas para revisión del usuario.',
+            'important_only'   => 'Responder solo a emails importantes (prioridad alta o urgente).',
+            'ask_first'        => 'Solo sugerir respuesta si hay una pregunta directa.',
+            'filter_focus'     => 'Solo categorizar y filtrar, NO generar respuestas.',
+            'no'               => 'NO generar respuestas automáticas.',
+            default            => 'Solo sugerir si hay pregunta directa.',
+        };
+
+        $noReplyModes = ['filter_focus', 'no'];
+        $replyInstruction = in_array($mode, $noReplyModes)
+            ? 'IMPORTANTE: suggested_reply debe ser SIEMPRE null porque el usuario no quiere respuestas automáticas.'
+            : '';
+
+        $lines = ["CONFIGURACIÓN DEL USUARIO:\n- Modo de Vera: {$modeDescription}"];
+
+        if ($objective) {
+            $lines[] = "- Objetivo principal del usuario: {$objective}";
+        }
+
+        if (!empty($config->blocked_keywords)) {
+            $keywords = implode(', ', (array) $config->blocked_keywords);
+            $lines[] = "- Palabras clave bloqueadas (no responder si aparecen): {$keywords}";
+        }
+
+        if ($replyInstruction) {
+            $lines[] = $replyInstruction;
+        }
+
+        return implode("\n", $lines);
     }
 
     /**
@@ -440,14 +507,23 @@ SYSTEM;
             }
 
             // Validar y normalizar datos
+            $category       = $data['category'] ?? 'personal';
+            $actionRequired = $data['action_required'] ?? 'none';
+
+            // Safety net: personas reales (work/personal) siempre merecen respuesta
+            if (in_array($category, ['work', 'personal']) && $actionRequired === 'none') {
+                $actionRequired = 'reply';
+                Log::info('🔧 Safety net: action_required forzado a reply para email personal/work');
+            }
+
             return [
                 'summary'          => $data['summary'] ?? '',
-                'category'         => $data['category'] ?? 'personal',
+                'category'         => $category,
                 'sentiment_score'  => (float) ($data['sentiment_score'] ?? 0.5),
                 'sentiment_label'  => $data['sentiment_label'] ?? 'neutral',
                 'priority'         => $data['priority'] ?? 'normal',
                 'topics'           => $data['topics'] ?? [],
-                'action_required'  => $data['action_required'] ?? 'none',
+                'action_required'  => $actionRequired,
                 'confidence'       => (float) ($data['confidence'] ?? 0.0),
                 // Campos enriquecidos
                 'sentimiento_tono' => $data['sentimiento_tono'] ?? 'neutro',
@@ -542,12 +618,25 @@ SYSTEM;
 
             $feedback = 'pending';
             if ($veraConfig) {
-                $mode = $veraConfig->auto_response_mode ?? 'ask_first';
-                if ($mode === 'always') {
+                $mode       = $veraConfig->auto_response_mode ?? 'ask_first';
+                $threshold  = (float) ($veraConfig->confidence_threshold ?? 0.75);
+                $confidence = (float) ($analysis['confidence'] ?? 0.0);
+                $meetsThreshold = $confidence >= $threshold;
+
+                if ($mode === 'always' && $meetsThreshold) {
                     $feedback = 'approved';
-                } elseif ($mode === 'important_only' && in_array($analysis['priority'] ?? '', ['urgent', 'high'])) {
+                } elseif ($mode === 'important_only' && in_array($analysis['priority'] ?? '', ['urgent', 'high']) && $meetsThreshold) {
                     $feedback = 'approved';
                 }
+
+                Log::info('🎯 Vera decision feedback', [
+                    'email_id'       => $email->id,
+                    'mode'           => $mode,
+                    'confidence'     => $confidence,
+                    'threshold'      => $threshold,
+                    'meets_threshold'=> $meetsThreshold,
+                    'feedback'       => $feedback,
+                ]);
             }
 
             // Solo crear si no existe ya un action para este email
@@ -582,18 +671,26 @@ SYSTEM;
             $email->update(['priority' => $analysis['priority']]);
         }
 
-        // 🆕 NUEVO: Aplicar workflow_status automáticamente si Vera lo sugiere                                                                                     
-        if (isset($analysis['suggested_workflow_status']) && !empty($analysis['suggested_workflow_status'])) {
+        // Aplicar workflow_status: la IA puede cambiar action_required a 'reply',
+        // así que recalculamos SIEMPRE basándonos en el action_required final.
+        $finalAction = $analysis['action_required'] ?? 'none';
+
+        if ($finalAction === 'reply') {
+            // IA dijo que necesita respuesta → siempre pending_response
+            $email->setWorkflowStatus('pending_response');
+            Log::info('🤖 Vera marcó email como pending_response (IA: action=reply)', [
+                'email_id' => $email->id,
+            ]);
+        } elseif (isset($analysis['suggested_workflow_status']) && !empty($analysis['suggested_workflow_status'])) {
             $suggestedStatus = $analysis['suggested_workflow_status'];
 
-            // Solo aplicar si el email está en estado 'unread' (no sobrescribir cambios manuales)                                                                  
+            // Solo aplicar si el email está en estado 'unread' o sin estado (no sobrescribir cambios manuales)
             if (!$email->workflow_status || $email->workflow_status === 'unread') {
                 $email->setWorkflowStatus($suggestedStatus);
-
                 Log::info('🤖 Vera aplicó workflow_status automático', [
                     'email_id' => $email->id,
                     'workflow_status' => $suggestedStatus,
-                    'reason' => "Basado en análisis: priority={$analysis['priority']}, action={$analysis['action_required']}"
+                    'reason' => "Basado en análisis: priority={$analysis['priority']}, action={$finalAction}"
                 ]);
             }
         }

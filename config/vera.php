@@ -18,14 +18,17 @@ return [
     'ai_provider' => env('VERA_AI_PROVIDER', 'gemini'), // gemini, openai, anthropic, local
 
     // API Keys
-    'gemini_key' => env('GEMINI_API_KEY'),
-    'openai_key' => env('OPENAI_API_KEY'),
+    'gemini_key'    => env('GEMINI_API_KEY'),
+    'openai_key'    => env('OPENAI_API_KEY'),
     'anthropic_key' => env('ANTHROPIC_API_KEY'),
+    'groq_key'      => env('GROQ_API_KEY'),
 
     // Modelos por proveedor
-    'gemini_model' => env('GEMINI_MODEL', 'gemini-1.5-flash'),
-    'openai_model' => env('OPENAI_MODEL', 'gpt-4-turbo-preview'),
+    'gemini_model'    => env('GEMINI_MODEL', 'gemini-2.0-flash'),
+    'openai_model'    => env('OPENAI_MODEL', 'gpt-4-turbo-preview'),
     'anthropic_model' => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
+    'groq_model'      => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+    'groq_fast_model' => env('GROQ_FAST_MODEL', 'llama-3.1-8b-instant'),
 
     // Modelo a usar (legacy - mantener por compatibilidad)
     'model' => env('VERA_AI_MODEL', 'gemini-1.5-flash'),

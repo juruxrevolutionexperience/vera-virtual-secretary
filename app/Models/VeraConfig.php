@@ -77,9 +77,21 @@ class VeraConfig extends Model
      */
     public function isWithinAvailabilityHours(): bool
     {
-        $now = now()->format('H:i');
+        if (empty($this->availability_start) || empty($this->availability_end)) {
+            return true;
+        }
 
-        return $now >= $this->availability_start && $now <= $this->availability_end;
+        $now       = now()->format('H:i');
+        $startTime = substr($this->availability_start, 0, 5); // '09:00'
+        $endTime   = substr($this->availability_end,   0, 5); // '18:00'
+
+        // Caso normal: 09:00 - 18:00
+        if ($startTime <= $endTime) {
+            return $now >= $startTime && $now <= $endTime;
+        }
+
+        // Caso que cruza medianoche: 22:00 - 06:00 o casi todo el día 01:00 - 00:00
+        return $now >= $startTime || $now <= $endTime;
     }
 
     /**

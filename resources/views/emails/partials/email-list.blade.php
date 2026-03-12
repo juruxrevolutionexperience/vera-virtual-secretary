@@ -239,8 +239,8 @@
                                             </span>
                                         @endif
 
-                                        <!-- Vera: Badge sugerido -->
-                                        @if($email->vera_badge_sugerido)
+                                        <!-- Vera: Badge sugerido (solo si aporta info nueva respecto a la categoría) -->
+                                        @if($email->vera_badge_sugerido && strtolower($email->vera_badge_sugerido) !== strtolower($email->category ?? ''))
                                             @php
                                                 $badgeColors = [
                                                     'Urgente'     => 'bg-red-100 text-red-700',

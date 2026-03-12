@@ -249,30 +249,148 @@
                     @endif
                 </div>
 
-                <!-- Acciones de Vera (si existen) -->
-                @if($email->veraActions && $email->veraActions->count() > 0)
-                    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200 p-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                            <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                @php
+                    $pendingAction = $email->veraActions
+                        ? $email->veraActions->first(fn($a) => $a->action_type === 'replied' && $a->user_feedback === 'pending' && !$a->response_sent)
+                        : null;
+                    $sentAction = $email->veraActions
+                        ? $email->veraActions->first(fn($a) => $a->action_type === 'replied' && $a->response_sent)
+                        : null;
+                @endphp
+
+                {{-- Bloque: Vera tiene respuesta pendiente de aprobación --}}
+                @if($pendingAction)
+                    <div x-data="{
+                            responseText: @js($pendingAction->generated_response),
+                            sending: false,
+                            sent: false,
+                            dismissed: false,
+                        }"
+                        x-show="!dismissed && !sent"
+                        class="mb-4 rounded-xl border-2 border-purple-300 bg-white shadow-sm overflow-hidden">
+
+                        {{-- Header --}}
+                        <div class="flex items-center justify-between px-5 py-3 bg-purple-600">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                                <span class="text-sm font-semibold text-white">Vera preparó una respuesta</span>
+                                <span class="text-xs text-purple-200">
+                                    {{ round($pendingAction->confidence_score * 100) }}% confianza
+                                </span>
+                            </div>
+                            <button @click="dismissed = true" class="text-purple-200 hover:text-white transition-colors" title="Cerrar">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        {{-- Respuesta editable --}}
+                        <div class="p-5">
+                            <p class="text-xs text-gray-500 mb-2 font-medium">Puedes editar el texto antes de enviar:</p>
+                            <textarea
+                                x-model="responseText"
+                                rows="6"
+                                class="w-full text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg p-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-none outline-none">
+                            </textarea>
+
+                            {{-- Botones --}}
+                            <div class="flex items-center gap-3 mt-4">
+
+                                {{-- Aprobar y Enviar --}}
+                                <button
+                                    @click="
+                                        sending = true;
+                                        fetch('/vera/responses/{{ $pendingAction->id }}', {
+                                            method: 'PATCH',
+                                            headers: {'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
+                                            body: JSON.stringify({generated_response: responseText})
+                                        })
+                                        .then(() => fetch('/vera/responses/{{ $pendingAction->id }}/approve', {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'}}))
+                                        .then(() => fetch('/vera/responses/{{ $pendingAction->id }}/send', {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'}}))
+                                        .then(r => r.json())
+                                        .then(data => {
+                                            sending = false;
+                                            if (data.success !== false) {
+                                                sent = true;
+                                            } else {
+                                                alert('Error al enviar: ' + (data.message || 'Inténtalo de nuevo'));
+                                                sending = false;
+                                            }
+                                        })
+                                        .catch(() => { sending = false; alert('Error de red'); })
+                                    "
+                                    :disabled="sending"
+                                    class="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors">
+                                    <template x-if="!sending">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                        </svg>
+                                    </template>
+                                    <template x-if="sending">
+                                        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                        </svg>
+                                    </template>
+                                    <span x-text="sending ? 'Enviando...' : 'Aprobar y Enviar'"></span>
+                                </button>
+
+                                {{-- Descartar --}}
+                                <button
+                                    @click="
+                                        fetch('/vera/responses/{{ $pendingAction->id }}/reject', {
+                                            method: 'POST',
+                                            headers: {'X-CSRF-TOKEN':'{{ csrf_token() }}'}
+                                        }).then(() => { dismissed = true; });
+                                    "
+                                    :disabled="sending"
+                                    class="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-gray-50 disabled:opacity-60 text-gray-700 text-sm font-medium rounded-lg border border-gray-300 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                    Descartar
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Confirmación enviado --}}
+                        <div x-show="sent" x-transition class="px-5 py-4 bg-green-50 border-t border-green-200 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
-                            Acciones de Vera
-                        </h3>
-                        <div class="space-y-3">
-                            @foreach($email->veraActions as $action)
-                                <div class="bg-white rounded-lg p-4 border border-indigo-100">
-                                    <div class="flex items-start justify-between">
-                                        <div>
-                                            <p class="font-medium text-gray-900">{{ $action->action_type }}</p>
-                                            <p class="text-sm text-gray-600 mt-1">{{ $action->description }}</p>
-                                        </div>
-                                        <span class="text-xs text-gray-500">
-                                            {{ formatEmailDate($action->created_at) }}
-                                        </span>
-                                    </div>
-                                </div>
-                            @endforeach
+                            <span class="text-sm font-semibold text-green-700">Respuesta enviada correctamente</span>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Si ya fue enviada, mostrar aviso compacto --}}
+                @if($sentAction)
+                    <div class="mb-4 flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg">
+                        <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <div>
+                            <p class="text-sm font-semibold text-green-800">Vera ya respondió este email</p>
+                            <p class="text-xs text-green-600">{{ formatEmailDate($sentAction->response_sent_at ?? $sentAction->created_at) }}</p>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Resumen de Vera (si existe) --}}
+                @if($email->vera_summary)
+                    <div class="mb-4 flex items-start gap-3 px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg">
+                        <div class="w-7 h-7 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-purple-900 mb-0.5">Resumen de Vera</p>
+                            <p class="text-sm text-purple-800">{{ $email->vera_summary }}</p>
                         </div>
                     </div>
                 @endif
