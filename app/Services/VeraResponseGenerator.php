@@ -90,7 +90,28 @@ class VeraResponseGenerator
             ->first();
 
         if ($existingResponse) {
-            Log::info('ℹ️  Ya existe una respuesta generada', ['email_id' => $email->id]);
+            // Si está aprobada pero no enviada, intentar el envío — pero respetar delay
+            if ($existingResponse->user_feedback === 'approved' && !$existingResponse->response_sent) {
+                $isScheduled = $existingResponse->scheduled_send_at !== null;
+                $delayPending = $isScheduled && $existingResponse->scheduled_send_at > now();
+
+                if ($delayPending) {
+                    Log::info('⏰ Respuesta aprobada con delay pendiente, skipping (vera:send-scheduled la enviará)', [
+                        'email_id'       => $email->id,
+                        'action_id'      => $existingResponse->id,
+                        'scheduled_at'   => $existingResponse->scheduled_send_at,
+                    ]);
+                } else {
+                    Log::info('🔄 Respuesta aprobada pendiente de envío, procesando auto-envío', [
+                        'email_id'   => $email->id,
+                        'action_id'  => $existingResponse->id,
+                        'confidence' => $existingResponse->confidence_score,
+                    ]);
+                    $this->sendApprovedResponse($existingResponse, $email);
+                }
+            } else {
+                Log::info('ℹ️  Ya existe una respuesta generada', ['email_id' => $email->id]);
+            }
             return $existingResponse;
         }
 
@@ -213,7 +234,7 @@ class VeraResponseGenerator
     /**
      * Enviar respuesta aprobada automáticamente (NUEVO - Nivel 2)
      */
-    protected function sendApprovedResponse(VeraEmailAction $action, Email $email): void
+    public function sendApprovedResponse(VeraEmailAction $action, Email $email): void
     {
         try {
             // Obtener cuenta de email del usuario

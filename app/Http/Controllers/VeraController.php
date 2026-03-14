@@ -141,14 +141,92 @@ class VeraController extends Controller
         $config = VeraConfig::where('user_id', $user->id)->first();
 
         if (!$config) {
-            // Si no tiene configuración, redirigir a onboarding
             return redirect()->route('vera.onboarding');
         }
 
-        // Obtener estadísticas de Vera
+        // Cargar perfil RAG del usuario (para pre-rellenar el formulario)
+        $userProfileChunks = \App\Models\VeraMemoryChunk::where('user_id', $user->id)
+            ->where('type', 'user_profile')
+            ->where('is_active', true)
+            ->get()
+            ->keyBy('title');
+
+        $userProfile = [
+            'business_description' => $userProfileChunks->get('Descripción del negocio')?->content ?? '',
+            'response_style'       => $userProfileChunks->get('Estilo de respuesta')?->content ?? '',
+            'email_signature'      => $userProfileChunks->get('Firma de email')?->content ?? '',
+            'never_say'            => $userProfileChunks->get('Cosas que nunca diría')?->content ?? '',
+        ];
+
         $stats = $this->getVeraStats($user);
 
-        return view('vera.config', compact('config', 'stats'));
+        return view('vera.config', compact('config', 'stats', 'userProfile'));
+    }
+
+    /**
+     * Guarda el perfil de usuario en el RAG (VeraMemoryChunks)
+     */
+    public function saveUserProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'business_description' => 'nullable|string|max:1000',
+            'response_style'       => 'nullable|string|max:1000',
+            'email_signature'      => 'nullable|string|max:500',
+            'never_say'            => 'nullable|string|max:500',
+        ]);
+
+        $chunks = [
+            'business_description' => [
+                'title'    => 'Descripción del negocio',
+                'keywords' => 'negocio empresa trabajo profesión dedicación sector industria cliente',
+            ],
+            'response_style' => [
+                'title'    => 'Estilo de respuesta',
+                'keywords' => 'estilo tono respuesta clientes desconocidos amigos formal informal',
+            ],
+            'email_signature' => [
+                'title'    => 'Firma de email',
+                'keywords' => 'firma nombre cargo teléfono email contacto',
+            ],
+            'never_say' => [
+                'title'    => 'Cosas que nunca diría',
+                'keywords' => 'evitar nunca prohibido límite tabú inapropiado',
+            ],
+        ];
+
+        foreach ($chunks as $key => $meta) {
+            if (!empty($validated[$key])) {
+                \App\Models\VeraMemoryChunk::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'type'    => 'user_profile',
+                        'title'   => $meta['title'],
+                    ],
+                    [
+                        'content'        => $validated[$key],
+                        'keywords_text'  => $meta['keywords'],
+                        'source'         => 'user_config',
+                        'is_active'      => true,
+                        'relevance_tags' => ['user_profile'],
+                    ]
+                );
+            } else {
+                // Si está vacío, desactivar el chunk si existía
+                \App\Models\VeraMemoryChunk::where('user_id', $user->id)
+                    ->where('type', 'user_profile')
+                    ->where('title', $meta['title'])
+                    ->update(['is_active' => false]);
+            }
+        }
+
+        Log::info('👤 Perfil RAG del usuario actualizado', ['user_id' => $user->id]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Perfil guardado. Vera lo tendrá en cuenta en sus respuestas.',
+        ]);
     }
 
     /**
@@ -168,6 +246,7 @@ class VeraController extends Controller
             'active_hours_end' => 'sometimes|string',
             'autonomy_level' => 'sometimes|string|in:conservative,moderate,aggressive',
             'confidence_threshold' => 'nullable|numeric|min:0|max:1',
+            'response_delay_minutes' => 'sometimes|integer|min:0|max:1440',
             'auto_response_enabled' => 'sometimes|boolean',
             'auto_archive_newsletters' => 'sometimes|boolean',
         ]);
@@ -206,6 +285,10 @@ class VeraController extends Controller
 
         if (isset($validated['confidence_threshold'])) {
             $updateData['confidence_threshold'] = $validated['confidence_threshold'];
+        }
+
+        if (isset($validated['response_delay_minutes'])) {
+            $updateData['response_delay_minutes'] = $validated['response_delay_minutes'];
         }
 
         if (isset($validated['active_hours_start'])) {

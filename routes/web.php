@@ -319,6 +319,9 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
     // Historial de tokens IA
     Route::get('/tokens', [\App\Http\Controllers\VeraTokensController::class, 'index'])->name('tokens');
 
+    // Perfil del usuario para el RAG
+    Route::post('/user-profile', [VeraController::class, 'saveUserProfile'])->name('user-profile.save');
+
     // Sugerencias semanales — aplicar acción directa / descartar
     Route::post('/weekly-suggestion/apply',   [VeraController::class, 'applyWeeklySuggestion'])->name('weekly-suggestion.apply');
     Route::post('/weekly-suggestion/dismiss', [VeraController::class, 'dismissWeeklySuggestion'])->name('weekly-suggestion.dismiss');

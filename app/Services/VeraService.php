@@ -639,13 +639,18 @@ SYSTEM;
                 ]);
             }
 
-            // Solo crear si no existe ya un action para este email
-            $alreadyExists = \App\Models\VeraEmailAction::where('email_id', $email->id)
-                ->where('action_type', 'replied')
-                ->exists();
+            // Solo crear si no existe ya un action para este email (lock para evitar race condition)
+            $newAction = \DB::transaction(function () use ($email, $analysis, $feedback) {
+                $alreadyExists = \App\Models\VeraEmailAction::where('email_id', $email->id)
+                    ->where('action_type', 'replied')
+                    ->lockForUpdate()
+                    ->exists();
 
-            if (!$alreadyExists) {
-                \App\Models\VeraEmailAction::create([
+                if ($alreadyExists) {
+                    return null;
+                }
+
+                return \App\Models\VeraEmailAction::create([
                     'email_id'           => $email->id,
                     'user_id'            => $email->user_id,
                     'action_type'        => 'replied',
@@ -656,13 +661,45 @@ SYSTEM;
                     'user_feedback'      => $feedback,
                     'response_sent'      => false,
                 ]);
+            });
 
+            if ($newAction) {
                 Log::info('📝 Vera generó borrador de respuesta', [
                     'email_id'  => $email->id,
                     'user_id'   => $email->user_id,
                     'feedback'  => $feedback,
                     'mode'      => $veraConfig->auto_response_mode ?? 'ask_first',
                 ]);
+
+                // Si fue aprobado automáticamente → enviar ahora o programar con delay
+                if ($feedback === 'approved') {
+                    $delayMinutes = (int) ($veraConfig->response_delay_minutes ?? 0);
+
+                    if ($delayMinutes > 0) {
+                        $scheduledAt = now()->addMinutes($delayMinutes);
+                        $newAction->update(['scheduled_send_at' => $scheduledAt]);
+                        Log::info('⏰ Auto-envío programado con delay', [
+                            'email_id'      => $email->id,
+                            'action_id'     => $newAction->id,
+                            'delay_minutes' => $delayMinutes,
+                            'scheduled_at'  => $scheduledAt,
+                        ]);
+                    } else {
+                        try {
+                            $generator = new \App\Services\VeraResponseGenerator();
+                            $generator->sendApprovedResponse($newAction, $email);
+                            Log::info('🚀 Auto-envío ejecutado desde VeraService', [
+                                'email_id'  => $email->id,
+                                'action_id' => $newAction->id,
+                            ]);
+                        } catch (\Exception $e) {
+                            Log::error('❌ Error en auto-envío desde VeraService', [
+                                'email_id' => $email->id,
+                                'error'    => $e->getMessage(),
+                            ]);
+                        }
+                    }
+                }
             }
         }
 
@@ -676,11 +713,22 @@ SYSTEM;
         $finalAction = $analysis['action_required'] ?? 'none';
 
         if ($finalAction === 'reply') {
-            // IA dijo que necesita respuesta → siempre pending_response
-            $email->setWorkflowStatus('pending_response');
-            Log::info('🤖 Vera marcó email como pending_response (IA: action=reply)', [
-                'email_id' => $email->id,
-            ]);
+            // Comprobar si ya hay una acción aprobada y enviada (modo always + auto-envío)
+            $approvedAndSent = \App\Models\VeraEmailAction::where('email_id', $email->id)
+                ->where('action_type', 'replied')
+                ->where('user_feedback', 'approved')
+                ->where('response_sent', true)
+                ->exists();
+
+            if ($approvedAndSent) {
+                // Ya se envió automáticamente → completed
+                $email->setWorkflowStatus('completed');
+                Log::info('✅ Vera marcó email como completed (auto-enviado)', ['email_id' => $email->id]);
+            } else {
+                // Pendiente de aprobación manual o envío
+                $email->setWorkflowStatus('pending_response');
+                Log::info('🤖 Vera marcó email como pending_response (IA: action=reply)', ['email_id' => $email->id]);
+            }
         } elseif (isset($analysis['suggested_workflow_status']) && !empty($analysis['suggested_workflow_status'])) {
             $suggestedStatus = $analysis['suggested_workflow_status'];
 

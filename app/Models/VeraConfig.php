@@ -32,6 +32,7 @@ class VeraConfig extends Model
         'weekly_suggestions',
         'onboarding_completed',
         'onboarding_completed_at',
+        'response_delay_minutes',
     ];
 
     protected $casts = [

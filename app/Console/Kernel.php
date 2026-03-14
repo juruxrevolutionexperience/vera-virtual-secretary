@@ -53,6 +53,12 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->name('gmail-renew-watches');
 
+        // ⏰ Enviar respuestas de Vera programadas con delay (cada minuto)
+        $schedule->command('vera:send-scheduled')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->name('vera-send-scheduled-responses');
+
         // 🤖 NIVEL 2: Procesamiento automático de emails con Vera
         // Ejecutar cada 5 minutos para generar respuestas automáticas
         $schedule->command('vera:process-emails --recent=10 --limit=100')

@@ -149,6 +149,7 @@ class VeraRAGService
             'contact_profile'     => 'PERFIL CONTACTO',
             'product_info'        => 'PRODUCTO',
             'policy'              => 'POLÍTICA',
+            'user_profile'        => 'PERFIL USUARIO',
             default               => strtoupper($type),
         };
     }
