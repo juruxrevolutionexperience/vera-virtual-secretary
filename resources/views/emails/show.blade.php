@@ -262,11 +262,41 @@
                 @if($pendingAction)
                     <div x-data="{
                             responseText: @js($pendingAction->generated_response),
+                            originalText: @js($pendingAction->generated_response),
                             sending: false,
                             sent: false,
                             dismissed: false,
+                            showFeedback: false,
+                            feedbackSent: false,
+                            feedbackReason: '',
+                            feedbackOther: '',
+                            showRejectForm: false,
+                            rejectReason: '',
+                            rejectOther: '',
+                            sendFeedback(actionId) {
+                                if (!this.feedbackReason) return;
+                                fetch('/vera/responses/' + actionId + '/feedback', {
+                                    method: 'POST',
+                                    headers: {'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
+                                    body: JSON.stringify({reason: this.feedbackReason, custom_text: this.feedbackOther})
+                                }).then(() => { this.feedbackSent = true; });
+                            },
+                            confirmReject(actionId) {
+                                if (!this.rejectReason) return;
+                                fetch('/vera/responses/' + actionId + '/reject', {
+                                    method: 'POST',
+                                    headers: {'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
+                                    body: JSON.stringify({reason: this.rejectReason})
+                                }).then(() => {
+                                    fetch('/vera/responses/' + actionId + '/feedback', {
+                                        method: 'POST',
+                                        headers: {'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
+                                        body: JSON.stringify({reason: this.rejectReason, custom_text: this.rejectOther})
+                                    }).then(() => { this.dismissed = true; });
+                                });
+                            }
                         }"
-                        x-show="!dismissed && !sent"
+                        x-show="!dismissed"
                         class="mb-4 rounded-xl border-2 border-purple-300 bg-white shadow-sm overflow-hidden">
 
                         {{-- Header --}}
@@ -315,6 +345,9 @@
                                             sending = false;
                                             if (data.success !== false) {
                                                 sent = true;
+                                                if (responseText !== originalText) {
+                                                    showFeedback = true;
+                                                }
                                             } else {
                                                 alert('Error al enviar: ' + (data.message || 'Inténtalo de nuevo'));
                                                 sending = false;
@@ -340,13 +373,9 @@
 
                                 {{-- Descartar --}}
                                 <button
-                                    @click="
-                                        fetch('/vera/responses/{{ $pendingAction->id }}/reject', {
-                                            method: 'POST',
-                                            headers: {'X-CSRF-TOKEN':'{{ csrf_token() }}'}
-                                        }).then(() => { dismissed = true; });
-                                    "
+                                    @click="showRejectForm = true"
                                     :disabled="sending"
+                                    x-show="!showRejectForm"
                                     class="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-gray-50 disabled:opacity-60 text-gray-700 text-sm font-medium rounded-lg border border-gray-300 transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -354,14 +383,96 @@
                                     Descartar
                                 </button>
                             </div>
+
+                            {{-- Formulario inline de rechazo --}}
+                            <div x-show="showRejectForm" x-transition class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                <p class="text-sm font-semibold text-red-800 mb-3">¿Por qué descartaste esta respuesta?</p>
+                                <div class="space-y-2">
+                                    <template x-for="opt in [
+                                        {value: 'tone', label: 'El tono no era el mío'},
+                                        {value: 'length', label: 'Era demasiado larga / corta'},
+                                        {value: 'missing_info', label: 'Faltaba información importante'},
+                                        {value: 'signature', label: 'La firma estaba mal'},
+                                        {value: 'other', label: 'Otro motivo'}
+                                    ]">
+                                        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 hover:text-gray-900">
+                                            <input type="radio" :value="opt.value" x-model="rejectReason" class="accent-red-500">
+                                            <span x-text="opt.label"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                                <div x-show="rejectReason === 'other'" x-transition class="mt-2">
+                                    <input type="text" x-model="rejectOther" placeholder="Cuéntanos qué mejorar..."
+                                        class="w-full text-sm text-gray-900 bg-white border border-red-300 rounded-lg px-3 py-2 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none">
+                                </div>
+                                <div class="flex items-center gap-3 mt-4">
+                                    <button
+                                        @click="confirmReject({{ $pendingAction->id }})"
+                                        :disabled="!rejectReason"
+                                        class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors">
+                                        Confirmar rechazo
+                                    </button>
+                                    <button
+                                        @click="showRejectForm = false; rejectReason = ''; rejectOther = ''"
+                                        class="px-4 py-2 bg-white hover:bg-gray-50 text-gray-600 text-sm font-medium rounded-lg border border-gray-300 transition-colors">
+                                        Cancelar
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         {{-- Confirmación enviado --}}
-                        <div x-show="sent" x-transition class="px-5 py-4 bg-green-50 border-t border-green-200 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
-                            <span class="text-sm font-semibold text-green-700">Respuesta enviada correctamente</span>
+                        <div x-show="sent" x-transition class="px-5 py-4 bg-green-50 border-t border-green-200">
+                            <div class="flex items-center gap-2 mb-0" :class="showFeedback ? 'mb-3' : ''">
+                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                <span class="text-sm font-semibold text-green-700">Respuesta enviada correctamente</span>
+                            </div>
+
+                            {{-- Panel de feedback post-envío (solo si editó el borrador) --}}
+                            <div x-show="showFeedback && !feedbackSent" x-transition class="mt-3 pt-3 border-t border-green-200">
+                                <p class="text-sm font-medium text-gray-700 mb-2">¿Qué mejorarías para las próximas respuestas de Vera?</p>
+                                <div class="space-y-1.5">
+                                    <template x-for="opt in [
+                                        {value: 'tone', label: 'El tono no era el mío'},
+                                        {value: 'length', label: 'Era demasiado larga / corta'},
+                                        {value: 'missing_info', label: 'Faltaba información importante'},
+                                        {value: 'signature', label: 'La firma estaba mal'},
+                                        {value: 'other', label: 'Otro'}
+                                    ]">
+                                        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 hover:text-gray-900">
+                                            <input type="radio" :value="opt.value" x-model="feedbackReason" class="accent-purple-600">
+                                            <span x-text="opt.label"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                                <div x-show="feedbackReason === 'other'" x-transition class="mt-2">
+                                    <input type="text" x-model="feedbackOther" placeholder="Cuéntanos qué mejorar..."
+                                        class="w-full text-sm text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
+                                </div>
+                                <div class="flex items-center gap-3 mt-3">
+                                    <button
+                                        @click="sendFeedback({{ $pendingAction->id }})"
+                                        :disabled="!feedbackReason"
+                                        class="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors">
+                                        Enviar feedback
+                                    </button>
+                                    <button
+                                        @click="showFeedback = false"
+                                        class="px-4 py-2 text-gray-500 hover:text-gray-700 text-sm transition-colors">
+                                        Saltar
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Confirmación feedback guardado --}}
+                            <div x-show="feedbackSent" x-transition class="mt-3 pt-3 border-t border-green-200 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                                </svg>
+                                <span class="text-sm text-purple-700 font-medium">¡Gracias! Vera aprenderá de este feedback.</span>
+                            </div>
                         </div>
                     </div>
                 @endif

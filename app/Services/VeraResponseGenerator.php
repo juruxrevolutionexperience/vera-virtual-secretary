@@ -6,7 +6,7 @@ use App\Models\Email;
 use App\Models\VeraConfig;
 use App\Models\VeraEmailAction;
 use App\Models\CommunicationProfile;
-use App\Services\AI\GeminiProvider;
+use App\Services\AI\GroqProvider;
 use App\Services\VeraUsageService;
 use App\Services\VeraRAGService;
 use Illuminate\Support\Facades\Log;
@@ -18,14 +18,14 @@ use Illuminate\Support\Facades\Log;
  */
 class VeraResponseGenerator
 {
-    protected GeminiProvider $gemini;
+    protected GroqProvider $groq;
     protected VeraUsageService $usageService;
     protected VeraActivityService $activityService;
     protected VeraRAGService $ragService;
 
     public function __construct()
     {
-        $this->gemini = new GeminiProvider();
+        $this->groq = new GroqProvider();
         $this->usageService = new VeraUsageService();
         $this->activityService = new VeraActivityService();
         $this->ragService = new VeraRAGService();
@@ -542,8 +542,8 @@ class VeraResponseGenerator
      */
     protected function generateWithAI(Email $email, VeraConfig $config, ?CommunicationProfile $profile, $context): array
     {
-        if (!$this->gemini->isConfigured()) {
-            throw new \Exception('Gemini no está configurado');
+        if (!$this->groq->isConfigured()) {
+            throw new \Exception('Groq no está configurado');
         }
 
         // RAG: obtener solo el contexto relevante para este email
@@ -552,8 +552,8 @@ class VeraResponseGenerator
         $systemPrompt = $this->buildSystemPrompt($config, $profile, $ragContext['context_text']);
         $userPrompt   = $this->buildUserPrompt($email, $context);
 
-        // Llamar a Gemini con registro automático de tokens
-        $response = $this->gemini->analyze(
+        // Llamar a Groq con registro automático de tokens
+        $response = $this->groq->analyze(
             systemPrompt: $systemPrompt,
             userPrompt: $userPrompt,
             userId: $email->user_id,

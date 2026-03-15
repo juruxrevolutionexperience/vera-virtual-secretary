@@ -333,6 +333,7 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
     Route::post('/responses/{response}/reject', [VeraController::class, 'rejectResponse'])->name('responses.reject');
     Route::patch('/responses/{response}', [VeraController::class, 'updateResponse'])->name('responses.update');
     Route::post('/responses/{response}/send', [VeraController::class, 'sendResponse'])->name('responses.send');
+    Route::post('/responses/{response}/feedback', [VeraController::class, 'saveResponseFeedback'])->name('responses.feedback');
 });
 
 // ========================================

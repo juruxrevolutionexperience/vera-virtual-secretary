@@ -503,6 +503,52 @@ class VeraController extends Controller
     }
 
     /**
+     * Guardar feedback del usuario sobre una respuesta de Vera → aprende en RAG
+     */
+    public function saveResponseFeedback(Request $request, \App\Models\VeraEmailAction $response)
+    {
+        if ($response->user_id !== Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'No autorizado'], 403);
+        }
+
+        $validated = $request->validate([
+            'reason'      => 'required|string|in:tone,length,missing_info,signature,other',
+            'custom_text' => 'nullable|string|max:500',
+        ]);
+
+        $reasonMap = [
+            'tone'         => 'El usuario indica que el tono de las respuestas generadas no refleja su estilo personal. Ajustar el tono para que sea más natural y auténtico.',
+            'length'       => 'El usuario indica que las respuestas son demasiado largas o cortas. Generar respuestas más equilibradas en longitud.',
+            'missing_info' => 'El usuario indica que faltaba información importante en la respuesta. Incluir más contexto y detalles relevantes.',
+            'signature'    => 'El usuario indica que la firma o cierre de la respuesta estaba mal. Revisar y ajustar el formato de despedida y firma.',
+            'other'        => $validated['custom_text'] ?? 'El usuario proporcionó feedback personalizado sobre la respuesta.',
+        ];
+
+        $content = $reasonMap[$validated['reason']];
+
+        // Guardar en RAG como aprendizaje de estilo de comunicación
+        \App\Models\VeraMemoryChunk::updateOrCreate(
+            [
+                'user_id' => Auth::id(),
+                'type'    => 'communication_style',
+                'title'   => 'Feedback respuesta Vera: ' . $validated['reason'],
+            ],
+            [
+                'content'        => $content,
+                'keywords_text'  => 'feedback tono estilo respuesta comunicacion preferencia',
+                'relevance_tags' => ['feedback', 'communication_style', $validated['reason']],
+                'source'         => 'user_feedback',
+                'is_active'      => true,
+            ]
+        );
+
+        // Guardar también en el action para trazabilidad
+        $response->update(['user_notes' => ($response->user_notes ? $response->user_notes . ' | ' : '') . $content]);
+
+        return response()->json(['success' => true, 'message' => 'Feedback guardado. Vera aprenderá de esto.']);
+    }
+
+    /**
      * Actualizar una respuesta (modificar texto)
      */
     public function updateResponse(Request $request, \App\Models\VeraEmailAction $response)
