@@ -9,24 +9,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->text('two_factor_secret')->nullable()->after('password');
-            $table->boolean('two_factor_enabled')->default(false)->after('two_factor_secret');
-            $table->timestamp('two_factor_enabled_at')->nullable()->after('two_factor_enabled');
-            $table->timestamp('two_factor_confirmed_at')->nullable()->after('two_factor_enabled_at');
-            $table->text('two_factor_recovery_codes')->nullable()->after('two_factor_confirmed_at');
+            // two_factor_secret, two_factor_enabled, two_factor_enabled_at y
+            // two_factor_recovery_codes ya existen desde 2026_01_13_185508.
+            // Solo añadimos two_factor_confirmed_at si no existe.
+            if (!Schema::hasColumn('users', 'two_factor_confirmed_at')) {
+                $table->timestamp('two_factor_confirmed_at')->nullable()->after('two_factor_enabled_at');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn([
-                'two_factor_secret',
-                'two_factor_enabled',
-                'two_factor_enabled_at',
-                'two_factor_confirmed_at',
-                'two_factor_recovery_codes',
-            ]);
+            if (Schema::hasColumn('users', 'two_factor_confirmed_at')) {
+                $table->dropColumn('two_factor_confirmed_at');
+            }
         });
     }
 };
