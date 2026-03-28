@@ -47,42 +47,6 @@ class Contact extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Obtener emails recibidos de este contacto
-     */
-    public function getReceivedEmailsAttribute()
-    {
-        return Email::where('user_id', $this->user_id)
-            ->where('from_email', $this->email)
-            ->orderBy('received_at', 'desc')
-            ->get();
-    }
-
-    /**
-     * Obtener emails enviados a este contacto
-     */
-    public function getSentEmailsAttribute()
-    {
-        return Email::where('user_id', $this->user_id)
-            ->where('to_email', $this->email)
-            ->orderBy('received_at', 'desc')
-            ->get();
-    }
-
-    /**
-     * Obtener todos los emails relacionados con este contacto
-     */
-    public function getAllEmailsAttribute()
-    {
-        return Email::where('user_id', $this->user_id)
-            ->where(function ($query) {
-                $query->where('from_email', $this->email)
-                    ->orWhere('to_email', $this->email);
-            })
-            ->orderBy('received_at', 'desc')
-            ->get();
-    }
-
     // ==========================================
     // SCOPES
     // ==========================================

@@ -15,8 +15,8 @@ class VeraActivityLog extends Model
 
     protected $fillable = [
         'user_id',
-        'email_id',
-        'vera_action_id',
+        'conversation_id',
+        'meeting_id',
         'token_usage_id',
         'activity_type',
         'title',
@@ -48,16 +48,6 @@ class VeraActivityLog extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function email(): BelongsTo
-    {
-        return $this->belongsTo(Email::class);
-    }
-
-    public function veraAction(): BelongsTo
-    {
-        return $this->belongsTo(VeraEmailAction::class, 'vera_action_id');
     }
 
     public function tokenUsage(): BelongsTo
@@ -219,8 +209,8 @@ class VeraActivityLog extends Model
             'by_type' => $activities->groupBy('activity_type')->map->count()->toArray(),
             'by_feedback' => $activities->groupBy('user_feedback')->map->count()->toArray(),
             'by_status' => $activities->groupBy('status')->map->count()->toArray(),
-            'emails_processed' => $activities->whereIn('activity_type', ['email_processed', 'email_replied', 'email_categorized'])->count(),
-            'emails_replied' => $activities->where('activity_type', 'email_replied')->count(),
+            'meetings_confirmed' => $activities->where('activity_type', 'meeting_confirmed')->count(),
+            'responses_sent' => $activities->whereIn('activity_type', ['response_sent', 'meeting_confirmed'])->count(),
             'approval_rate' => $activities->where('user_feedback', '!=', 'pending')->count() > 0
                 ? round(($activities->where('user_feedback', 'approved')->count() / $activities->where('user_feedback', '!=', 'pending')->count()) * 100, 1)
                 : 0,

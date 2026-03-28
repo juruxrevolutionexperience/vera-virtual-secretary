@@ -167,18 +167,6 @@ class AuditLog extends Model
     /**
      * Log de email
      */
-    public static function logEmail(string $eventType, string $description, ?Email $email = null): self
-    {
-        return self::createLog([
-            'event_type' => $eventType,
-            'event_category' => 'email',
-            'description' => $description,
-            'auditable_type' => $email ? Email::class : null,
-            'auditable_id' => $email?->id,
-            'severity' => 'info',
-        ]);
-    }
-
     /**
      * Log de configuración
      */

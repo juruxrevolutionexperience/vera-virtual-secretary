@@ -4,9 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\VeraConfig;
-use App\Models\VeraEmailAction;
 use App\Models\VeraMemoryChunk;
-use App\Models\Email;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -81,53 +79,6 @@ class VeraMemoryService
         ]);
 
         return ['indexed' => $indexed, 'skipped' => $skipped];
-    }
-
-    /**
-     * Aprender de una respuesta exitosa (aprobada y/o enviada).
-     * Crea un chunk de tipo past_response para que Vera aprenda el patrón.
-     */
-    public function learnFromResponse(Email $email, VeraEmailAction $action): void
-    {
-        // Solo aprender de respuestas con confianza alta y aprobadas
-        if ($action->confidence_score < 0.7) {
-            return;
-        }
-
-        if (!in_array($action->user_feedback, ['approved', 'sent'])) {
-            return;
-        }
-
-        // Resumen del email original (para contexto)
-        $emailSummary = mb_substr($email->subject . ': ' . ($email->body_text ?? strip_tags($email->body_html ?? '')), 0, 200);
-
-        $content = "Email recibido de: {$email->from_email}\n";
-        $content .= "Asunto: {$email->subject}\n";
-        $content .= "Resumen del email: {$emailSummary}\n\n";
-        $content .= "Respuesta exitosa generada:\n{$action->generated_response}";
-
-        $keywords = $this->extractKeywords($email->subject . ' ' . ($email->vera_tags ? implode(' ', (array)$email->vera_tags) : ''));
-
-        // Usamos upsert por email_id para no duplicar si ya aprendimos de este email
-        VeraMemoryChunk::updateOrCreate(
-            [
-                'user_id' => $email->user_id,
-                'type'    => 'past_response',
-                'title'   => 'Re: ' . mb_substr($email->subject, 0, 80),
-            ],
-            [
-                'content'        => mb_substr($content, 0, 1500),
-                'keywords_text'  => $keywords,
-                'relevance_tags' => $email->vera_tags ?? [],
-                'source'         => 'auto_detected',
-                'is_active'      => true,
-            ]
-        );
-
-        Log::info('🧠 VeraMemoryService: aprendido de respuesta exitosa', [
-            'email_id'   => $email->id,
-            'confidence' => $action->confidence_score,
-        ]);
     }
 
     /**

@@ -17,19 +17,24 @@ class VeraTokensController extends Controller
         $year  = (int) $request->get('year',  $now->year);
         $month = (int) $request->get('month', $now->month);
 
-        // ── Estado del plan actual ────────────────────────────────────────────
-        $emailsUsed      = $user->monthlyEmailsUsed();
-        $emailsLimit     = $user->planEmailLimit();
-        $emailsRemaining = $user->emailsRemaining();
+        // ── Estado del plan actual (reuniones, no emails) ─────────────────────
+        $meetingsUsed      = $user->monthlyMeetingsUsed();
+        $meetingsLimit     = $user->planMeetingLimit();    // null = ilimitado
+        $meetingsRemaining = $user->meetingsRemaining();   // null = ilimitado
+
+        $usagePct = ($meetingsLimit && $meetingsLimit > 0)
+            ? min(100, round($meetingsUsed / $meetingsLimit * 100))
+            : 0;
+
         $planStatus = [
-            'name'           => $user->planName(),
-            'plan_type'      => $user->plan_type ?? 'free_trial',
-            'emails_used'    => $emailsUsed,
-            'emails_limit'   => $emailsLimit,
-            'emails_remaining' => $emailsRemaining,
-            'unlimited'      => $emailsLimit === null,
-            'usage_pct'      => $emailsLimit ? min(100, round($emailsUsed / $emailsLimit * 100)) : 0,
-            'at_limit'       => $emailsLimit !== null && $emailsUsed >= $emailsLimit,
+            'name'               => $user->planName(),
+            'plan_type'          => $user->plan_type ?? 'basic',
+            'meetings_used'      => $meetingsUsed,
+            'meetings_limit'     => $meetingsLimit,
+            'meetings_remaining' => $meetingsRemaining,
+            'unlimited'          => $meetingsLimit === null,
+            'usage_pct'          => $usagePct,
+            'at_limit'           => $meetingsLimit !== null && $meetingsUsed >= $meetingsLimit,
         ];
 
         // ── Stats básicas del mes ─────────────────────────────────────────────
@@ -41,13 +46,12 @@ class VeraTokensController extends Controller
         // ── Proyección de coste con N usuarios ────────────────────────────────
         $projection = VeraTokenUsage::getCostProjection($user->id, $year, $month);
 
-        // ── Calculadora de pricing por plan (emails/mes × tokens/email) ───────
+        // ── Calculadora de pricing por plan ───────────────────────────────────
         $planPricing = VeraTokenUsage::getPlanPricingData($user->id);
 
-        // ── Historial paginado del mes ────────────────────────────────────────
+        // ── Historial paginado del mes (sin eager load de Email) ──────────────
         $history = VeraTokenUsage::byUser($user->id)
             ->forMonth($year, $month)
-            ->with('email:id,subject,from_email')
             ->orderByDesc('created_at')
             ->paginate(25)
             ->withQueryString();
@@ -68,10 +72,13 @@ class VeraTokensController extends Controller
             ->orderByRaw('YEAR(created_at) DESC, MONTH(created_at) DESC')
             ->get();
 
+        // Labels para los tipos de acción reales del nuevo Vera
         $actionLabels = [
-            'email_analysis'      => 'Análisis de email',
+            'intent_detection'    => 'Detección de intención',
             'response_generation' => 'Respuesta generada',
+            'slot_proposal'       => 'Propuesta de horario',
             'chat_interaction'    => 'Chat con Vera',
+            'quick_classify'      => 'Clasificación rápida',
         ];
 
         return view('vera.tokens.index', compact(

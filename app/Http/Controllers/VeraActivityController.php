@@ -64,10 +64,8 @@ class VeraActivityController extends Controller
     public function show($id)
     {
         $activity = \App\Models\VeraActivityLog::with([
-            'email',
-            'veraAction',
             'tokenUsage',
-            'user'
+            'user',
         ])->findOrFail($id);
 
         // Verificar que pertenece al usuario
@@ -146,7 +144,7 @@ class VeraActivityController extends Controller
             'confidence' => $request->get('confidence'),
         ];
 
-        $activities = \App\Models\VeraActivityLog::with(['email', 'veraAction', 'tokenUsage'])
+        $activities = \App\Models\VeraActivityLog::with(['tokenUsage'])
             ->byUser($user->id)
             ->applyFilters($filters)
             ->orderByDesc('created_at')
@@ -171,8 +169,7 @@ class VeraActivityController extends Controller
                 'Tipo',
                 'Título',
                 'Descripción',
-                'Email De',
-                'Email Asunto',
+                'Canal',
                 'Tokens',
                 'Costo',
                 'Confianza',
@@ -187,8 +184,7 @@ class VeraActivityController extends Controller
                     $activity->activity_type,
                     $activity->title,
                     $activity->description,
-                    $activity->email?->from_email ?? '-',
-                    $activity->email?->subject ?? '-',
+                    $activity->metadata['channel'] ?? '-',
                     $activity->tokens_consumed,
                     number_format($activity->cost, 6),
                     $activity->confidence_score ?? '-',

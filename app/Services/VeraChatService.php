@@ -6,8 +6,6 @@ use App\Models\User;
 use App\Models\VeraConversation;
 use App\Models\VeraConversationMessage;
 use App\Models\VeraConfig;
-use App\Models\VeraRule;
-use App\Models\Email;
 use App\Services\AI\GeminiProvider;
 use Illuminate\Support\Facades\Log;
 
@@ -371,18 +369,6 @@ PROMPT;
 
         // Detectar y ejecutar acciones especiales
         switch ($intent) {
-            case 'create_rule':
-                $ruleData = $this->extractRuleData($response);
-                if ($ruleData) {
-                    $rule = $this->createRuleFromChat($user, $ruleData);
-                    $actions[] = [
-                        'type' => 'rule_created',
-                        'rule_id' => $rule->id,
-                        'rule_name' => $rule->name,
-                    ];
-                }
-                break;
-
             case 'learn_style':
                 $styleData = $this->extractStyleData($response);
                 if ($styleData) {
@@ -396,29 +382,13 @@ PROMPT;
         }
 
         // Limpiar marcadores de la respuesta final
-        $cleanResponse = preg_replace('/\[CREATE_RULE\].*?\[\/CREATE_RULE\]/s', '', $response);
-        $cleanResponse = preg_replace('/\[LEARN_STYLE\].*?\[\/LEARN_STYLE\]/s', '', $cleanResponse);
+        $cleanResponse = preg_replace('/\[LEARN_STYLE\].*?\[\/LEARN_STYLE\]/s', '', $response);
         $cleanResponse = trim($cleanResponse);
 
         return [
             'content' => $cleanResponse,
             'actions_taken' => $actions,
         ];
-    }
-
-    /**
-     * Extraer datos de regla desde la respuesta
-     */
-    protected function extractRuleData(string $response): ?array
-    {
-        if (preg_match('/\[CREATE_RULE\](.*?)\[\/CREATE_RULE\]/s', $response, $matches)) {
-            try {
-                return json_decode($matches[1], true);
-            } catch (\Exception $e) {
-                Log::warning('Error parseando regla desde chat', ['error' => $e->getMessage()]);
-            }
-        }
-        return null;
     }
 
     /**
@@ -434,31 +404,6 @@ PROMPT;
             }
         }
         return null;
-    }
-
-    /**
-     * Crear regla desde chat
-     */
-    protected function createRuleFromChat(User $user, array $ruleData): VeraRule
-    {
-        return VeraRule::create([
-            'user_id' => $user->id,
-            'name' => $ruleData['name'] ?? 'Regla sin nombre',
-            'description' => $ruleData['conditions'] ?? '',
-            'conditions' => [
-                'type' => 'all',
-                'rules' => [], // Simplificado por ahora
-            ],
-            'actions' => [
-                [
-                    'action' => 'custom',
-                    'description' => $ruleData['actions'] ?? '',
-                ]
-            ],
-            'priority' => $ruleData['priority'] ?? 'normal',
-            'is_active' => true,
-            'created_via' => 'chat',
-        ]);
     }
 
     /**

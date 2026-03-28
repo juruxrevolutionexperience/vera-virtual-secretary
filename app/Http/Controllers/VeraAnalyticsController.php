@@ -114,22 +114,6 @@ class VeraAnalyticsController extends Controller
     }
 
     /**
-     * API: Obtener top categorías de emails
-     */
-    public function apiTopCategories(Request $request)
-    {
-        $user = Auth::user();
-        $limit = $request->get('limit', 10);
-
-        $data = $this->analyticsService->getTopEmailCategories($user, $limit);
-
-        return response()->json([
-            'success' => true,
-            'data' => $data,
-        ]);
-    }
-
-    /**
      * API: Obtener predicción de consumo mensual
      */
     public function apiPrediction()

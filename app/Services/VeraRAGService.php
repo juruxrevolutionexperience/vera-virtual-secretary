@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Email;
 use App\Models\VeraMemoryChunk;
 use Illuminate\Support\Facades\Log;
 
@@ -25,9 +24,10 @@ class VeraRAGService
     private const MAX_CHUNK_CHARS = 400;
 
     /**
-     * Obtener contexto relevante para un email.
+     * Obtener contexto relevante para un mensaje/conversación.
      *
-     * @param Email $email
+     * @param int    $userId
+     * @param string $searchText  Texto libre para buscar en memoria (asunto, cuerpo, intención, etc.)
      * @return array  [
      *   'context_text'  => string  (listo para inyectar en el prompt),
      *   'chunks_used'   => int,
@@ -35,15 +35,10 @@ class VeraRAGService
      *   'token_estimate'=> int,
      * ]
      */
-    public function getRelevantContext(Email $email): array
+    public function getRelevantContext(int $userId, string $searchText): array
     {
-        $userId = $email->user_id;
-
-        // Construir texto de búsqueda desde el email
-        $searchText = $this->buildSearchText($email);
-
         Log::debug('🔍 RAG buscando contexto relevante', [
-            'email_id'    => $email->id,
+            'user_id'     => $userId,
             'search_text' => substr($searchText, 0, 100) . '...',
         ]);
 
@@ -51,7 +46,7 @@ class VeraRAGService
         $chunks = VeraMemoryChunk::findRelevant($userId, $searchText, self::MAX_CHUNKS);
 
         if ($chunks->isEmpty()) {
-            Log::debug('📭 RAG: sin chunks relevantes para este email', ['email_id' => $email->id]);
+            Log::debug('📭 RAG: sin chunks relevantes', ['user_id' => $userId]);
             return $this->emptyContext();
         }
 
@@ -62,7 +57,7 @@ class VeraRAGService
         $tokenEstimate = (int) ceil(strlen($contextText) / 4);
 
         Log::info('✅ RAG: contexto construido', [
-            'email_id'       => $email->id,
+            'user_id'        => $userId,
             'chunks_used'    => $chunks->count(),
             'token_estimate' => $tokenEstimate,
             'chunk_types'    => $chunks->pluck('type')->toArray(),
@@ -77,34 +72,6 @@ class VeraRAGService
             'chunk_ids'      => $chunks->pluck('id')->toArray(),
             'token_estimate' => $tokenEstimate,
         ];
-    }
-
-    /**
-     * Construir texto de búsqueda combinando asunto + inicio del cuerpo
-     */
-    private function buildSearchText(Email $email): string
-    {
-        $parts = [];
-
-        if (!empty($email->subject)) {
-            $parts[] = $email->subject;
-        }
-
-        $body = $email->body_text ?? strip_tags($email->body_html ?? '');
-        if (!empty($body)) {
-            // Solo primeros 300 caracteres del cuerpo para la búsqueda
-            $parts[] = substr(trim($body), 0, 300);
-        }
-
-        // Añadir tags de Vera si ya fueron analizados
-        if (!empty($email->vera_tags)) {
-            $tags = is_array($email->vera_tags) ? $email->vera_tags : json_decode($email->vera_tags, true);
-            if (is_array($tags)) {
-                $parts[] = implode(' ', $tags);
-            }
-        }
-
-        return implode(' ', $parts);
     }
 
     /**

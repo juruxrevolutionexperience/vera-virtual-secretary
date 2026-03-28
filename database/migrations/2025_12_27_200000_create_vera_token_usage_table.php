@@ -14,13 +14,15 @@ return new class extends Migration
         Schema::create('vera_token_usage', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('email_id')->nullable()->constrained()->onDelete('set null');
+            $table->unsignedBigInteger('conversation_id')->nullable(); // FK a conversations (Sprint 2)
 
             // Tipo de acción que consumió tokens
             $table->enum('action_type', [
-                'email_analysis',
+                'intent_detection',
                 'response_generation',
-                'chat_interaction'
+                'slot_proposal',
+                'chat_interaction',
+                'quick_classify'
             ]);
 
             // Tokens consumidos (datos de Gemini API)
@@ -40,7 +42,6 @@ return new class extends Migration
             // Índices para consultas rápidas
             $table->index(['user_id', 'created_at'], 'idx_user_created');
             $table->index(['user_id', 'action_type'], 'idx_user_action');
-            $table->index('email_id', 'idx_email');
             $table->index('created_at', 'idx_created_at');
         });
     }

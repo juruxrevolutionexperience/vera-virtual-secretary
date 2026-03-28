@@ -1,9 +1,9 @@
 @php
     $user        = auth()->user();
-    $isUnlimited = $user->planEmailLimit() === null;
-    $used        = $user->monthlyEmailsUsed();
-    $limit       = $user->planEmailLimit() ?? 0;
-    $remaining   = $user->emailsRemaining();
+    $isUnlimited = $user->planMeetingLimit() === null;
+    $used        = $user->monthlyMeetingsUsed();
+    $limit       = $user->planMeetingLimit() ?? 0;
+    $remaining   = $user->meetingsRemaining();
     $percent     = $isUnlimited ? 0 : min(100, $limit > 0 ? round(($used / $limit) * 100, 1) : 0);
 
     $barColor = match(true) {
@@ -19,11 +19,9 @@
     };
 
     $planLabel = match($user->plan_type) {
-        'free_trial' => 'Free Trial',
-        'starter'    => 'Starter',
-        'pro'        => 'Pro',
-        'enterprise' => 'Enterprise',
-        default      => 'Basic',
+        'pro'   => 'Pro',
+        'team'  => 'Equipo',
+        default => 'Básica',
     };
 @endphp
 
@@ -40,8 +38,8 @@
             <span class="text-sm font-semibold text-gray-900">Plan mensual</span>
         </div>
         <span class="text-xs font-medium px-2 py-0.5 rounded-full
-            {{ $user->plan_type === 'pro'        ? 'bg-blue-50 text-blue-600'   :
-              ($user->plan_type === 'enterprise'  ? 'bg-purple-50 text-purple-600' : 'bg-gray-100 text-gray-500') }}">
+            {{ $user->plan_type === 'pro'  ? 'bg-blue-50 text-blue-600' :
+              ($user->plan_type === 'team' ? 'bg-purple-50 text-purple-600' : 'bg-gray-100 text-gray-500') }}">
             {{ $planLabel }}
         </span>
     </div>
@@ -49,7 +47,7 @@
     @if($isUnlimited)
         {{-- Enterprise / ilimitado --}}
         <p class="text-3xl font-semibold text-gray-900 mb-1">{{ number_format($used) }}</p>
-        <p class="text-sm text-gray-500 mb-3">emails procesados · <span class="text-purple-600 font-medium">Ilimitado</span></p>
+        <p class="text-sm text-gray-500 mb-3">reuniones este mes · <span class="text-purple-600 font-medium">Ilimitado</span></p>
         <div class="w-full bg-gray-100 rounded-full h-1.5">
             <div class="bg-purple-400 h-1.5 rounded-full w-full"></div>
         </div>
@@ -57,7 +55,7 @@
         {{-- Planes con límite --}}
         <p class="text-3xl font-semibold text-gray-900 mb-1">{{ $used }}</p>
         <p class="text-sm text-gray-500 mb-3">
-            de {{ $limit }} emails este mes
+            de {{ $limit }} reuniones este mes
         </p>
 
         {{-- Barra de progreso --}}
@@ -91,11 +89,13 @@
     @endif
 
     {{-- Link a historial --}}
-    <a href="{{ route('vera.tokens') }}"
+    @auth
+    <a href="{{ auth()->user()->isDev() ? route('dev.tokens') : route('vera.activity.index') }}"
        class="mt-4 flex items-center justify-center gap-1 text-xs text-purple-600 hover:text-purple-700 font-medium pt-3 border-t border-gray-100">
-        Ver uso detallado
+        Ver actividad de Vera
         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
         </svg>
     </a>
+    @endauth
 </div>

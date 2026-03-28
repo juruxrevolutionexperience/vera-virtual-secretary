@@ -94,91 +94,11 @@ class Organization extends Model
     }
 
     /**
-     * Emails de esta organización
-     */
-    public function emails(): HasMany
-    {
-        return $this->hasMany(Email::class);
-    }
-
-    /**
-     * Carpetas de email de esta organización
-     */
-    public function emailFolders(): HasMany
-    {
-        return $this->hasMany(EmailFolder::class);
-    }
-
-    /**
      * Contactos de esta organización
      */
     public function contacts(): HasMany
     {
         return $this->hasMany(Contact::class);
-    }
-
-    /**
-     * Alertas de email de esta organización
-     */
-    public function emailAlerts(): HasMany
-    {
-        return $this->hasMany(EmailAlert::class);
-    }
-
-    /**
-     * Reglas de escalado de esta organización
-     */
-    public function escalationRules(): HasMany
-    {
-        return $this->hasMany(EscalationRule::class);
-    }
-
-    /**
-     * Recordatorios de seguimiento de esta organización
-     */
-    public function followUpReminders(): HasMany
-    {
-        return $this->hasMany(FollowUpReminder::class);
-    }
-
-    /**
-     * Plantillas de email de esta organización
-     */
-    public function emailTemplates(): HasMany
-    {
-        return $this->hasMany(EmailTemplate::class);
-    }
-
-    /**
-     * Emails programados de esta organización
-     */
-    public function scheduledEmails(): HasMany
-    {
-        return $this->hasMany(ScheduledEmail::class);
-    }
-
-    /**
-     * Auto-responders de esta organización
-     */
-    public function autoResponders(): HasMany
-    {
-        return $this->hasMany(AutoResponder::class);
-    }
-
-    /**
-     * Categorías de email de esta organización
-     */
-    public function emailCategories(): HasMany
-    {
-        return $this->hasMany(EmailCategory::class);
-    }
-
-    /**
-     * Reglas de email de esta organización
-     */
-    public function emailRules(): HasMany
-    {
-        return $this->hasMany(EmailRule::class);
     }
 
     /**

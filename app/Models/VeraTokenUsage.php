@@ -15,7 +15,7 @@ class VeraTokenUsage extends Model
 
     protected $fillable = [
         'user_id',
-        'email_id',
+        'conversation_id',
         'action_type',
         'prompt_tokens',
         'completion_tokens',
@@ -41,14 +41,6 @@ class VeraTokenUsage extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    /**
-     * Relación con Email
-     */
-    public function email(): BelongsTo
-    {
-        return $this->belongsTo(Email::class);
     }
 
     /**
@@ -94,11 +86,11 @@ class VeraTokenUsage extends Model
     }
 
     /**
-     * Scope: Solo análisis de emails
+     * Scope: Solo detección de intención
      */
-    public function scopeEmailAnalysis($query)
+    public function scopeIntentDetection($query)
     {
-        return $query->where('action_type', 'email_analysis');
+        return $query->where('action_type', 'intent_detection');
     }
 
     /**
@@ -107,6 +99,14 @@ class VeraTokenUsage extends Model
     public function scopeResponseGeneration($query)
     {
         return $query->where('action_type', 'response_generation');
+    }
+
+    /**
+     * Scope: Solo propuestas de horario
+     */
+    public function scopeSlotProposal($query)
+    {
+        return $query->where('action_type', 'slot_proposal');
     }
 
     /**
@@ -121,9 +121,9 @@ class VeraTokenUsage extends Model
      * Registrar uso de tokens
      *
      * @param int $userId
-     * @param string $actionType
+     * @param string $actionType  intent_detection|response_generation|slot_proposal|chat_interaction|quick_classify
      * @param array $tokenData
-     * @param int|null $emailId
+     * @param int|null $conversationId
      * @param array $metadata
      * @return self
      */
@@ -131,18 +131,18 @@ class VeraTokenUsage extends Model
         int $userId,
         string $actionType,
         array $tokenData,
-        ?int $emailId = null,
+        ?int $conversationId = null,
         array $metadata = []
     ): self {
         return self::create([
-            'user_id' => $userId,
-            'email_id' => $emailId,
-            'action_type' => $actionType,
-            'prompt_tokens' => $tokenData['prompt_tokens'] ?? 0,
-            'completion_tokens' => $tokenData['completion_tokens'] ?? 0,
-            'total_tokens' => $tokenData['total_tokens'] ?? 0,
-            'model' => $tokenData['model'] ?? 'gemini-1.5-flash',
-            'cost' => self::calculateCost(
+            'user_id'          => $userId,
+            'conversation_id'  => $conversationId,
+            'action_type'      => $actionType,
+            'prompt_tokens'    => $tokenData['prompt_tokens'] ?? 0,
+            'completion_tokens'=> $tokenData['completion_tokens'] ?? 0,
+            'total_tokens'     => $tokenData['total_tokens'] ?? 0,
+            'model'            => $tokenData['model'] ?? 'gemini-1.5-flash',
+            'cost'             => self::calculateCost(
                 $tokenData['prompt_tokens']     ?? 0,
                 $tokenData['completion_tokens'] ?? 0,
                 $tokenData['total_tokens']      ?? 0
@@ -230,25 +230,24 @@ class VeraTokenUsage extends Model
     }
 
     /**
-     * Obtener top emails que más tokens consumieron
+     * Obtener top conversaciones que más tokens consumieron este mes.
      *
      * @param int $userId
      * @param int $limit
      * @return \Illuminate\Support\Collection
      */
-    public static function getTopConsumingEmails(int $userId, int $limit = 10)
+    public static function getTopConsumingConversations(int $userId, int $limit = 10)
     {
         return self::byUser($userId)
             ->thisMonth()
-            ->whereNotNull('email_id')
-            ->with('email:id,subject,from_email')
+            ->whereNotNull('conversation_id')
             ->orderByDesc('total_tokens')
             ->limit($limit)
             ->get();
     }
 
     /**
-     * Detectar anomalías (uso excesivo)
+     * Detectar anomalías (uso excesivo este mes).
      *
      * @param float $threshold Multiplicador del promedio (ej: 3.0 = 3x más que promedio)
      * @return \Illuminate\Support\Collection
@@ -263,7 +262,7 @@ class VeraTokenUsage extends Model
 
         return self::thisMonth()
             ->where('total_tokens', '>', $avgTokens * $threshold)
-            ->with(['user:id,name,email', 'email:id,subject,from_email'])
+            ->with(['user:id,name,email'])
             ->orderByDesc('total_tokens')
             ->get();
     }
@@ -330,56 +329,53 @@ class VeraTokenUsage extends Model
 
     /**
      * Datos para la calculadora de pricing por plan.
-     * Basada en emails/mes × avg_tokens_per_email (dato real medido).
+     * Basada en reuniones/mes × avg_tokens_por_reunion (conversación completa de agenda).
      *
-     * Planes definidos según el modelo de negocio real (monthly_email_limit).
+     * Plan Maestro: Básica 30 reuniones/mes | Pro ilimitado | Equipo ilimitado
      * Precios Gemini Flash (tier de pago):
      *   Input:  $0.075 por 1M tokens
      *   Output: $0.300 por 1M tokens
      */
     public static function getPlanPricingData(int $userId): array
     {
-        // Promedio tokens/email desde datos reales (solo email_analysis)
-        $emailAnalysisData = self::byUser($userId)
-            ->where('action_type', 'email_analysis')
-            ->get();
+        // Promedio tokens por llamada desde datos reales
+        $allData = self::byUser($userId)->get();
 
-        $avgTokensPerEmail = $emailAnalysisData->count() > 0
-            ? (int) round($emailAnalysisData->avg('total_tokens'))
-            : 2067; // Fallback: dato real medido (64.095 tokens / 31 llamadas = 2.067)
+        $avgTokensPerCall = $allData->count() > 0
+            ? (int) round($allData->avg('total_tokens'))
+            : 1500; // Fallback: estimado para una conversación de agenda
 
-        // Cargar planes desde BD; si la tabla está vacía, usar fallback hardcoded
-        $dbPlans = \App\Models\Plan::active()->orderBy('price_eur')->get();
+        // Estimamos ~4 llamadas IA por reunión confirmada (detección + propuesta + confirmación + respuesta)
+        $callsPerMeeting  = 4;
+        $avgTokensPerMeeting = $avgTokensPerCall * $callsPerMeeting;
 
-        if ($dbPlans->isNotEmpty()) {
-            $planDefinitions = [];
-            $colors = ['free_trial' => 'gray', 'basic' => 'blue', 'starter' => 'indigo', 'pro' => 'purple', 'enterprise' => 'emerald'];
-
-            foreach ($dbPlans as $plan) {
-                // Enterprise sin límite → usamos 3.000 emails como base de cálculo de coste
-                $emailsBase = $plan->email_limit ?? 3000;
-                $planDefinitions[$plan->slug] = [
-                    'name'            => $plan->name,
-                    'emails_per_month'=> $emailsBase,
-                    'suggested_price' => (float) $plan->price_eur,
-                    'color'           => $colors[$plan->slug] ?? 'gray',
-                    'unlimited'       => $plan->isUnlimited(),
-                ];
-            }
-        } else {
-            // Fallback hardcoded
-            $planDefinitions = [
-                'free_trial' => ['name' => 'Free Trial', 'emails_per_month' => 30,   'suggested_price' => 0,  'color' => 'gray',   'unlimited' => false],
-                'basic'      => ['name' => 'Basic',      'emails_per_month' => 100,  'suggested_price' => 5,  'color' => 'blue',   'unlimited' => false],
-                'starter'    => ['name' => 'Starter',    'emails_per_month' => 500,  'suggested_price' => 15, 'color' => 'indigo', 'unlimited' => false],
-                'pro'        => ['name' => 'Pro',        'emails_per_month' => 2000, 'suggested_price' => 30, 'color' => 'purple', 'unlimited' => false],
-                'enterprise' => ['name' => 'Enterprise', 'emails_per_month' => 3000, 'suggested_price' => 99, 'color' => 'emerald', 'unlimited' => true],
-            ];
-        }
+        // Planes según Plan Maestro Vera
+        $planDefinitions = [
+            'basic' => [
+                'name'              => 'Vera Básica',
+                'meetings_per_month'=> 30,
+                'suggested_price'   => 20,
+                'color'             => 'blue',
+                'unlimited'         => false,
+            ],
+            'pro' => [
+                'name'              => 'Vera Pro',
+                'meetings_per_month'=> 200, // ilimitado, usamos 200 como base de cálculo
+                'suggested_price'   => 50,
+                'color'             => 'purple',
+                'unlimited'         => true,
+            ],
+            'team' => [
+                'name'              => 'Vera Equipo',
+                'meetings_per_month'=> 500, // ilimitado, múltiples agendas
+                'suggested_price'   => 150,
+                'color'             => 'emerald',
+                'unlimited'         => true,
+            ],
+        ];
 
         foreach ($planDefinitions as &$plan) {
-            $tokensPerMonth = $plan['emails_per_month'] * $avgTokensPerEmail;
-            // Gemini Flash: ratio real medido ~85% input / 15% output
+            $tokensPerMonth = $plan['meetings_per_month'] * $avgTokensPerMeeting;
             $inputCost  = ($tokensPerMonth * 0.85 / 1_000_000) * 0.075;
             $outputCost = ($tokensPerMonth * 0.15 / 1_000_000) * 0.300;
             $costUsd    = $inputCost + $outputCost;
@@ -390,18 +386,12 @@ class VeraTokenUsage extends Model
         }
         unset($plan);
 
-        $freeTierDailyLimit  = 1500;
-        $avgEmailsPerUserDay = 100;
-
         return [
-            'avg_tokens_per_email' => $avgTokensPerEmail,
-            'data_points'          => $emailAnalysisData->count(),
-            'plans'                => $planDefinitions,
-            'free_tier'            => [
-                'daily_limit'    => $freeTierDailyLimit,
-                'emails_per_day' => $avgEmailsPerUserDay,
-                'max_free_users' => (int) floor($freeTierDailyLimit / $avgEmailsPerUserDay),
-            ],
+            'avg_tokens_per_meeting' => $avgTokensPerMeeting,
+            'avg_tokens_per_call'    => $avgTokensPerCall,
+            'calls_per_meeting'      => $callsPerMeeting,
+            'data_points'            => $allData->count(),
+            'plans'                  => $planDefinitions,
         ];
     }
 }

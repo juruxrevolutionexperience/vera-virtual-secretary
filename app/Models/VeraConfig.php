@@ -9,49 +9,57 @@ class VeraConfig extends Model
 {
     protected $fillable = [
         'user_id',
-        'main_objective',
+
+        // Identidad del negocio (Cerebro Capa 1)
+        'business_name',
+        'owner_name',
+        'tone',
+        'language',
+
+        // Horario y reuniones
+        'working_hours',
+        'meeting_duration',
+        'buffer_minutes',
+
+        // Comportamiento de Vera
+        'unknown_response',
+        'escalation_triggers',
+        'mode',
+        'vera_signature',
+
+        // Google Calendar (Sprint 3)
+        'google_calendar_id',
+        'google_access_token',
+        'google_refresh_token',
+        'google_token_expires_at',
+
+        // Canales de mensajería (Paso D)
+        'telegram_bot_token',
+        'telegram_chat_id',
+        'whatsapp_phone_number_id',
+        'whatsapp_access_token',
+
+        // Contexto RAG del negocio
         'writing_style',
-        'auto_response_enabled',
-        'auto_response_mode',
-        'auto_response_require_approval',
-        'response_allowed_categories',
-        'response_blocked_categories',
-        'blocked_keywords',
-        'blocked_senders',
-        'allowed_senders',
-        'confidence_threshold',
-        'newsletter_handling',
         'important_contacts',
-        'availability_start',
-        'availability_end',
-        'autonomy_level',
-        're_analysis_frequency_days',
-        'last_analysis_at',
-        'last_re_analysis_at',
-        'analysis_summary',
-        'weekly_suggestions',
+        'confidence_threshold',
+
+        // Onboarding
         'onboarding_completed',
         'onboarding_completed_at',
-        'response_delay_minutes',
     ];
 
     protected $casts = [
-        'writing_style' => 'array',
-        'important_contacts' => 'array',
-        'analysis_summary' => 'array',
-        'weekly_suggestions' => 'array',
-        'response_allowed_categories' => 'array',
-        'response_blocked_categories' => 'array',
-        'blocked_keywords' => 'array',
-        'blocked_senders' => 'array',
-        'allowed_senders' => 'array',
-        'auto_response_enabled' => 'boolean',
-        'auto_response_require_approval' => 'boolean',
-        'onboarding_completed' => 'boolean',
-        'confidence_threshold' => 'decimal:2',
-        'last_analysis_at' => 'datetime',
-        'last_re_analysis_at' => 'datetime',
-        'onboarding_completed_at' => 'datetime',
+        'working_hours'       => 'array',
+        'escalation_triggers' => 'array',
+        'writing_style'       => 'array',
+        'important_contacts'  => 'array',
+        'confidence_threshold'       => 'decimal:2',
+        'onboarding_completed'       => 'boolean',
+        'onboarding_completed_at'    => 'datetime',
+        'google_token_expires_at'    => 'datetime',
+        'meeting_duration'           => 'integer',
+        'buffer_minutes'             => 'integer',
     ];
 
     public function user(): BelongsTo
@@ -60,169 +68,117 @@ class VeraConfig extends Model
     }
 
     /**
-     * Check if re-analysis is needed
+     * ¿Está el Cerebro de Vera configurado con los campos obligatorios?
+     * Vera no arranca sin working_hours ni tone.
      */
-    public function needsReAnalysis(): bool
+    public function isBrainReady(): bool
     {
-        if (!$this->last_re_analysis_at) {
-            return true;
-        }
-
-        $daysSinceLastAnalysis = now()->diffInDays($this->last_re_analysis_at);
-
-        return $daysSinceLastAnalysis >= $this->re_analysis_frequency_days;
+        return !empty($this->working_hours) && !empty($this->tone);
     }
 
     /**
-     * Check if response should be sent based on availability hours
+     * ¿Tiene Google Calendar vinculado?
      */
-    public function isWithinAvailabilityHours(): bool
+    public function hasCalendarConnected(): bool
     {
-        if (empty($this->availability_start) || empty($this->availability_end)) {
-            return true;
-        }
-
-        $now       = now()->format('H:i');
-        $startTime = substr($this->availability_start, 0, 5); // '09:00'
-        $endTime   = substr($this->availability_end,   0, 5); // '18:00'
-
-        // Caso normal: 09:00 - 18:00
-        if ($startTime <= $endTime) {
-            return $now >= $startTime && $now <= $endTime;
-        }
-
-        // Caso que cruza medianoche: 22:00 - 06:00 o casi todo el día 01:00 - 00:00
-        return $now >= $startTime || $now <= $endTime;
+        return !empty($this->google_calendar_id) && !empty($this->google_access_token);
     }
 
     /**
-     * Check if email category is allowed for auto-response
+     * Horario laboral de un día concreto.
+     * Devuelve ['start' => '09:00', 'end' => '18:00'] o null si cerrado.
+     *
+     * @param string $day  lun|mar|mie|jue|vie|sab|dom
      */
-    public function isCategoryAllowed(?string $category): bool
+    public function getWorkingHoursForDay(string $day): ?array
     {
-        // Si no hay categoría, permitir por defecto
-        if (!$category) {
-            return true;
+        $hours = $this->working_hours;
+        if (empty($hours) || empty($hours[$day])) {
+            return null;
         }
 
-        // NUEVO: Solo bloquear categorías claramente automáticas/promocionales
-        // Esto permite que emails de personas reales (reunión, consulta, soporte, etc.)
-        // se respondan sin importar la categoría
-        $autoCategories = ['promociones', 'newsletters', 'notificaciones', 'updates', 'promotions'];
-
-        if (in_array($category, $autoCategories)) {
-            return false; // Bloquear automáticos
+        $range = explode('-', $hours[$day]);
+        if (count($range) !== 2) {
+            return null;
         }
 
-        // Si hay lista de bloqueadas explícitas, respetarla
-        if (!empty($this->response_blocked_categories)) {
-            return !in_array($category, $this->response_blocked_categories);
-        }
-
-        // Por defecto, permitir todo (personas reales)
-        return true;
+        return ['start' => $range[0], 'end' => $range[1]];
     }
 
     /**
-     * Check if sender is blocked
+     * ¿Vera está dentro del horario laboral ahora mismo?
      */
-    public function isSenderBlocked(string $senderEmail): bool
+    public function isWithinWorkingHours(): bool
     {
-        if (empty($this->blocked_senders)) {
+        $dayMap = [0 => 'dom', 1 => 'lun', 2 => 'mar', 3 => 'mie', 4 => 'jue', 5 => 'vie', 6 => 'sab'];
+        $today  = $dayMap[now()->dayOfWeek] ?? null;
+
+        if (!$today) {
             return false;
         }
 
-        $senderEmail = strtolower($senderEmail);
+        $hours = $this->getWorkingHoursForDay($today);
+        if (!$hours) {
+            return false; // Día no laboral
+        }
 
-        foreach ($this->blocked_senders as $pattern) {
-            $pattern = strtolower($pattern);
+        $now   = now()->format('H:i');
+        $start = $hours['start'];
+        $end   = $hours['end'];
 
-            // Patrón exacto
-            if ($senderEmail === $pattern) {
-                return true;
-            }
+        if ($start <= $end) {
+            return $now >= $start && $now <= $end;
+        }
 
-            // Patrón con @ al inicio (ej: @spam.com)
-            if (str_starts_with($pattern, '@') && str_ends_with($senderEmail, $pattern)) {
-                return true;
-            }
+        // Cruce de medianoche
+        return $now >= $start || $now <= $end;
+    }
 
-            // Patrón como substring (ej: "noreply")
-            if (str_contains($senderEmail, $pattern)) {
+    /**
+     * ¿Tiene Telegram conectado?
+     */
+    public function hasTelegramConnected(): bool
+    {
+        return !empty($this->telegram_bot_token);
+    }
+
+    /**
+     * ¿Tiene WhatsApp conectado?
+     */
+    public function hasWhatsAppConnected(): bool
+    {
+        return !empty($this->whatsapp_phone_number_id) && !empty($this->whatsapp_access_token);
+    }
+
+    /**
+     * Canales activos del usuario (array de strings: 'telegram', 'whatsapp', 'google_calendar').
+     */
+    public function getActiveChannels(): array
+    {
+        $channels = [];
+        if ($this->hasTelegramConnected())  $channels[] = 'telegram';
+        if ($this->hasWhatsAppConnected())  $channels[] = 'whatsapp';
+        if ($this->hasCalendarConnected())  $channels[] = 'google_calendar';
+        return $channels;
+    }
+
+    /**
+     * ¿El mensaje contiene algún trigger de escalado?
+     */
+    public function shouldEscalate(string $message): bool
+    {
+        $triggers = $this->escalation_triggers ?? [];
+        if (empty($triggers)) {
+            return false;
+        }
+
+        $messageLower = strtolower($message);
+        foreach ($triggers as $trigger) {
+            if (str_contains($messageLower, strtolower($trigger))) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    /**
-     * Check if sender is in allowed list (priority senders)
-     */
-    public function isSenderAllowed(string $senderEmail): bool
-    {
-        if (empty($this->allowed_senders)) {
-            return false;
-        }
-
-        $senderEmail = strtolower($senderEmail);
-
-        foreach ($this->allowed_senders as $pattern) {
-            $pattern = strtolower($pattern);
-
-            // Patrón exacto
-            if ($senderEmail === $pattern) {
-                return true;
-            }
-
-            // Patrón con @ al inicio (ej: @clientevip.com)
-            if (str_starts_with($pattern, '@') && str_ends_with($senderEmail, $pattern)) {
-                return true;
-            }
-
-            // Patrón como substring
-            if (str_contains($senderEmail, $pattern)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if email contains blocked keywords
-     */
-    public function hasBlockedKeywords(string $subject, string $body): bool
-    {
-        if (empty($this->blocked_keywords)) {
-            return false;
-        }
-
-        $subject = strtolower($subject);
-        $body = strtolower(strip_tags($body));
-
-        foreach ($this->blocked_keywords as $keyword) {
-            $keyword = strtolower($keyword);
-
-            if (str_contains($subject, $keyword) || str_contains($body, $keyword)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Get default filter configuration (for new users)
-     */
-    public static function getDefaultFilters(): array
-    {
-        return [
-            'response_allowed_categories' => null, // null = todas permitidas
-            'response_blocked_categories' => ['promociones', 'newsletters'], // Bloquear obvios
-            'blocked_keywords' => ['unsubscribe', 'darse de baja', 'cancelar suscripción'],
-            'blocked_senders' => ['noreply', 'no-reply', 'donotreply'],
-            'allowed_senders' => [], // Vacío por defecto, el usuario agrega
-        ];
     }
 }

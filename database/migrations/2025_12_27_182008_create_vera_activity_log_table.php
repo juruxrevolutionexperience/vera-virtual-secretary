@@ -16,19 +16,20 @@ return new class extends Migration
 
             // Relaciones
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('email_id')->nullable()->constrained()->onDelete('set null');
-            $table->foreignId('vera_action_id')->nullable()->constrained('vera_email_actions')->onDelete('set null');
-            $table->unsignedBigInteger('token_usage_id')->nullable(); // Sin FK por ahora, se agregará después
+            $table->unsignedBigInteger('conversation_id')->nullable(); // FK a conversations (Sprint 2)
+            $table->unsignedBigInteger('meeting_id')->nullable();      // FK a meetings (Sprint 2)
+            $table->unsignedBigInteger('token_usage_id')->nullable();
 
             // Tipo de actividad
             $table->enum('activity_type', [
-                'email_processed',      // Email analizado
-                'email_replied',        // Respuesta generada/enviada
-                'email_archived',       // Email archivado
-                'email_categorized',    // Email categorizado
+                'message_received',     // Mensaje entrante procesado
+                'meeting_confirmed',    // Reunión confirmada en Calendar
+                'meeting_cancelled',    // Reunión cancelada
+                'meeting_rescheduled',  // Reunión reprogramada
+                'slot_proposed',        // Slots propuestos al cliente
+                'escalation',           // Escalado al humano
                 'chat_interaction',     // Chat con Vera
                 'config_updated',       // Configuración cambiada
-                'rule_created',         // Regla personalizada creada
                 'training_updated',     // Entrenamiento actualizado
                 'limit_reached'         // Límite mensual alcanzado
             ]);

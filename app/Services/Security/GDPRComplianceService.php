@@ -5,7 +5,6 @@ namespace App\Services\Security;
 use App\Models\User;
 use App\Models\DataExportRequest;
 use App\Models\DataDeletionRequest;
-use App\Models\Email;
 use App\Models\Contact;
 use App\Models\UserConsent;
 use Illuminate\Support\Facades\Storage;
@@ -41,7 +40,6 @@ class GDPRComplianceService
             $user = $request->user;
             $data = [
                 'user' => $user->only(['id', 'name', 'email', 'created_at']),
-                'emails' => Email::where('user_id', $user->id)->get()->toArray(),
                 'contacts' => Contact::where('user_id', $user->id)->get()->toArray(),
             ];
 
@@ -84,15 +82,12 @@ class GDPRComplianceService
         try {
             $user = $request->user;
 
-            $emailsDeleted = Email::where('user_id', $user->id)->count();
             $contactsDeleted = Contact::where('user_id', $user->id)->count();
 
-            Email::where('user_id', $user->id)->delete();
             Contact::where('user_id', $user->id)->delete();
             UserConsent::where('user_id', $user->id)->delete();
 
             $summary = [
-                'emails_deleted' => $emailsDeleted,
                 'contacts_deleted' => $contactsDeleted,
                 'completed_at' => now()->toISOString(),
             ];

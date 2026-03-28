@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Services\VeraChatService;
-use App\Services\VeraChatEngine;
 use App\Models\VeraConversation;
 use App\Models\VeraConversationMessage;
 use Illuminate\Http\Request;
@@ -82,35 +81,16 @@ class VeraChatController extends Controller
                 'tokens_consumed' => 0, // No consume tokens
             ]);
 
-            // Procesar mensaje con el motor de reglas (SIN IA)
-            $chatEngine = new VeraChatEngine($user);
-            $engineResponse = $chatEngine->processMessage($validated['message']);
-
-            // Guardar respuesta de Vera
+            // TODO Sprint 3: reemplazar con MeetingIntentEngine (Antonio's ai-service)
             $veraMessage = VeraConversationMessage::create([
                 'conversation_id' => $conversation->id,
                 'role' => 'assistant',
-                'content' => $engineResponse['content'],
-                'tokens_consumed' => 0, // No consume tokens (sistema de reglas)
-                'metadata' => $engineResponse['metadata'],
+                'content' => 'Hola! Soy Vera, tu secretaria de agenda. Pronto podré gestionar tus reuniones y citas. ¡Estamos construyendo algo increíble!',
+                'tokens_consumed' => 0,
+                'metadata' => ['intent' => 'placeholder', 'sprint' => 3],
             ]);
 
-            // Registrar actividad para el log
             $activityDescription = null;
-            $intent = $engineResponse['intent'] ?? null;
-
-            if (in_array($intent, ['inbox', 'stats', 'calendar'])) {
-                $activityLabels = [
-                    'inbox' => 'Consultó emails',
-                    'stats' => 'Revisó estadísticas',
-                    'calendar' => 'Consultó agenda',
-                ];
-
-                $activityDescription = [
-                    'time' => now()->format('H:i'),
-                    'description' => $activityLabels[$intent] ?? 'Consultó información'
-                ];
-            }
 
             return response()->json([
                 'success' => true,
@@ -297,24 +277,10 @@ class VeraChatController extends Controller
     {
         $user = Auth::user();
 
-        // Obtener emails sin leer de hoy
-        $unreadEmails = \App\Models\Email::where('user_id', $user->id)
-            ->whereNull('read_at')
-            ->whereDate('received_at', '>=', now()->startOfDay())
-            ->count();
-
-        // Emails importantes
-        $importantEmails = \App\Models\Email::where('user_id', $user->id)
-            ->whereNull('read_at')
-            ->where('is_starred', true)
-            ->count();
-
-        // Emails que requieren acción (sin leer y no archivados)
-        $actionRequired = \App\Models\Email::where('user_id', $user->id)
-            ->whereNull('read_at')
-            ->whereNull('archived_at')
-            ->whereDate('received_at', '>=', now()->subDays(3))
-            ->count();
+        // TODO Sprint 3: replace with meeting/conversation counts
+        $unreadEmails = 0;
+        $importantEmails = 0;
+        $actionRequired = 0;
 
         // TODO: Reuniones de hoy (cuando tengas el modelo Calendar)
         $todayMeetings = 0;
@@ -355,11 +321,8 @@ class VeraChatController extends Controller
                 ];
             });
 
-        // Estadísticas de la semana
-        $weekStart = now()->startOfWeek();
-        $weekEmails = \App\Models\Email::where('user_id', $user->id)
-            ->whereBetween('received_at', [$weekStart, now()])
-            ->count();
+        // TODO Sprint 3: replace with weekly meeting/conversation stats
+        $weekEmails = 0;
 
         $weekMeetings = 0; // TODO: Cuando tengas calendario
 

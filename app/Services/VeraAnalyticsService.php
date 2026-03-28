@@ -125,7 +125,7 @@ class VeraAnalyticsService
                 DB::raw('COUNT(*) as total_activities'),
                 DB::raw('SUM(tokens_consumed) as total_tokens'),
                 DB::raw('SUM(cost) as total_cost'),
-                DB::raw('COUNT(CASE WHEN activity_type = "email_replied" THEN 1 END) as emails_replied'),
+                DB::raw('COUNT(CASE WHEN activity_type = "meeting_confirmed" THEN 1 END) as meetings_confirmed'),
                 DB::raw('AVG(CASE WHEN confidence_score IS NOT NULL THEN confidence_score END) as avg_confidence'),
             ])
             ->first();
@@ -137,31 +137,31 @@ class VeraAnalyticsService
                 DB::raw('COUNT(*) as total_activities'),
                 DB::raw('SUM(tokens_consumed) as total_tokens'),
                 DB::raw('SUM(cost) as total_cost'),
-                DB::raw('COUNT(CASE WHEN activity_type = "email_replied" THEN 1 END) as emails_replied'),
+                DB::raw('COUNT(CASE WHEN activity_type = "meeting_confirmed" THEN 1 END) as meetings_confirmed'),
                 DB::raw('AVG(CASE WHEN confidence_score IS NOT NULL THEN confidence_score END) as avg_confidence'),
             ])
             ->first();
 
         return [
             'current_month' => [
-                'activities' => $currentMonth->total_activities ?? 0,
-                'tokens' => $currentMonth->total_tokens ?? 0,
-                'cost' => $currentMonth->total_cost ?? 0,
-                'emails_replied' => $currentMonth->emails_replied ?? 0,
-                'avg_confidence' => $currentMonth->avg_confidence ?? 0,
+                'activities'         => $currentMonth->total_activities ?? 0,
+                'tokens'             => $currentMonth->total_tokens ?? 0,
+                'cost'               => $currentMonth->total_cost ?? 0,
+                'meetings_confirmed' => $currentMonth->meetings_confirmed ?? 0,
+                'avg_confidence'     => $currentMonth->avg_confidence ?? 0,
             ],
             'last_month' => [
-                'activities' => $lastMonth->total_activities ?? 0,
-                'tokens' => $lastMonth->total_tokens ?? 0,
-                'cost' => $lastMonth->total_cost ?? 0,
-                'emails_replied' => $lastMonth->emails_replied ?? 0,
-                'avg_confidence' => $lastMonth->avg_confidence ?? 0,
+                'activities'         => $lastMonth->total_activities ?? 0,
+                'tokens'             => $lastMonth->total_tokens ?? 0,
+                'cost'               => $lastMonth->total_cost ?? 0,
+                'meetings_confirmed' => $lastMonth->meetings_confirmed ?? 0,
+                'avg_confidence'     => $lastMonth->avg_confidence ?? 0,
             ],
             'change' => [
-                'activities' => $this->calculateChange($lastMonth->total_activities ?? 0, $currentMonth->total_activities ?? 0),
-                'tokens' => $this->calculateChange($lastMonth->total_tokens ?? 0, $currentMonth->total_tokens ?? 0),
-                'cost' => $this->calculateChange($lastMonth->total_cost ?? 0, $currentMonth->total_cost ?? 0),
-                'emails_replied' => $this->calculateChange($lastMonth->emails_replied ?? 0, $currentMonth->emails_replied ?? 0),
+                'activities'         => $this->calculateChange($lastMonth->total_activities ?? 0, $currentMonth->total_activities ?? 0),
+                'tokens'             => $this->calculateChange($lastMonth->total_tokens ?? 0, $currentMonth->total_tokens ?? 0),
+                'cost'               => $this->calculateChange($lastMonth->total_cost ?? 0, $currentMonth->total_cost ?? 0),
+                'meetings_confirmed' => $this->calculateChange($lastMonth->meetings_confirmed ?? 0, $currentMonth->meetings_confirmed ?? 0),
             ]
         ];
     }
@@ -224,37 +224,7 @@ class VeraAnalyticsService
         return $result;
     }
 
-    /**
-     * Obtener top 10 categorías de emails más procesados
-     *
-     * @param User $user
-     * @param int $limit
-     * @return array
-     */
-    public function getTopEmailCategories(User $user, int $limit = 10): array
-    {
-        // Verificar si existe la tabla categories
-        try {
-            return VeraActivityLog::byUser($user->id)
-                ->whereNotNull('email_id')
-                ->join('emails', 'vera_activity_log.email_id', '=', 'emails.id')
-                ->leftJoin('email_categories', 'emails.category_id', '=', 'email_categories.id')
-                ->select([
-                    'email_categories.name as category',
-                    DB::raw('COUNT(*) as total'),
-                    DB::raw('SUM(vera_activity_log.tokens_consumed) as tokens'),
-                    DB::raw('AVG(vera_activity_log.confidence_score) as avg_confidence'),
-                ])
-                ->groupBy('email_categories.name')
-                ->orderByDesc('total')
-                ->limit($limit)
-                ->get()
-                ->toArray();
-        } catch (\Exception $e) {
-            // Si la tabla no existe o hay error, retornar array vacío
-            return [];
-        }
-    }
+    // getTopEmailCategories removed — no email model in new Vera (Sprint 3: replace with meeting types)
 
     /**
      * Predecir consumo mensual basado en tendencia actual
@@ -273,52 +243,49 @@ class VeraAnalyticsService
                 DB::raw('COUNT(*) as activities'),
                 DB::raw('SUM(tokens_consumed) as tokens'),
                 DB::raw('SUM(cost) as cost'),
-                DB::raw('COUNT(CASE WHEN counts_towards_limit = 1 THEN 1 END) as emails_count'),
+                DB::raw('COUNT(CASE WHEN counts_towards_limit = 1 THEN 1 END) as meetings_count'),
             ])
             ->first();
 
         $activities = $monthUsage->activities ?? 0;
         $tokens = $monthUsage->tokens ?? 0;
         $cost = $monthUsage->cost ?? 0;
-        $emailsCount = $monthUsage->emails_count ?? 0;
+        $meetingsCount = $monthUsage->meetings_count ?? 0;
 
-        // Evitar división por cero
         if ($currentDay == 0) {
             $currentDay = 1;
         }
 
-        // Calcular promedio diario
-        $avgActivitiesPerDay = $activities / $currentDay;
-        $avgTokensPerDay = $tokens / $currentDay;
-        $avgCostPerDay = $cost / $currentDay;
-        $avgEmailsPerDay = $emailsCount / $currentDay;
-
-        // Proyectar al final del mes
-        $daysRemaining = $daysInMonth - $currentDay;
+        $avgActivitiesPerDay  = $activities / $currentDay;
+        $avgTokensPerDay      = $tokens / $currentDay;
+        $avgCostPerDay        = $cost / $currentDay;
+        $avgMeetingsPerDay    = $meetingsCount / $currentDay;
+        $daysRemaining        = $daysInMonth - $currentDay;
+        $meetingLimit         = $user->monthly_meeting_limit ?? 999999;
 
         return [
             'current' => [
                 'activities' => $activities,
-                'tokens' => $tokens,
-                'cost' => $cost,
-                'emails' => $emailsCount,
+                'tokens'     => $tokens,
+                'cost'       => $cost,
+                'meetings'   => $meetingsCount,
             ],
             'daily_average' => [
                 'activities' => round($avgActivitiesPerDay, 1),
-                'tokens' => round($avgTokensPerDay),
-                'cost' => round($avgCostPerDay, 4),
-                'emails' => round($avgEmailsPerDay, 1),
+                'tokens'     => round($avgTokensPerDay),
+                'cost'       => round($avgCostPerDay, 4),
+                'meetings'   => round($avgMeetingsPerDay, 1),
             ],
             'projected_end_of_month' => [
                 'activities' => round($avgActivitiesPerDay * $daysInMonth),
-                'tokens' => round($avgTokensPerDay * $daysInMonth),
-                'cost' => round($avgCostPerDay * $daysInMonth, 2),
-                'emails' => round($avgEmailsPerDay * $daysInMonth),
+                'tokens'     => round($avgTokensPerDay * $daysInMonth),
+                'cost'       => round($avgCostPerDay * $daysInMonth, 2),
+                'meetings'   => round($avgMeetingsPerDay * $daysInMonth),
             ],
-            'remaining_days' => $daysRemaining,
-            'completion_percentage' => round(($currentDay / $daysInMonth) * 100, 1),
-            'limit' => $user->monthly_email_limit,
-            'will_exceed_limit' => ($avgEmailsPerDay * $daysInMonth) > $user->monthly_email_limit,
+            'remaining_days'       => $daysRemaining,
+            'completion_percentage'=> round(($currentDay / $daysInMonth) * 100, 1),
+            'limit'                => $meetingLimit,
+            'will_exceed_limit'    => ($avgMeetingsPerDay * $daysInMonth) > $meetingLimit,
         ];
     }
 
@@ -379,7 +346,7 @@ class VeraAnalyticsService
             'distribution' => $this->getActivityDistribution($user),
             'comparison' => $this->getMonthComparison($user),
             'cost_by_day' => $this->getCostByDayOfWeek($user),
-            'top_categories' => $this->getTopEmailCategories($user),
+            'top_categories' => [],
             'prediction' => $this->predictMonthlyUsage($user),
             'feedback' => $this->getFeedbackAnalysis($user),
         ];
@@ -407,16 +374,15 @@ class VeraAnalyticsService
     private function getActivityTypeLabel(string $type): string
     {
         return match($type) {
-            'email_processed' => 'Email Procesado',
-            'email_replied' => 'Email Respondido',
-            'email_archived' => 'Email Archivado',
-            'email_categorized' => 'Email Categorizado',
-            'chat_interaction' => 'Chat con Vera',
-            'config_updated' => 'Configuración',
-            'rule_created' => 'Regla Creada',
-            'training_updated' => 'Training Actualizado',
-            'limit_reached' => 'Límite Alcanzado',
-            default => ucfirst(str_replace('_', ' ', $type)),
+            'meeting_confirmed'   => 'Reunión confirmada',
+            'meeting_requested'   => 'Solicitud recibida',
+            'meeting_rescheduled' => 'Reunión reprogramada',
+            'meeting_cancelled'   => 'Reunión cancelada',
+            'response_sent'       => 'Respuesta enviada',
+            'escalation'          => 'Escalado a humano',
+            'chat_interaction'    => 'Chat con Vera',
+            'limit_reached'       => 'Límite alcanzado',
+            default               => ucfirst(str_replace('_', ' ', $type)),
         };
     }
 }

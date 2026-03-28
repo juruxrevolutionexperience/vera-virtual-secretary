@@ -17,24 +17,25 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'email_density',
-        'timezone', // Timezone del usuario
-        // === campos de billing añadidos a la tabla users ===
+        'timezone',
+        'is_dev',
+        // Billing Stripe
         'is_paid',
         'stripe_customer_id',
         'stripe_subscription_id',
         'current_period_end',
-        // === campos de plan ===
+        // Plan
         'plan_type',
-        'monthly_email_limit',
+        'monthly_meeting_limit',
+        'meetings_this_month',
         'billing_cycle_start',
         'plan_metadata',
         'plan_upgraded_at',
-        // === tokens IA ===
+        // Tokens IA
         'monthly_tokens_used',
         'monthly_tokens_limit',
         'tokens_reset_at',
-        // === 2FA ===
+        // 2FA
         'two_factor_secret',
         'two_factor_enabled',
         'two_factor_enabled_at',
@@ -50,45 +51,57 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_paid' => 'boolean',
-            'current_period_end' => 'datetime',
-            'two_factor_enabled' => 'boolean',
-            'two_factor_enabled_at' => 'datetime',
-            'two_factor_confirmed_at' => 'datetime',
-            'tokens_reset_at' => 'date',
-            'monthly_tokens_used' => 'integer',
-            'monthly_tokens_limit' => 'integer',
+            'email_verified_at'      => 'datetime',
+            'password'               => 'hashed',
+            'is_paid'                => 'boolean',
+            'is_dev'                 => 'boolean',
+            'current_period_end'     => 'datetime',
+            'two_factor_enabled'     => 'boolean',
+            'two_factor_enabled_at'  => 'datetime',
+            'two_factor_confirmed_at'=> 'datetime',
+            'tokens_reset_at'        => 'date',
+            'monthly_tokens_used'    => 'integer',
+            'monthly_tokens_limit'   => 'integer',
+            'monthly_meeting_limit'  => 'integer',
+            'meetings_this_month'    => 'integer',
         ];
     }
 
-    // ─── Métodos de control de tokens IA ─────────────────────────────────────
-    // NOTA: el gate real es hasEmailsAvailable() (sistema de emails).
-    // Estos métodos delegan a él para mantener una sola fuente de verdad.
-    // monthly_tokens_used / monthly_tokens_limit son datos informativos
-    // que alimentan la calculadora de pricing en /vera/tokens.
+    // ─── Dev Mode ─────────────────────────────────────────────────────────────
+
+    public function isDev(): bool
+    {
+        return (bool) $this->is_dev;
+    }
+
+    // ─── Tokens IA ────────────────────────────────────────────────────────────
 
     /**
      * ¿Tiene capacidad disponible para una llamada IA este mes?
-     * Delega al sistema de emails (fuente única de verdad).
      */
     public function hasTokensAvailable(): bool
     {
-        return $this->hasEmailsAvailable();
+        if ($this->monthly_tokens_limit === 0) {
+            return true; // 0 = ilimitado (Enterprise)
+        }
+
+        return $this->monthly_tokens_used < $this->monthly_tokens_limit;
     }
 
     /**
-     * Emails disponibles este mes. null = ilimitado (Enterprise).
-     * Alias semántico para compatibilidad con código legacy.
+     * Tokens restantes este mes. null = ilimitado.
      */
     public function tokensAvailable(): ?int
     {
-        return $this->emailsRemaining();
+        if ($this->monthly_tokens_limit === 0) {
+            return null;
+        }
+
+        return max(0, $this->monthly_tokens_limit - $this->monthly_tokens_used);
     }
 
     /**
-     * Descontar tokens usados del saldo mensual
+     * Descontar tokens usados del saldo mensual.
      */
     public function consumeTokens(int $tokens): void
     {
@@ -97,20 +110,17 @@ class User extends Authenticatable
     }
 
     /**
-     * Porcentaje de tokens usados este mes (0-100)
+     * Porcentaje de tokens usados este mes (0-100).
      */
     public function tokensUsagePercent(): float
     {
-        if ($this->monthly_tokens_limit === 0) {
+        if (!$this->monthly_tokens_limit) {
             return 0;
         }
 
         return min(100, round(($this->monthly_tokens_used / $this->monthly_tokens_limit) * 100, 1));
     }
 
-    /**
-     * Resetear contador si empezó un nuevo mes
-     */
     private function resetTokensIfNewMonth(): void
     {
         $now = now()->startOfMonth()->toDateString();
@@ -118,115 +128,79 @@ class User extends Authenticatable
         if ($this->tokens_reset_at === null || $this->tokens_reset_at->toDateString() !== $now) {
             $this->update([
                 'monthly_tokens_used' => 0,
-                'tokens_reset_at' => $now,
+                'tokens_reset_at'     => $now,
             ]);
             $this->refresh();
         }
     }
 
-    /**
-     * Relación con el plan (foreign key plan_type → slug)
-     */
-    public function plan(): BelongsTo
-    {
-        return $this->belongsTo(Plan::class, 'plan_type', 'slug');
-    }
+    // ─── Límites de reuniones por plan ───────────────────────────────────────
 
     /**
-     * Límite de tokens según plan (lee BD, fallback hardcoded)
+     * Reuniones/mes que permite el plan actual. null = ilimitado.
+     * Lee de BD (tabla plans), fallback a hardcoded según Plan Maestro:
+     * Básica 30/mes | Pro: ilimitado | Equipo: ilimitado
      */
-    public static function tokenLimitForPlan(string $plan): int
-    {
-        $p = \App\Models\Plan::findBySlug($plan);
-        if ($p) {
-            return $p->token_limit ?? 0; // null = ilimitado, tratamos como 0
-        }
-
-        return match ($plan) {
-            'basic'      => 50000,
-            'starter'    => 200000,
-            'pro'        => 1000000,
-            'enterprise' => 0,
-            default      => 50000,
-        };
-    }
-
-    // ── Límites de emails por plan ────────────────────────────────────────────
-
-    /**
-     * Emails/mes que permite el plan actual. null = ilimitado.
-     * Lee de BD, fallback a hardcoded si la tabla está vacía.
-     */
-    public function planEmailLimit(): ?int
+    public function planMeetingLimit(): ?int
     {
         $p = $this->plan;
-        if ($p) {
-            return $p->email_limit; // null = ilimitado
+        if ($p && isset($p->meeting_limit)) {
+            return $p->meeting_limit; // null = ilimitado
         }
 
         return match ($this->plan_type ?? 'basic') {
-            'free_trial' => 30,
-            'basic'      => 100,
-            'starter'    => 500,
-            'pro'        => 2000,
+            'basic'      => 30,
+            'pro'        => null,
+            'team'       => null,
             'enterprise' => null,
-            default      => 100,
+            default      => 30,
         };
     }
 
     /**
-     * Emails procesados por Vera en el ciclo de facturación actual.
-     * Usa billing_cycle_start si existe, si no, inicio del mes natural.
+     * Reuniones confirmadas en el ciclo de facturación actual.
      */
-    public function monthlyEmailsUsed(): int
+    public function monthlyMeetingsUsed(): int
     {
-        $cycleDay = $this->billing_cycle_start ?? 1;
-        $start    = \Carbon\Carbon::now()->startOfMonth()->setDay((int) $cycleDay);
-
-        if ($start->isFuture()) {
-            $start->subMonth();
-        }
-
-        return \App\Models\VeraTokenUsage::byUser($this->id)
-            ->where('action_type', 'email_analysis')
-            ->where('created_at', '>=', $start)
-            ->count();
+        return (int) $this->meetings_this_month;
     }
 
     /**
-     * ¿Puede Vera procesar más emails este mes?
+     * ¿Puede Vera confirmar más reuniones este mes?
      */
-    public function hasEmailsAvailable(): bool
+    public function hasMeetingsAvailable(): bool
     {
-        $limit = $this->planEmailLimit();
+        $limit = $this->planMeetingLimit();
         if ($limit === null) {
             return true;
         }
-        return $this->monthlyEmailsUsed() < $limit;
+
+        return $this->monthlyMeetingsUsed() < $limit;
     }
 
     /**
-     * Emails restantes este mes. null = ilimitado.
+     * Reuniones restantes este mes. null = ilimitado.
      */
-    public function emailsRemaining(): ?int
+    public function meetingsRemaining(): ?int
     {
-        $limit = $this->planEmailLimit();
+        $limit = $this->planMeetingLimit();
         if ($limit === null) {
             return null;
         }
-        return max(0, $limit - $this->monthlyEmailsUsed());
+
+        return max(0, $limit - $this->monthlyMeetingsUsed());
     }
 
     /**
      * Nombre legible del plan actual.
-     * Lee de BD, fallback a ucfirst del slug.
      */
     public function planName(): string
     {
         return $this->plan?->name ?? ucfirst($this->plan_type ?? 'Basic');
     }
 
-    // Acceso activo al app (flag + periodo vigente)
+    // ─── Acceso activo ───────────────────────────────────────────────────────
+
     public function getHasActiveAccessAttribute(): bool
     {
         return $this->is_paid && (
@@ -234,17 +208,18 @@ class User extends Authenticatable
         );
     }
 
-    /**
-     * Relación con la configuración de Vera
-     */
-    public function veraConfig()
+    // ─── Relaciones ──────────────────────────────────────────────────────────
+
+    public function plan(): BelongsTo
     {
-        return $this->hasOne(\App\Models\VeraConfig::class);
+        return $this->belongsTo(Plan::class, 'plan_type', 'slug');
     }
 
-    /**
-     * Organizaciones a las que pertenece el usuario
-     */
+    public function veraConfig()
+    {
+        return $this->hasOne(VeraConfig::class);
+    }
+
     public function organizations()
     {
         return $this->belongsToMany(Organization::class, 'organization_user')
@@ -252,105 +227,82 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
-    /**
-     * Organizaciones activas del usuario
-     */
     public function activeOrganizations()
     {
         return $this->organizations()->wherePivot('is_active', true);
     }
 
-    /**
-     * Organización principal del usuario
-     */
     public function primaryOrganization()
     {
         return $this->organizations()->wherePivot('is_primary', true)->first();
     }
 
-    /**
-     * Organizaciones donde el usuario es propietario
-     */
     public function ownedOrganizations()
     {
         return $this->hasMany(Organization::class, 'owner_id');
     }
 
-    /**
-     * Verificar si el usuario pertenece a una organización
-     */
     public function belongsToOrganization(Organization $organization): bool
     {
         return $this->organizations()->where('organization_id', $organization->id)->exists();
     }
 
-    /**
-     * Obtener el rol del usuario en una organización
-     */
     public function getRoleInOrganization(Organization $organization): ?string
     {
-        $pivot = $this->organizations()
+        return $this->organizations()
             ->where('organization_id', $organization->id)
-            ->first()?->pivot;
-
-        return $pivot?->role;
+            ->first()?->pivot?->role;
     }
 
-    /**
-     * Verificar si el usuario tiene un rol específico en una organización
-     */
     public function hasRoleInOrganization(Organization $organization, string $role): bool
     {
         return $this->getRoleInOrganization($organization) === $role;
     }
 
-    /**
-     * Verificar si el usuario es propietario de una organización
-     */
     public function isOwnerOf(Organization $organization): bool
     {
         return $organization->owner_id === $this->id;
     }
 
-    /**
-     * Establecer organización principal
-     */
     public function setPrimaryOrganization(Organization $organization): void
     {
-        // Remover organización principal anterior
         $this->organizations()->updateExistingPivot(
             $this->organizations()->get()->pluck('id'),
             ['is_primary' => false]
         );
-
-        // Establecer nueva organización principal
-        $this->organizations()->updateExistingPivot($organization->id, [
-            'is_primary' => true,
-        ]);
+        $this->organizations()->updateExistingPivot($organization->id, ['is_primary' => true]);
     }
 
-    /**
-     * Verificar si el usuario tiene acceso a funcionalidades de organizaciones
-     * Solo el plan Enterprise tiene acceso a organizaciones
-     */
     public function hasOrganizationAccess(): bool
     {
         return $this->plan_type === 'enterprise';
     }
 
-    /**
-     * Alias de hasOrganizationAccess()
-     */
     public function canAccessOrganizations(): bool
     {
         return $this->hasOrganizationAccess();
     }
 
-    /**
-     * Verificar si el plan es Enterprise
-     */
     public function isEnterprise(): bool
     {
         return $this->plan_type === 'enterprise';
+    }
+
+    // ─── Límite de tokens según plan (para /vera/tokens) ─────────────────────
+
+    public static function tokenLimitForPlan(string $plan): int
+    {
+        $p = Plan::findBySlug($plan);
+        if ($p) {
+            return $p->token_limit ?? 0;
+        }
+
+        return match ($plan) {
+            'basic'      => 50000,
+            'pro'        => 1000000,
+            'team'       => 5000000,
+            'enterprise' => 0,
+            default      => 50000,
+        };
     }
 }

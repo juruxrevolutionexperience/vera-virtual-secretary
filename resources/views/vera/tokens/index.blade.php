@@ -88,16 +88,16 @@
                             </div>
                             <p class="text-xs text-gray-500">
                                 @if($planStatus['unlimited'])
-                                    Emails procesados este mes: <strong class="text-gray-900">{{ number_format($planStatus['emails_used']) }}</strong>
+                                    Reuniones confirmadas este mes: <strong class="text-gray-900">{{ number_format($planStatus['meetings_used']) }}</strong>
                                     <span class="text-gray-400 ml-1">· Sin límite</span>
                                 @else
-                                    Emails procesados este mes:
+                                    Reuniones confirmadas este mes:
                                     <strong class="{{ $planStatus['at_limit'] ? 'text-red-600' : 'text-gray-900' }}">
-                                        {{ number_format($planStatus['emails_used']) }}
+                                        {{ number_format($planStatus['meetings_used']) }}
                                     </strong>
-                                    de <strong>{{ number_format($planStatus['emails_limit']) }}</strong>
+                                    de <strong>{{ number_format($planStatus['meetings_limit']) }}</strong>
                                     @if(!$planStatus['at_limit'])
-                                        · <span class="text-green-600">{{ number_format($planStatus['emails_remaining']) }} restantes</span>
+                                        · <span class="text-green-600">{{ number_format($planStatus['meetings_remaining']) }} restantes</span>
                                     @endif
                                 @endif
                             </p>
@@ -109,7 +109,7 @@
                         <div class="sm:w-64">
                             <div class="flex justify-between text-xs text-gray-400 mb-1">
                                 <span>{{ $planStatus['usage_pct'] }}% usado</span>
-                                <span>{{ number_format($planStatus['emails_limit']) }} emails/mes</span>
+                                <span>{{ number_format($planStatus['meetings_limit']) }} reuniones/mes</span>
                             </div>
                             <div class="w-full bg-gray-100 rounded-full h-2">
                                 <div class="h-2 rounded-full transition-all {{ $planStatus['at_limit'] ? 'bg-red-500' : ($planStatus['usage_pct'] >= 80 ? 'bg-amber-500' : 'bg-purple-500') }}"
@@ -118,7 +118,7 @@
                         </div>
                     @else
                         <div class="text-xs text-indigo-600 font-medium bg-indigo-50 px-3 py-2 rounded-lg">
-                            ∞ Emails ilimitados
+                            ∞ Reuniones ilimitadas
                         </div>
                     @endif
                 </div>
@@ -175,9 +175,11 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     @php
                         $opColors = [
-                            'email_analysis'      => ['bg' => 'bg-purple-50', 'border' => 'border-purple-200', 'text' => 'text-purple-700', 'icon' => '#9333ea'],
-                            'response_generation' => ['bg' => 'bg-blue-50',   'border' => 'border-blue-200',   'text' => 'text-blue-700',   'icon' => '#2563eb'],
-                            'chat_interaction'    => ['bg' => 'bg-green-50',  'border' => 'border-green-200',  'text' => 'text-green-700',  'icon' => '#16a34a'],
+                            'intent_detection'    => ['bg' => 'bg-purple-50', 'border' => 'border-purple-200', 'text' => 'text-purple-700'],
+                            'response_generation' => ['bg' => 'bg-blue-50',   'border' => 'border-blue-200',   'text' => 'text-blue-700'],
+                            'slot_proposal'       => ['bg' => 'bg-amber-50',  'border' => 'border-amber-200',  'text' => 'text-amber-700'],
+                            'chat_interaction'    => ['bg' => 'bg-green-50',  'border' => 'border-green-200',  'text' => 'text-green-700'],
+                            'quick_classify'      => ['bg' => 'bg-gray-50',   'border' => 'border-gray-200',   'text' => 'text-gray-700'],
                         ];
                     @endphp
 
@@ -223,18 +225,14 @@
             <div
                 x-data="{
                     prices: {
-                        free_trial: 0,
-                        basic:      {{ $planPricing['plans']['basic']['suggested_price'] }},
-                        starter:    {{ $planPricing['plans']['starter']['suggested_price'] }},
-                        pro:        {{ $planPricing['plans']['pro']['suggested_price'] }},
-                        enterprise: {{ $planPricing['plans']['enterprise']['suggested_price'] }}
+                        basic: {{ $planPricing['plans']['basic']['suggested_price'] }},
+                        pro:   {{ $planPricing['plans']['pro']['suggested_price'] }},
+                        team:  {{ $planPricing['plans']['team']['suggested_price'] }}
                     },
                     costs: {
-                        free_trial: {{ $planPricing['plans']['free_trial']['cost_api_eur'] }},
-                        basic:      {{ $planPricing['plans']['basic']['cost_api_eur'] }},
-                        starter:    {{ $planPricing['plans']['starter']['cost_api_eur'] }},
-                        pro:        {{ $planPricing['plans']['pro']['cost_api_eur'] }},
-                        enterprise: {{ $planPricing['plans']['enterprise']['cost_api_eur'] }}
+                        basic: {{ $planPricing['plans']['basic']['cost_api_eur'] }},
+                        pro:   {{ $planPricing['plans']['pro']['cost_api_eur'] }},
+                        team:  {{ $planPricing['plans']['team']['cost_api_eur'] }}
                     },
                     marginEur(plan) {
                         return (this.prices[plan] - this.costs[plan]).toFixed(2);
@@ -255,31 +253,22 @@
                 <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
                     Calculadora de pricing por plan
                     <span class="normal-case font-normal text-gray-400 ml-1">
-                        — basada en {{ number_format($planPricing['avg_tokens_per_email']) }} tokens/email
+                        — basada en {{ number_format($planPricing['avg_tokens_per_meeting']) }} tokens/reunión
+                        ({{ $planPricing['calls_per_meeting'] }} llamadas IA · {{ number_format($planPricing['avg_tokens_per_call']) }} tokens/llamada)
                         @if($planPricing['data_points'] > 0)
-                            ({{ $planPricing['data_points'] }} análisis reales tuyos)
-                        @else
-                            (referencia medida 18/02/2026)
+                            · {{ $planPricing['data_points'] }} llamadas reales registradas
                         @endif
                     </span>
                 </h2>
 
-                {{-- Info + aviso Gemini gratuito --}}
-                <div class="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                {{-- Info --}}
+                <div class="mb-4">
                     <div class="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
                         <p class="text-xs text-blue-700">
-                            <strong>Cómo funciona:</strong> Vera procesa 1 email = 1 llamada a Gemini.
-                            El coste de API es casi irrelevante (&lt;€1/usuario/mes incluso en Business).
-                            El precio del plan lo fijas por <strong>valor percibido</strong>: tiempo ahorrado al usuario.
-                            Edita los precios y ve el margen en tiempo real.
-                        </p>
-                    </div>
-                    <div class="bg-amber-50 border border-amber-100 rounded-lg px-4 py-3">
-                        <p class="text-xs text-amber-700">
-                            <strong>⚠ Límite Gemini gratuito:</strong> {{ number_format($planPricing['free_tier']['daily_limit']) }} req/día.
-                            Un usuario con {{ number_format($planPricing['free_tier']['emails_per_day']) }} emails/día consume 100 req.
-                            El tier gratuito aguanta hasta <strong>~{{ $planPricing['free_tier']['max_free_users'] }} usuarios activos</strong>.
-                            A partir de ahí, necesitas Gemini de pago (~€1/usuario/mes con ese flujo).
+                            <strong>Cómo funciona:</strong> Cada reunión confirmada consume ~{{ $planPricing['calls_per_meeting'] }} llamadas IA
+                            (detección de intención + propuesta de horario + confirmación + respuesta final).
+                            El coste de API es mínimo. El precio del plan lo fijas por <strong>valor percibido</strong>:
+                            tiempo ahorrado al cliente. Edita los precios y ve el margen en tiempo real.
                         </p>
                     </div>
                 </div>
@@ -291,7 +280,7 @@
                             <thead>
                                 <tr class="border-b border-gray-100 bg-gray-50">
                                     <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">Plan</th>
-                                    <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">Emails/mes</th>
+                                    <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">Reuniones/mes</th>
                                     <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">Tokens/mes</th>
                                     <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3 text-red-500">Coste API</th>
                                     <th class="text-center text-xs font-medium text-purple-600 uppercase tracking-wider px-5 py-3">Precio venta/mes ← edita</th>
@@ -301,29 +290,7 @@
                             </thead>
                             <tbody class="divide-y divide-gray-100">
 
-                                {{-- Free Trial --}}
-                                @php $p = $planPricing['plans']['free_trial']; @endphp
-                                <tr class="hover:bg-gray-50 transition-colors bg-gray-50/50">
-                                    <td class="px-5 py-4">
-                                        <span class="inline-flex items-center gap-1.5">
-                                            <span class="w-2 h-2 rounded-full bg-gray-400"></span>
-                                            <span class="font-semibold text-gray-900">{{ $p['name'] }}</span>
-                                            <span class="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">captación</span>
-                                        </span>
-                                    </td>
-                                    <td class="px-5 py-4 text-right text-gray-600">{{ number_format($p['emails_per_month']) }}</td>
-                                    <td class="px-5 py-4 text-right text-gray-500 text-xs">{{ number_format($p['tokens_per_month']) }}</td>
-                                    <td class="px-5 py-4 text-right font-medium text-red-500">€{{ number_format($p['cost_api_eur'], 4) }}</td>
-                                    <td class="px-5 py-4 text-center">
-                                        <span class="inline-flex items-center text-sm font-semibold text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-4 py-1.5">
-                                            €0 / gratis
-                                        </span>
-                                    </td>
-                                    <td class="px-5 py-4 text-right font-semibold text-gray-400" x-text="'-€' + costs.free_trial.toFixed(4)"></td>
-                                    <td class="px-5 py-4 text-right font-bold text-gray-400">CAC</td>
-                                </tr>
-
-                                {{-- Plan Basic --}}
+                                {{-- Vera Básica --}}
                                 @php $p = $planPricing['plans']['basic']; @endphp
                                 <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-5 py-4">
@@ -332,7 +299,7 @@
                                             <span class="font-semibold text-gray-900">{{ $p['name'] }}</span>
                                         </span>
                                     </td>
-                                    <td class="px-5 py-4 text-right text-gray-600">{{ number_format($p['emails_per_month']) }}</td>
+                                    <td class="px-5 py-4 text-right text-gray-600">{{ number_format($p['meetings_per_month']) }}</td>
                                     <td class="px-5 py-4 text-right text-gray-500 text-xs">{{ number_format($p['tokens_per_month']) }}</td>
                                     <td class="px-5 py-4 text-right font-medium text-red-500">€{{ number_format($p['cost_api_eur'], 4) }}</td>
                                     <td class="px-5 py-4 text-center">
@@ -347,31 +314,7 @@
                                     <td class="px-5 py-4 text-right font-bold" :class="marginColor('basic')" x-text="marginPct('basic') + '%'"></td>
                                 </tr>
 
-                                {{-- Plan Starter --}}
-                                @php $p = $planPricing['plans']['starter']; @endphp
-                                <tr class="hover:bg-gray-50 transition-colors">
-                                    <td class="px-5 py-4">
-                                        <span class="inline-flex items-center gap-1.5">
-                                            <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
-                                            <span class="font-semibold text-gray-900">{{ $p['name'] }}</span>
-                                        </span>
-                                    </td>
-                                    <td class="px-5 py-4 text-right text-gray-600">{{ number_format($p['emails_per_month']) }}</td>
-                                    <td class="px-5 py-4 text-right text-gray-500 text-xs">{{ number_format($p['tokens_per_month']) }}</td>
-                                    <td class="px-5 py-4 text-right font-medium text-red-500">€{{ number_format($p['cost_api_eur'], 4) }}</td>
-                                    <td class="px-5 py-4 text-center">
-                                        <div class="inline-flex items-center border border-purple-200 rounded-lg overflow-hidden bg-white shadow-sm">
-                                            <span class="px-2 text-gray-400 text-xs bg-gray-50 border-r border-purple-200 py-2">€</span>
-                                            <input type="number" x-model.number="prices.starter" min="0" step="1"
-                                                class="w-20 text-center text-sm font-semibold text-gray-900 px-2 py-1.5 focus:outline-none focus:bg-purple-50">
-                                            <span class="px-2 text-gray-400 text-xs bg-gray-50 border-l border-purple-200 py-2">/mes</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-5 py-4 text-right font-semibold" :class="marginColor('starter')" x-text="'€' + marginEur('starter')"></td>
-                                    <td class="px-5 py-4 text-right font-bold" :class="marginColor('starter')" x-text="marginPct('starter') + '%'"></td>
-                                </tr>
-
-                                {{-- Plan Pro --}}
+                                {{-- Vera Pro --}}
                                 @php $p = $planPricing['plans']['pro']; @endphp
                                 <tr class="hover:bg-gray-50 transition-colors bg-purple-50/30">
                                     <td class="px-5 py-4">
@@ -381,7 +324,10 @@
                                             <span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">recomendado</span>
                                         </span>
                                     </td>
-                                    <td class="px-5 py-4 text-right text-gray-600">{{ number_format($p['emails_per_month']) }}</td>
+                                    <td class="px-5 py-4 text-right text-gray-600">
+                                        <span class="text-xs text-purple-600 font-medium">Sin límite</span>
+                                        <span class="block text-xs text-gray-400">est. {{ number_format($p['meetings_per_month']) }}/mes</span>
+                                    </td>
                                     <td class="px-5 py-4 text-right text-gray-500 text-xs">{{ number_format($p['tokens_per_month']) }}</td>
                                     <td class="px-5 py-4 text-right font-medium text-red-500">€{{ number_format($p['cost_api_eur'], 4) }}</td>
                                     <td class="px-5 py-4 text-center">
@@ -396,8 +342,8 @@
                                     <td class="px-5 py-4 text-right font-bold" :class="marginColor('pro')" x-text="marginPct('pro') + '%'"></td>
                                 </tr>
 
-                                {{-- Plan Enterprise --}}
-                                @php $p = $planPricing['plans']['enterprise']; @endphp
+                                {{-- Vera Equipo --}}
+                                @php $p = $planPricing['plans']['team']; @endphp
                                 <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-5 py-4">
                                         <span class="inline-flex items-center gap-1.5">
@@ -407,20 +353,20 @@
                                     </td>
                                     <td class="px-5 py-4 text-right text-gray-600">
                                         <span class="text-xs text-emerald-600 font-medium">Sin límite</span>
-                                        <span class="block text-xs text-gray-400">est. {{ number_format($p['emails_per_month']) }}/mes</span>
+                                        <span class="block text-xs text-gray-400">múltiples agendas</span>
                                     </td>
                                     <td class="px-5 py-4 text-right text-gray-500 text-xs">{{ number_format($p['tokens_per_month']) }}</td>
                                     <td class="px-5 py-4 text-right font-medium text-red-500">€{{ number_format($p['cost_api_eur'], 4) }}</td>
                                     <td class="px-5 py-4 text-center">
                                         <div class="inline-flex items-center border border-purple-200 rounded-lg overflow-hidden bg-white shadow-sm">
                                             <span class="px-2 text-gray-400 text-xs bg-gray-50 border-r border-purple-200 py-2">€</span>
-                                            <input type="number" x-model.number="prices.enterprise" min="0" step="1"
+                                            <input type="number" x-model.number="prices.team" min="0" step="1"
                                                 class="w-20 text-center text-sm font-semibold text-gray-900 px-2 py-1.5 focus:outline-none focus:bg-purple-50">
                                             <span class="px-2 text-gray-400 text-xs bg-gray-50 border-l border-purple-200 py-2">/mes</span>
                                         </div>
                                     </td>
-                                    <td class="px-5 py-4 text-right font-semibold" :class="marginColor('enterprise')" x-text="'€' + marginEur('enterprise')"></td>
-                                    <td class="px-5 py-4 text-right font-bold" :class="marginColor('enterprise')" x-text="marginPct('enterprise') + '%'"></td>
+                                    <td class="px-5 py-4 text-right font-semibold" :class="marginColor('team')" x-text="'€' + marginEur('team')"></td>
+                                    <td class="px-5 py-4 text-right font-bold" :class="marginColor('team')" x-text="marginPct('team') + '%'"></td>
                                 </tr>
 
                             </tbody>
@@ -430,9 +376,8 @@
                     <div class="px-5 py-3 bg-gray-50 border-t border-gray-100">
                         <p class="text-xs text-gray-400">
                             Coste API calculado con Gemini Flash de pago: $0.075/1M input · $0.300/1M output.
-                            Business = estimado sobre 3.000 emails/mes (sin límite real). El margen en verde ≥ 80% es el objetivo SaaS.
+                            Pro y Equipo = estimado sobre base de cálculo (sin límite real). El margen en verde ≥ 80% es el objetivo SaaS.
                             Estos números NO incluyen servidor, Stripe fees (2.9%), soporte ni tu tiempo.
-                            <strong class="text-gray-500">CAC = coste de adquisición del Free Trial (lo absorbes tú, no el usuario).</strong>
                         </p>
                     </div>
                 </div>
@@ -462,7 +407,7 @@
                                 @php
                                     $pct = $stats['total_tokens'] > 0
                                         ? round(($data['total_tokens'] / $stats['total_tokens']) * 100, 1) : 0;
-                                    $barClasses = ['email_analysis'=>'bg-purple-500','response_generation'=>'bg-blue-500','chat_interaction'=>'bg-green-500'];
+                                    $barClasses = ['intent_detection'=>'bg-purple-500','response_generation'=>'bg-blue-500','slot_proposal'=>'bg-amber-500','chat_interaction'=>'bg-green-500','quick_classify'=>'bg-gray-400'];
                                     $bar = $barClasses[$actionType] ?? 'bg-gray-400';
                                 @endphp
                                 <div>
@@ -499,7 +444,7 @@
                                 <tr class="border-b border-gray-100 bg-gray-50">
                                     <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">Fecha</th>
                                     <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">Operación</th>
-                                    <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3 hidden md:table-cell">Email</th>
+                                    <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3 hidden md:table-cell">Canal / Contexto</th>
                                     <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">Input</th>
                                     <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">Output</th>
                                     <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-5 py-3">Total</th>
@@ -516,9 +461,11 @@
                                             $record->total_tokens
                                         ) * 0.92;
                                         $badge = [
-                                            'email_analysis'      => 'bg-purple-100 text-purple-700',
+                                            'intent_detection'    => 'bg-purple-100 text-purple-700',
                                             'response_generation' => 'bg-blue-100 text-blue-700',
+                                            'slot_proposal'       => 'bg-amber-100 text-amber-700',
                                             'chat_interaction'    => 'bg-green-100 text-green-700',
+                                            'quick_classify'      => 'bg-gray-100 text-gray-600',
                                         ][$record->action_type] ?? 'bg-gray-100 text-gray-600';
                                     @endphp
                                     <tr class="hover:bg-gray-50 transition-colors">
@@ -531,9 +478,11 @@
                                             </span>
                                         </td>
                                         <td class="px-5 py-3 text-xs text-gray-600 hidden md:table-cell max-w-[200px] truncate">
-                                            @if($record->email)
-                                                <span title="{{ $record->email->subject }}">{{ Str::limit($record->email->subject, 40) }}</span>
-                                                <span class="text-gray-400 block text-xs">{{ $record->email->from_email }}</span>
+                                            @if($record->conversation_id)
+                                                <span class="text-gray-700">#{{ $record->conversation_id }}</span>
+                                                @if(!empty($record->metadata['channel']))
+                                                    <span class="text-gray-400 block text-xs">{{ $record->metadata['channel'] }}</span>
+                                                @endif
                                             @else
                                                 <span class="text-gray-400">—</span>
                                             @endif

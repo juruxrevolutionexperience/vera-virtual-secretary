@@ -39,18 +39,28 @@ return [
         'id' => env('GOOGLE_ANALYTICS_ID'),
     ],
 
-    // OAuth2 Providers for Email Integration
+    // Google OAuth — Calendar
     'google' => [
-        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_id'     => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
-        'redirect' => env('APP_URL') . '/email-accounts/google/callback',
+        'redirect'      => env('APP_URL') . '/google/calendar/callback',
     ],
 
-    'microsoft' => [
-        'client_id' => env('MICROSOFT_CLIENT_ID'),
-        'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
-        'redirect' => env('APP_URL') . '/email-accounts/microsoft/callback',
-        'tenant' => env('MICROSOFT_TENANT', 'common'), // 'common', 'organizations', 'consumers' o el ID de tenant específico
+    // WhatsApp Business API (Meta)
+    'whatsapp' => [
+        'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
+        'app_secret'   => env('WHATSAPP_APP_SECRET'),
+    ],
+
+    // Telegram Bot API
+    'telegram' => [
+        'bot_token'      => env('TELEGRAM_BOT_TOKEN'),
+        'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
+    ],
+
+    // ai-service Python FastAPI (Roque)
+    'ai_service' => [
+        'url' => env('AI_SERVICE_URL'),
     ],
 
 ];

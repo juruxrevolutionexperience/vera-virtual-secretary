@@ -157,26 +157,9 @@
 
                         <div class="space-y-4" x-data="{                                                                                                   
               selectedDensity: localStorage.getItem('email-density') || 'comfortable',                                                       
-              saveDensity() {                                                                                                                
-                  localStorage.setItem('email-density', this.selectedDensity);                                                               
-                                                                                                                                             
-                  // Llamar al backend para guardar en BD                                                                                    
-                   fetch('{{ route('settings.appearance.density') }}', {                                                                
-                      method: 'POST',                                                                                                        
-                      headers: {                                                                                                             
-                          'Content-Type': 'application/json',                                                                                
-                          'X-CSRF-TOKEN': '{{ csrf_token() }}'                                                                               
-                      },                                                                                                                     
-                      body: JSON.stringify({ density: this.selectedDensity })                                                                
-                  })                                                                                                                         
-                  .then(response => response.json())                                                                                         
-                  .then(data => {                                                                                                            
-                      if (data.success) {                                                                                                    
-                          // Mostrar notificación de éxito                                                                                   
-                          window.location.reload();                                                                                          
-                      }                                                                                                                      
-                  })                                                                                                                         
-                  .catch(error => console.error('Error:', error));                                                                           
+              saveDensity() {
+                  localStorage.setItem('email-density', this.selectedDensity);
+                  window.location.reload();
               }                                                                                                                              
           }">
                             <!-- Opciones de Densidad -->
@@ -1347,11 +1330,8 @@
                         const data = await response.json();
 
                         if (data.needs_onboarding) {
-                            // Esperar 1 segundo y abrir modal en categoría Vera
-                            setTimeout(() => {
-                                this.activeCategory = 'vera';
-                                this.openModal();
-                            }, 1000);
+                            // Redirigir al wizard de onboarding
+                            window.location.href = '/vera/onboarding';
                         }
                     }
                 } catch (error) {

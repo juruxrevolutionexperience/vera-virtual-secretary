@@ -36,8 +36,8 @@
             @yield('content')
         </main>
     </div>
-    <!-- Command Palette Global (Ctrl+K) -->
-    @include('components.command-palette')
+    <!-- Dev Toolbar (solo visible para usuarios is_dev) -->
+    @include('components.dev-toolbar')
 
     <!-- Scripts adicionales -->
     @stack('scripts')

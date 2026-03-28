@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\User;
-use App\Models\Email;
 use App\Models\VeraTokenUsage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -62,12 +61,12 @@ class VeraUsageService
             'days_remaining' => now()->diffInDays($endDate),
 
             // Límites del plan
-            'email_limit' => $user->monthly_email_limit,
-            'token_limit' => $this->emailsToTokens($user->monthly_email_limit),
+            'meeting_limit' => $user->monthly_meeting_limit,
+            'token_limit'   => $user->monthly_tokens_limit,
 
             // Uso actual
-            'emails_processed' => $emailsProcessed,
-            'emails_remaining' => max(0, $user->monthly_email_limit - $emailsProcessed),
+            'meetings_processed' => $emailsProcessed,
+            'meetings_remaining' => max(0, ($user->monthly_meeting_limit ?? 999999) - $emailsProcessed),
             'total_tokens' => $records->sum('total_tokens'),
             'total_cost' => $records->sum('cost'),
 
@@ -92,14 +91,8 @@ class VeraUsageService
      */
     public function getEmailsProcessedThisMonth(User $user): int
     {
-        $startDate = $this->getBillingCycleStart($user);
-        $endDate = $this->getBillingCycleEnd($user);
-
-        // Contar emails únicos que fueron procesados este ciclo
-        return Email::where('user_id', $user->id)
-            ->where('processed_this_billing_cycle', true)
-            ->whereBetween('last_processed_at', [$startDate, $endDate])
-            ->count();
+        // TODO Sprint 2: replace with conversation/meeting count
+        return 0;
     }
 
     /**
@@ -108,10 +101,10 @@ class VeraUsageService
      * @param User $user
      * @return int
      */
-    public function getRemainingEmails(User $user): int
+    public function getRemainingMeetings(User $user): int
     {
         $used  = $this->getEmailsProcessedThisMonth($user);
-        $limit = $user->planEmailLimit() ?? PHP_INT_MAX;
+        $limit = $user->monthly_meeting_limit ?? PHP_INT_MAX;
         return max(0, $limit - $used);
     }
 
@@ -155,17 +148,17 @@ class VeraUsageService
      * @param User $user
      * @return bool
      */
-    public function canProcessEmail(User $user): bool
+    public function canScheduleMeeting(User $user): bool
     {
-        $remaining = $this->getRemainingEmails($user);
+        $remaining = $this->getRemainingMeetings($user);
 
-        Log::info('🔍 Verificando límite de emails', [
+        Log::info('🔍 Verificando límite de reuniones', [
             'user_id' => $user->id,
             'plan' => $user->plan_type,
-            'limit' => $user->monthly_email_limit,
+            'limit' => $user->monthly_meeting_limit,
             'used' => $this->getEmailsProcessedThisMonth($user),
             'remaining' => $remaining,
-            'can_process' => $remaining > 0,
+            'can_schedule' => $remaining > 0,
         ]);
 
         return $remaining > 0;
@@ -180,34 +173,7 @@ class VeraUsageService
      * @param string $actionType
      * @return void
      */
-    public function recordEmailProcessing(User $user, Email $email, string $actionType): void
-    {
-        DB::transaction(function () use ($user, $email, $actionType) {
-            // Releer la fila con bloqueo para evitar race conditions
-            $fresh = Email::lockForUpdate()->find($email->id);
-
-            if (!$fresh || $fresh->processed_this_billing_cycle) {
-                Log::info('ℹ️  Email ya procesado este ciclo, no se cuenta de nuevo', [
-                    'email_id' => $email->id,
-                    'user_id'  => $user->id,
-                ]);
-                return;
-            }
-
-            $fresh->update([
-                'processed_this_billing_cycle' => true,
-                'last_processed_at'            => now(),
-            ]);
-
-            Log::info('✅ Email marcado como procesado', [
-                'email_id'         => $email->id,
-                'user_id'          => $user->id,
-                'action_type'      => $actionType,
-                'emails_used'      => $this->getEmailsProcessedThisMonth($user),
-                'emails_remaining' => $this->getRemainingEmails($user),
-            ]);
-        });
-    }
+    // recordEmailProcessing removed — no email model in Sprint 1+
 
     /**
      * Obtener porcentaje de uso del plan
@@ -217,12 +183,12 @@ class VeraUsageService
      */
     public function getUsagePercentage(User $user): float
     {
-        if ($user->monthly_email_limit === 0) {
+        if (!$user->monthly_meeting_limit || $user->monthly_meeting_limit === 0) {
             return 0;
         }
 
         $used = $this->getEmailsProcessedThisMonth($user);
-        $percentage = ($used / $user->monthly_email_limit) * 100;
+        $percentage = ($used / $user->monthly_meeting_limit) * 100;
 
         return round(min(100, $percentage), 2);
     }
@@ -236,7 +202,7 @@ class VeraUsageService
     public function projectLimitReachDate(User $user): ?Carbon
     {
         $used = $this->getEmailsProcessedThisMonth($user);
-        $limit = $user->monthly_email_limit;
+        $limit = $user->monthly_meeting_limit ?? 999999;
         $remaining = $limit - $used;
 
         if ($remaining <= 0) {
@@ -281,14 +247,6 @@ class VeraUsageService
      */
     public function resetBillingCycle(User $user): void
     {
-        // Resetear flag de todos los emails
-        Email::where('user_id', $user->id)
-            ->where('processed_this_billing_cycle', true)
-            ->update([
-                'processed_this_billing_cycle' => false,
-            ]);
-
-        // Actualizar fecha de inicio del ciclo
         $user->update([
             'billing_cycle_start' => Carbon::now()->startOfMonth(),
         ]);
@@ -397,6 +355,6 @@ class VeraUsageService
      */
     public function getMonthlyTokenLimit(User $user): int
     {
-        return $this->emailsToTokens($user->monthly_email_limit);
+        return $user->monthly_tokens_limit ?? 0;
     }
 }

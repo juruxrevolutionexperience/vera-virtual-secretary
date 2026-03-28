@@ -9,6 +9,10 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__ . '/../routes/web.php',
         commands: __DIR__ . '/../routes/console.php',
         health: '/up',
+        then: function () {
+            \Illuminate\Support\Facades\Route::middleware('web')
+                ->group(base_path('routes/auth.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // REGISTRA AQUÍ EL ALIAS
@@ -16,15 +20,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'paid' => \App\Http\Middleware\EnsurePaid::class,
         ]);
 
-        // Inertia middleware
-        $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-        ]);
-
-        // Excluir webhooks externos del CSRF (Google PubSub no envía token CSRF)
+        // Excluir webhook de Stripe del CSRF
         $middleware->validateCsrfTokens(except: [
-            'webhooks/gmail',
             'stripe/webhook',
+            'webhooks/whatsapp',
+            'webhooks/telegram/*',
         ]);
     })
     ->withMiddleware(function (Middleware $middleware) {
@@ -35,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'organization.access' => \App\Http\Middleware\CheckOrganizationAccess::class,
             'enterprise.access' => \App\Http\Middleware\EnsureHasOrganizationAccess::class,
             'tokens.check' => \App\Http\Middleware\CheckUserTokens::class,
+            'dev'          => \App\Http\Middleware\EnsureDevMode::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
