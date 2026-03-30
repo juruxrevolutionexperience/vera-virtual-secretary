@@ -77,11 +77,20 @@ class VeraConfig extends Model
     }
 
     /**
-     * ¿Tiene Google Calendar vinculado?
+     * ¿Tiene Google vinculado? (Calendar + Gmail comparten el mismo token OAuth)
      */
     public function hasCalendarConnected(): bool
     {
         return !empty($this->google_calendar_id) && !empty($this->google_access_token);
+    }
+
+    /**
+     * ¿Tiene Gmail conectado?
+     * Mismo token que Calendar — si conectó Google, tiene acceso a ambos.
+     */
+    public function hasGmailConnected(): bool
+    {
+        return $this->hasCalendarConnected();
     }
 
     /**
@@ -151,7 +160,7 @@ class VeraConfig extends Model
     }
 
     /**
-     * Canales activos del usuario (array de strings: 'telegram', 'whatsapp', 'google_calendar').
+     * Canales activos del usuario.
      */
     public function getActiveChannels(): array
     {
@@ -159,6 +168,7 @@ class VeraConfig extends Model
         if ($this->hasTelegramConnected())  $channels[] = 'telegram';
         if ($this->hasWhatsAppConnected())  $channels[] = 'whatsapp';
         if ($this->hasCalendarConnected())  $channels[] = 'google_calendar';
+        if ($this->hasGmailConnected())     $channels[] = 'gmail';
         return $channels;
     }
 

@@ -256,48 +256,75 @@
         <!-- ── PASO 4: Canales ─────────────────────────────────── -->
         <div x-show="currentStep === 4" x-transition>
             <div class="px-8 pt-8 pb-2">
-                <h2 class="text-lg font-bold text-gray-900">Conecta tus canales</h2>
-                <p class="text-sm text-gray-500 mt-1">Vera recibirá solicitudes de reunión desde estos canales.</p>
+                <h2 class="text-lg font-bold text-gray-900">Conecta tu cuenta de Google</h2>
+                <p class="text-sm text-gray-500 mt-1">Una sola conexión da a Vera acceso a tu agenda y a tu email.</p>
             </div>
             <div class="px-8 py-6 space-y-4">
 
-                @php $calendarConnected = $config && $config->hasCalendarConnected(); @endphp
+                @php $googleConnected = $config && $config->hasCalendarConnected(); @endphp
 
-                <!-- Google Calendar -->
-                <div class="flex items-center justify-between p-4 rounded-xl border-2 {{ $calendarConnected ? 'border-green-400 bg-green-50' : 'border-gray-200' }}">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
-                            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                            </svg>
+                <!-- Google (Calendar + Gmail) — canal principal activo -->
+                <div class="p-5 rounded-xl border-2 {{ $googleConnected ? 'border-green-400 bg-green-50' : 'border-purple-200 bg-purple-50' }}">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex items-start gap-3">
+                            <!-- Logo Google -->
+                            <div class="w-11 h-11 bg-white rounded-xl shadow-sm flex items-center justify-center flex-shrink-0">
+                                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-gray-900">
+                                    Conectar con Google
+                                    <span class="ml-1.5 text-xs font-normal text-red-500">* requerido</span>
+                                </p>
+                                @if($googleConnected)
+                                    <p class="text-xs text-green-700 font-medium mt-0.5">✓ Google Calendar y Gmail conectados</p>
+                                @else
+                                    <p class="text-xs text-gray-500 mt-0.5">Vera gestionará tu agenda y leerá solicitudes de reunión por email</p>
+                                @endif
+                                <!-- Chips de lo que incluye -->
+                                <div class="flex gap-1.5 mt-2 flex-wrap">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ $googleConnected ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500 border border-gray-200' }}">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                        Google Calendar
+                                    </span>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ $googleConnected ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500 border border-gray-200' }}">
+                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                                        </svg>
+                                        Gmail
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-sm font-semibold text-gray-900">Google Calendar <span class="text-red-500">*</span></p>
-                            @if($calendarConnected)
-                                <p class="text-xs text-green-600 font-medium">✓ Conectado correctamente</p>
-                            @else
-                                <p class="text-xs text-gray-500">Vera crea y gestiona eventos en tu calendario</p>
-                            @endif
-                        </div>
+                        @if($googleConnected)
+                            <span class="px-4 py-2 bg-green-100 text-green-700 text-sm font-semibold rounded-lg flex-shrink-0">Conectado ✓</span>
+                        @else
+                            <a href="{{ route('google.calendar.connect') }}"
+                               class="flex-shrink-0 px-4 py-2 bg-white border-2 border-purple-300 text-purple-700 text-sm font-semibold rounded-xl hover:bg-purple-50 hover:border-purple-400 transition-colors flex items-center gap-2 shadow-sm">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                                </svg>
+                                Conectar con Google
+                            </a>
+                        @endif
                     </div>
-                    @if($calendarConnected)
-                        <span class="px-4 py-2 bg-green-100 text-green-700 text-sm font-semibold rounded-lg">Conectado ✓</span>
-                    @else
-                        <a href="{{ route('google.calendar.connect') }}"
-                           class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2">
-                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none">
-                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                            </svg>
-                            Conectar
-                        </a>
-                    @endif
                 </div>
 
+                <!-- Separador -->
+                <p class="text-xs text-gray-400 font-medium uppercase tracking-wide pt-1">Más canales (próximamente)</p>
+
                 <!-- WhatsApp -->
-                <div class="flex items-center justify-between p-4 rounded-xl border-2 border-gray-200 opacity-60">
+                <div class="flex items-center justify-between p-4 rounded-xl border border-gray-200 opacity-50">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                             <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 24 24">
@@ -306,14 +333,14 @@
                         </div>
                         <div>
                             <p class="text-sm font-semibold text-gray-900">WhatsApp Business</p>
-                            <p class="text-xs text-gray-500">Próximamente — Configura en Ajustes → Canales</p>
+                            <p class="text-xs text-gray-400">Disponible próximamente</p>
                         </div>
                     </div>
                     <span class="px-3 py-1.5 bg-gray-100 text-gray-400 text-xs font-medium rounded-lg">Próximamente</span>
                 </div>
 
                 <!-- Telegram -->
-                <div class="flex items-center justify-between p-4 rounded-xl border-2 border-gray-200 opacity-60">
+                <div class="flex items-center justify-between p-4 rounded-xl border border-gray-200 opacity-50">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                             <svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
@@ -322,46 +349,14 @@
                         </div>
                         <div>
                             <p class="text-sm font-semibold text-gray-900">Telegram</p>
-                            <p class="text-xs text-gray-500">Próximamente — Configura en Ajustes → Canales</p>
+                            <p class="text-xs text-gray-400">Disponible próximamente</p>
                         </div>
                     </div>
                     <span class="px-3 py-1.5 bg-gray-100 text-gray-400 text-xs font-medium rounded-lg">Próximamente</span>
                 </div>
 
-                <!-- Gmail -->
-                <div class="flex items-center justify-between p-4 rounded-xl border-2 border-gray-200 opacity-60">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
-                            <svg class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold text-gray-900">Gmail</p>
-                            <p class="text-xs text-gray-500">Próximamente — Vera responderá solicitudes de reunión por email</p>
-                        </div>
-                    </div>
-                    <span class="px-3 py-1.5 bg-gray-100 text-gray-400 text-xs font-medium rounded-lg">Próximamente</span>
-                </div>
-
-                <!-- Outlook -->
-                <div class="flex items-center justify-between p-4 rounded-xl border-2 border-gray-200 opacity-60">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                            <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M7.88 12.04q0 .45-.11.87-.1.41-.33.74-.22.33-.58.52-.37.2-.87.2t-.85-.2q-.35-.21-.57-.55-.22-.33-.33-.75-.1-.42-.1-.86t.1-.87q.1-.43.34-.76.22-.34.59-.54.36-.2.87-.2t.86.2q.35.21.57.55.22.34.33.77.1.43.1.88zM24 12v9.38q0 .46-.33.8-.33.32-.8.32H7.13q-.46 0-.8-.33-.32-.33-.32-.8V18H1q-.41 0-.7-.3-.3-.29-.3-.7V7q0-.41.3-.7Q.58 6 1 6h6.1V2.55q0-.44.3-.75.3-.3.75-.3h12.9q.44 0 .75.3.3.3.3.75V10.85l1.24.72q.26.15.26.43zm-10.88.96q.98-.4 1.53-1.23.55-.83.55-1.89 0-.91-.3-1.63-.29-.71-.85-1.2-.56-.5-1.37-.77-.8-.3-1.82-.3H7.13V18h2.47v-5.2h1.68l2.73 5.2h2.9l-3.1-5.54q.5-.14.95-.4l-.54-.1z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold text-gray-900">Outlook</p>
-                            <p class="text-xs text-gray-500">Próximamente — Vera responderá solicitudes de reunión por email</p>
-                        </div>
-                    </div>
-                    <span class="px-3 py-1.5 bg-gray-100 text-gray-400 text-xs font-medium rounded-lg">Próximamente</span>
-                </div>
-
-                <p class="text-xs text-gray-400 text-center pt-2">
-                    Puedes conectar los demás canales más adelante desde Ajustes → Canales
+                <p class="text-xs text-gray-400 text-center pt-1">
+                    Puedes gestionar los canales más adelante desde Ajustes → Canales
                 </p>
 
             </div>

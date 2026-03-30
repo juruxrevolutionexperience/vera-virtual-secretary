@@ -223,12 +223,11 @@
                             <p class="text-xs text-green-600">Vera puede crear y gestionar tus eventos</p>
                         </div>
                     </div>
-                    <form method="POST" action="{{ route('google.calendar.disconnect') }}">
-                        @csrf
-                        <button type="submit" class="px-3 py-1.5 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
-                            Desconectar
-                        </button>
-                    </form>
+                    <button type="button"
+                            @click="disconnectGoogle()"
+                            class="px-3 py-1.5 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+                        Desconectar
+                    </button>
                 </div>
                 @else
                 <div class="flex items-center justify-between p-4 bg-amber-50 rounded-xl border border-amber-200">
@@ -359,6 +358,16 @@ function veraConfig() {
         showNotification(type, message) {
             this.notification = { show: true, type, message };
             setTimeout(() => this.notification.show = false, 4000);
+        },
+
+        async disconnectGoogle() {
+            if (!confirm('¿Desconectar Google? Vera dejará de acceder a tu calendario y email.')) return;
+            const res = await fetch('{{ route('google.calendar.disconnect') }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+            });
+            if (res.ok) window.location.reload();
+            else this.showNotification('error', 'Error al desconectar. Inténtalo de nuevo.');
         },
 
         async saveConfig() {

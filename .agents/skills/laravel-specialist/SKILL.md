@@ -1,4 +1,4 @@
-ç---
+---
 name: laravel-specialist
 description: Use when building Laravel 10+ applications requiring Eloquent ORM, API resources, or queue systems. Invoke for Laravel models, Livewire components, Sanctum authentication, Horizon queues.
 license: MIT

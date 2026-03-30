@@ -11,26 +11,27 @@ use Laravel\Socialite\Facades\Socialite;
 /**
  * GoogleCalendarAuthController
  *
- * Sprint 2 — OAuth con Google para acceder a Google Calendar.
- * Scopes: calendar (leer/escribir) + calendar.events (crear/editar eventos)
+ * OAuth con Google — scopes combinados: Calendar + Gmail.
+ * Una sola conexión da a Vera acceso a la agenda y al email.
  *
  * Flujo:
- *   1. Usuario hace clic en "Conectar Google Calendar" en /vera/config
- *   2. redirect() → Google OAuth con los scopes de Calendar
+ *   1. Usuario hace clic en "Conectar con Google" en onboarding o /vera/config
+ *   2. redirect() → Google OAuth con scopes de Calendar + Gmail
  *   3. Google redirige a callback() con el código de autorización
  *   4. Se guarda access_token + refresh_token en vera_configs del usuario
  */
 class GoogleCalendarAuthController extends Controller
 {
     /**
-     * Scopes necesarios para gestionar Calendar completamente.
-     * - calendar: leer disponibilidad, listar calendarios
-     * - calendar.events: crear, modificar y cancelar eventos
+     * Scopes combinados: Calendar + Gmail + identificación.
+     * - calendar / calendar.events: leer disponibilidad, crear/editar eventos
+     * - gmail.readonly: leer emails entrantes para detectar peticiones de reunión
      * - userinfo.email: identificar al usuario tras el OAuth
      */
     private const SCOPES = [
         'https://www.googleapis.com/auth/calendar',
         'https://www.googleapis.com/auth/calendar.events',
+        'https://www.googleapis.com/auth/gmail.modify',
         'https://www.googleapis.com/auth/userinfo.email',
     ];
 
@@ -94,11 +95,11 @@ class GoogleCalendarAuthController extends Controller
             // Si el onboarding no está completado, volver al paso 4
             if (!$config->onboarding_completed) {
                 return redirect()->route('vera.onboarding')
-                    ->with('success', '¡Google Calendar conectado! Ahora pulsa "Empezar con Vera" para terminar.');
+                    ->with('success', '¡Google conectado! Calendar y Gmail listos. Pulsa "Empezar con Vera" para terminar.');
             }
 
             return redirect()->route('vera.config')
-                ->with('success', '¡Google Calendar conectado correctamente! Vera ya puede gestionar tu agenda.');
+                ->with('success', '¡Google conectado correctamente! Vera ya puede gestionar tu agenda y leer tu email.');
 
         } catch (\Exception $e) {
             Log::error('❌ Error en Google Calendar OAuth callback', [
