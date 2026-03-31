@@ -182,6 +182,18 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
 });
 
 // ========================================
+// RUTAS DE VERA - CALENDAR
+// ========================================
+use App\Http\Controllers\VeraCalendarController;
+
+Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
+    Route::get('/calendar',                   [VeraCalendarController::class, 'index'])->name('calendar.index');
+    Route::post('/calendar/events',           [VeraCalendarController::class, 'store'])->name('calendar.store');
+    Route::patch('/calendar/events/{id}',     [VeraCalendarController::class, 'update'])->name('calendar.update');
+    Route::delete('/calendar/events/{id}',    [VeraCalendarController::class, 'destroy'])->name('calendar.destroy');
+});
+
+// ========================================
 // RUTAS DE VERA - MÉTRICAS Y ANALYTICS
 // ========================================
 use App\Http\Controllers\VeraAnalyticsController;

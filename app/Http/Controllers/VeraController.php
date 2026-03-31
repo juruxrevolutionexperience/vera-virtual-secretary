@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Meeting;
+use App\Models\VeraActivityLog;
 use App\Models\VeraConfig;
 use App\Models\VeraMemoryChunk;
 use Carbon\Carbon;
@@ -37,7 +38,12 @@ class VeraController extends Controller
             ->limit(5)
             ->get();
 
-        return view('vera.dashboard', compact('config', 'stats', 'upcomingMeetings', 'pendingMeetings'));
+        $recentActivity = VeraActivityLog::byUser($user->id)
+            ->orderByDesc('created_at')
+            ->limit(8)
+            ->get();
+
+        return view('vera.dashboard', compact('config', 'stats', 'upcomingMeetings', 'pendingMeetings', 'recentActivity'));
     }
 
     // ─── Onboarding ───────────────────────────────────────────────────────────

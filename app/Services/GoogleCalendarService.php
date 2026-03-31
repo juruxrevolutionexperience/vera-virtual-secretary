@@ -332,6 +332,81 @@ class GoogleCalendarService
         ]);
     }
 
+    // ─── Vista Calendar ──────────────────────────────────────────────────────
+
+    /**
+     * Devuelve los eventos de Google Calendar en un rango de fechas.
+     * Usado por la vista /vera/calendar.
+     *
+     * @return array  Array de ['id', 'title', 'start', 'end', 'meet_link', 'source']
+     */
+    public function getUpcomingEvents(User $user, Carbon $from, Carbon $to): array
+    {
+        $config  = VeraConfig::where('user_id', $user->id)->firstOrFail();
+        $service = $this->getCalendarService($config);
+
+        $results = $service->events->listEvents('primary', [
+            'timeMin'      => $from->startOfDay()->toRfc3339String(),
+            'timeMax'      => $to->endOfDay()->toRfc3339String(),
+            'singleEvents' => true,
+            'orderBy'      => 'startTime',
+            'maxResults'   => 100,
+        ]);
+
+        $events = [];
+        foreach ($results->getItems() as $event) {
+            $startRaw = $event->getStart()->getDateTime() ?? $event->getStart()->getDate();
+            $endRaw   = $event->getEnd()->getDateTime()   ?? $event->getEnd()->getDate();
+
+            $start = Carbon::parse($startRaw);
+            $end   = Carbon::parse($endRaw);
+
+            // Buscar Meeting en BD para saber si fue propuesto por Vera
+            $meeting = Meeting::where('user_id', $user->id)
+                ->where('google_event_id', $event->getId())
+                ->first();
+
+            $events[] = [
+                'id'           => $event->getId(),
+                'meeting_id'   => $meeting?->id,
+                'title'        => $event->getSummary() ?? '(sin título)',
+                'start'        => $start,
+                'end'          => $end,
+                'meet_link'    => $event->getHangoutLink(),
+                'source'       => $meeting?->source_channel ?? 'manual',
+                'contact_name' => $meeting?->contact_name,
+                'contact_email'=> $meeting?->contact_email,
+                'duration_min' => $start->diffInMinutes($end),
+                'status'       => $meeting?->status ?? 'confirmed',
+            ];
+        }
+
+        return $events;
+    }
+
+    /**
+     * Devuelve el número de eventos para hoy (para el badge del sidebar).
+     */
+    public function getTodayEventCount(User $user): int
+    {
+        try {
+            $config  = VeraConfig::where('user_id', $user->id)->first();
+            if (!$config?->hasCalendarConnected()) return 0;
+
+            $service = $this->getCalendarService($config);
+            $results = $service->events->listEvents('primary', [
+                'timeMin'      => now()->startOfDay()->toRfc3339String(),
+                'timeMax'      => now()->endOfDay()->toRfc3339String(),
+                'singleEvents' => true,
+                'maxResults'   => 50,
+            ]);
+
+            return count($results->getItems());
+        } catch (\Exception) {
+            return 0;
+        }
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     /**

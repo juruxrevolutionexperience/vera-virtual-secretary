@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Schedule;
 use Stripe\Stripe;
 use Stripe\ApiRequestor;
 
@@ -35,6 +36,11 @@ class AppServiceProvider extends ServiceProvider
                 ])
             );
         }
+
+        // ── Scheduler de Vera ─────────────────────────────────────────────────
+        Schedule::command('vera:process-emails')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
 
         // Registrar listener de sesiones de usuario
         Event::listen(

@@ -64,6 +64,25 @@
                 <span class="flex-1">Chat Vera</span>
             </a>
 
+            <a href="{{ route('vera.calendar.index') }}"
+                class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('vera.calendar.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                <span class="flex-1">Calendar</span>
+                @php
+                    try {
+                        $todayCount = isset($todayCount) ? $todayCount : (auth()->check()
+                            ? (new \App\Services\GoogleCalendarService())->getTodayEventCount(auth()->user())
+                            : 0);
+                    } catch (\Exception) { $todayCount = 0; }
+                @endphp
+                @if($todayCount > 0)
+                <span class="text-xs bg-purple-600 text-white px-1.5 py-0.5 rounded-full font-medium leading-none">{{ $todayCount }}</span>
+                @endif
+            </a>
+
             <a href="{{ route('vera.activity.index') }}"
                 class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('vera.activity.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -108,19 +108,22 @@ class GmailService
         $msg     = $gmail->users_messages->get('me', $messageId, ['format' => 'full']);
         $headers = collect($msg->getPayload()->getHeaders());
 
-        $from    = $headers->firstWhere('name', 'From')?->getValue()  ?? '';
-        $subject = $headers->firstWhere('name', 'Subject')?->getValue() ?? '(sin asunto)';
-        $date    = $headers->firstWhere('name', 'Date')?->getValue()  ?? '';
+        $from             = $headers->firstWhere('name', 'From')?->getValue()             ?? '';
+        $subject          = $headers->firstWhere('name', 'Subject')?->getValue()          ?? '(sin asunto)';
+        $date             = $headers->firstWhere('name', 'Date')?->getValue()             ?? '';
+        $hasUnsubscribe   = $headers->firstWhere('name', 'List-Unsubscribe') !== null;
 
         $body = $this->extractBody($msg->getPayload());
 
         return [
-            'id'      => $messageId,
-            'from'    => $from,
-            'subject' => $subject,
-            'date'    => $date,
-            'body'    => $body,
-            'snippet' => $msg->getSnippet(),
+            'id'                   => $messageId,
+            'thread_id'            => $msg->getThreadId(),
+            'from'                 => $from,
+            'subject'              => $subject,
+            'date'                 => $date,
+            'body'                 => $body,
+            'snippet'              => $msg->getSnippet(),
+            'has_list_unsubscribe' => $hasUnsubscribe,
         ];
     }
 

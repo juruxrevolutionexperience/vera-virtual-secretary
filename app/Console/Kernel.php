@@ -13,6 +13,19 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // ========================================
+        // VERA — EMAIL PROCESSING
+        // ========================================
+
+        // Procesar emails entrantes de Gmail cada 5 minutos
+        $schedule->command('vera:process-emails')
+            ->everyFiveMinutes()
+            ->name('vera-process-emails')
+            ->withoutOverlapping()
+            ->onFailure(function () {
+                \Log::error('❌ Error procesando emails de Vera');
+            });
+
+        // ========================================
         // SEGURIDAD
         // ========================================
 

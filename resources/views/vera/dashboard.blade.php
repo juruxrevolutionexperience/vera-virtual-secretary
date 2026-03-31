@@ -190,6 +190,46 @@
 
         </div>
 
+        <!-- Actividad reciente de Vera -->
+        <div class="mt-6 bg-white rounded-xl border border-gray-200">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-gray-900">Actividad reciente</h2>
+                <a href="{{ route('vera.activity.index') }}" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Ver todo →</a>
+            </div>
+            <div class="divide-y divide-gray-50">
+                @forelse($recentActivity as $log)
+                @php
+                    $icon = match($log->activity_type) {
+                        'message_received' => $log->metadata['ignored'] ?? false
+                            ? ['bg' => 'bg-gray-100', 'text' => 'text-gray-400', 'emoji' => '🚫']
+                            : ['bg' => 'bg-blue-100',  'text' => 'text-blue-600',  'emoji' => '📧'],
+                        'slot_proposed'    => ['bg' => 'bg-purple-100', 'text' => 'text-purple-600', 'emoji' => '📅'],
+                        'meeting_confirmed'=> ['bg' => 'bg-green-100',  'text' => 'text-green-600',  'emoji' => '✅'],
+                        'escalation'       => ['bg' => 'bg-red-100',    'text' => 'text-red-600',    'emoji' => '⚠️'],
+                        default            => ['bg' => 'bg-gray-100',   'text' => 'text-gray-500',   'emoji' => '•'],
+                    };
+                @endphp
+                <div class="px-5 py-3 flex items-center gap-3">
+                    <div class="w-8 h-8 {{ $icon['bg'] }} rounded-lg flex items-center justify-center flex-shrink-0 text-sm">
+                        {{ $icon['emoji'] }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-gray-900 truncate">{{ $log->title }}</p>
+                        @if($log->description)
+                        <p class="text-xs text-gray-400 truncate">{{ $log->description }}</p>
+                        @endif
+                    </div>
+                    <span class="text-xs text-gray-400 flex-shrink-0">{{ $log->created_at->diffForHumans() }}</span>
+                </div>
+                @empty
+                <div class="px-5 py-8 text-center">
+                    <p class="text-sm text-gray-400">Vera aún no ha registrado actividad</p>
+                    <p class="text-xs text-gray-300 mt-1">Los emails procesados aparecerán aquí</p>
+                </div>
+                @endforelse
+            </div>
+        </div>
+
         <!-- Canales activos -->
         <div class="mt-6 bg-white rounded-xl border border-gray-200 p-5">
             <h2 class="text-sm font-semibold text-gray-900 mb-4">Canales de entrada</h2>

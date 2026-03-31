@@ -13,6 +13,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Models\VeraActivityLog;
+use App\Services\GmailService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -64,6 +66,22 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
+        // ── Log: email recibido ───────────────────────────────────────────────
+        VeraActivityLog::record([
+            'user_id'       => $user->id,
+            'activity_type' => 'message_received',
+            'title'         => 'Email recibido de ' . ($this->contactName ?? $this->contactIdentifier),
+            'description'   => substr($this->message, 0, 200),
+            'metadata'      => [
+                'channel'          => $this->channel,
+                'contact'          => $this->contactIdentifier,
+                'subject'          => $this->metadata['subject'] ?? null,
+                'gmail_message_id' => $this->metadata['gmail_message_id'] ?? null,
+            ],
+            'counts_towards_limit' => false,
+            'status'        => 'completed',
+        ]);
+
         // ── 1. Crear o recuperar la solicitud de reunión en curso ─────────────
         $meetingRequest = $this->getOrCreateMeetingRequest($user, $config);
 
@@ -83,7 +101,7 @@ class ProcessIncomingMessage implements ShouldQueue
 
         if ($escalate) {
             $this->handleEscalation($user, $meetingRequest, $aiResponse);
-            $this->sendResponse($user, $response ?? $config->unknown_response ?? 'Déjame consultarlo y te respondo en breve.');
+            $this->sendResponse($user, $response ?? $config->unknown_response ?? 'Déjame consultarlo y te respondo en breve.', $config);
             return;
         }
 
@@ -104,7 +122,7 @@ class ProcessIncomingMessage implements ShouldQueue
 
         // ── 8. Enviar respuesta al cliente ────────────────────────────────────
         if ($response) {
-            $this->sendResponse($user, $response);
+            $this->sendResponse($user, $response, $config);
         }
 
         Log::info('✅ Mensaje procesado', [
@@ -216,11 +234,20 @@ class ProcessIncomingMessage implements ShouldQueue
     /**
      * Respuesta placeholder mientras ai-service (Roque) no está listo.
      */
+    /**
+     * Respuesta placeholder mientras ai-service (Roque) no está listo.
+     * Devuelve mode:'agenda' con slots vacíos para que buildAvailabilityResponse()
+     * consulte el Calendar real y proponga huecos disponibles (B5).
+     */
     private function placeholderResponse(VeraConfig $config): array
     {
+        $greeting = $config->business_name
+            ? "Hola, soy Vera, la asistente de {$config->business_name}."
+            : 'Hola, soy Vera.';
+
         return [
-            'response'        => $config->unknown_response ?? 'Hola, soy Vera. En breve me pondré en contacto contigo para gestionar tu solicitud.',
-            'mode'            => 'respuesta',
+            'response'        => "{$greeting} He recibido tu mensaje y me gustaría proponerte algunos horarios para que podamos hablar:",
+            'mode'            => 'agenda',
             'escalate'        => false,
             'confidence'      => 0.0,
             'suggested_slots' => [],
@@ -259,6 +286,21 @@ class ProcessIncomingMessage implements ShouldQueue
             }
 
             $slotList = implode("\n", array_map(fn ($s) => "• {$s['label']}", $slots));
+
+            VeraActivityLog::record([
+                'user_id'       => $user->id,
+                'activity_type' => 'slot_proposed',
+                'title'         => 'Slots propuestos a ' . ($this->contactName ?? $this->contactIdentifier),
+                'description'   => implode(', ', array_column($slots, 'label')),
+                'metadata'      => [
+                    'channel' => $this->channel,
+                    'contact' => $this->contactIdentifier,
+                    'slots'   => $slots,
+                ],
+                'counts_towards_limit' => true,
+                'status'        => 'completed',
+            ]);
+
             return ($baseResponse ? $baseResponse . "\n\n" : '') . "Tengo disponibilidad en:\n{$slotList}\n\n¿Cuál te viene mejor?";
 
         } catch (\Exception $e) {
@@ -274,7 +316,19 @@ class ProcessIncomingMessage implements ShouldQueue
             'escalation_reason' => $aiResponse['escalation_reason'] ?? 'trigger detectado',
         ]);
 
-        // TODO Sprint 4: enviar notificación push/email al dueño del negocio
+        VeraActivityLog::record([
+            'user_id'       => $user->id,
+            'activity_type' => 'escalation',
+            'title'         => 'Conversación escalada — ' . ($this->contactName ?? $this->contactIdentifier),
+            'description'   => $aiResponse['escalation_reason'] ?? 'Trigger detectado',
+            'metadata'      => [
+                'channel' => $this->channel,
+                'contact' => $this->contactIdentifier,
+            ],
+            'counts_towards_limit' => false,
+            'status'        => 'completed',
+        ]);
+
         Log::warning('⚠️ Conversación escalada al humano', [
             'user_id'    => $user->id,
             'channel'    => $this->channel,
@@ -321,23 +375,44 @@ class ProcessIncomingMessage implements ShouldQueue
 
     /**
      * Envía la respuesta al cliente por el canal correspondiente.
-     * TODO Sprint 4: implementar envío real por WhatsApp API y Telegram Bot API.
      */
-    private function sendResponse(User $user, string $response): void
+    private function sendResponse(User $user, string $response, ?VeraConfig $config = null): void
     {
+        if ($this->channel === 'email' && $config?->hasGmailConnected()) {
+            try {
+                $gmail = new GmailService();
+
+                $originalEmail = [
+                    'from'      => $this->contactIdentifier,
+                    'subject'   => $this->metadata['subject'] ?? '(sin asunto)',
+                    'thread_id' => $this->metadata['thread_id'] ?? null,
+                ];
+
+                $signature = $config->vera_signature
+                    ?? ($config->owner_name ? "Vera · Asistente de {$config->owner_name}" : 'Vera');
+
+                $gmail->replyToEmail($config, $originalEmail, $response, $signature);
+
+                Log::info('📧 Email enviado por Vera', [
+                    'user_id' => $user->id,
+                    'to'      => $this->contactIdentifier,
+                ]);
+                return;
+            } catch (\Exception $e) {
+                Log::error('❌ Error enviando email', [
+                    'user_id' => $user->id,
+                    'error'   => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Otros canales (WhatsApp, Telegram): pendiente implementación
         Log::info('📤 Respuesta lista para enviar', [
             'user_id' => $user->id,
             'channel' => $this->channel,
             'contact' => $this->contactIdentifier,
             'length'  => strlen($response),
         ]);
-
-        // TODO Sprint 4: envío real
-        // match ($this->channel) {
-        //     'whatsapp' => $this->sendWhatsApp($response),
-        //     'telegram' => $this->sendTelegram($response),
-        //     'email'    => $this->sendEmail($response),
-        // }
     }
 
     public function failed(\Throwable $exception): void
