@@ -1,7 +1,47 @@
-from rag.search import find_relevant           # para buscar chunks relevantes del RAG
-def build_prompt (brain, message, history):    # construye el system prompt con brain, mensaje e historial
-    if not brain["working_hours"]:             # si working_hours esta vacío, lanza error.
-        raise ValueError("working_hours está vacío")      # para si working_hours no está configurado
-    if not brain["tone"]:                      # si tone está vacío, lanza error 
-        raise ValueError("tone está vacío")               # para si tone no está configurado
-def find_relevant(brain, message, history):        
+from rag.search import find_relevant    # para buscar chunks relevantes del cerebro del cliente
+
+
+def build_prompt(brain, message, history, user_id):  # construye el prompt completo que recibe el LLM — calidad del prompt = calidad de la respuesta de Vera
+    # Validación del cerebro — si faltan datos críticos, Vera no arranca antes de gastar tokens
+    if not brain.get("working_hours"):
+        raise ValueError("working_hours está vacío — Vera no puede proponer slots sin horario configurado")
+    if not brain.get("tone"):
+        raise ValueError("tone está vacío — Vera no puede responder sin tono configurado")
+
+    # Buscar chunks relevantes del cerebro del cliente en ChromaDB
+    chunks = find_relevant(user_id, message)
+    rag_context = "\n".join([f"- {c['text']}" for c in chunks]) if chunks else ""  # formatea los chunks para el prompt o vacío si no hay resultados
+
+    # Formatear el historial — últimos 10 mensajes para no disparar el coste de tokens
+    history_text = "\n".join([f"{m['role']}: {m['content']}" for m in history[-10:]])
+
+    # Formatear horario laboral
+    working_hours = ", ".join([f"{day}: {hours}" for day, hours in brain["working_hours"].items() if hours])
+
+    # Construir el system prompt completo
+    system_prompt = f"""Eres Vera, secretaria de agenda de {brain['business_name']}.
+Tu único trabajo es gestionar la agenda de {brain['owner_name']} y convertir cada conversación en una reunión confirmada.
+
+TONO: {brain['tone']}
+IDIOMA: {brain.get('language', 'es')}
+HORARIO: {working_hours}
+DURACIÓN DE REUNIÓN: {brain['meeting_duration']} minutos
+BUFFER ENTRE CITAS: {brain['buffer_minutes']} minutos
+FIRMA: {brain.get('vera_signature', f'Vera, asistente de {brain["business_name"]}')}
+
+INFORMACIÓN DEL NEGOCIO:
+{rag_context if rag_context else brain.get('unknown_response', 'Déjame consultarlo y te respondo en breve.')}
+
+REGLAS:
+- Nunca inventes información. Si no tienes la respuesta, usa: "{brain.get('unknown_response', 'Déjame consultarlo y te respondo en breve.')}"
+- Siempre lleva la conversación hacia agendar una reunión de forma natural
+- Cuando propongas slots, envía todas las opciones del día en un único mensaje
+- Firma siempre como {brain.get('vera_signature', f'Vera, asistente de {brain["business_name"]}')}"""
+
+    # Construir el prompt del usuario con historial
+    user_prompt = f"""Historial de conversación:
+{history_text}
+
+Mensaje actual del cliente: {message}"""
+
+    return system_prompt, user_prompt   # devuelve los dos separados para Groq (system + user)
