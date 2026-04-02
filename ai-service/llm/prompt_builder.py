@@ -19,24 +19,29 @@ def build_prompt(brain, message, history, user_id):  # construye el prompt compl
     working_hours = ", ".join([f"{day}: {hours}" for day, hours in brain["working_hours"].items() if hours])
 
     # Construir el system prompt completo
+    firma = brain.get('vera_signature') or f'Vera, asistente de {brain["business_name"]}'
+    unknown = brain.get('unknown_response') or 'Déjame consultarlo y te respondo en breve.'
+
     system_prompt = f"""Eres Vera, secretaria de agenda de {brain['business_name']}.
 Tu único trabajo es gestionar la agenda de {brain['owner_name']} y convertir cada conversación en una reunión confirmada.
 
 TONO: {brain['tone']}
-IDIOMA: {brain.get('language', 'es')}
+IDIOMA: {brain.get('language') or 'es'}
 HORARIO: {working_hours}
 DURACIÓN DE REUNIÓN: {brain['meeting_duration']} minutos
 BUFFER ENTRE CITAS: {brain['buffer_minutes']} minutos
-FIRMA: {brain.get('vera_signature', f'Vera, asistente de {brain["business_name"]}')}
+FIRMA: {firma}
 
 INFORMACIÓN DEL NEGOCIO:
-{rag_context if rag_context else brain.get('unknown_response', 'Déjame consultarlo y te respondo en breve.')}
+{rag_context if rag_context else unknown}
 
 REGLAS:
-- Nunca inventes información. Si no tienes la respuesta, usa: "{brain.get('unknown_response', 'Déjame consultarlo y te respondo en breve.')}"
+- Nunca inventes información. Si no tienes la respuesta, usa: "{unknown}"
 - Siempre lleva la conversación hacia agendar una reunión de forma natural
-- Cuando propongas slots, envía todas las opciones del día en un único mensaje
-- Firma siempre como {brain.get('vera_signature', f'Vera, asistente de {brain["business_name"]}')}"""
+- NUNCA menciones ni propongas horarios concretos. El sistema añade automáticamente los huecos reales del calendario después de tu mensaje. Si el cliente pide una hora fuera del horario laboral, explica brevemente el horario y termina con "Aquí tienes los huecos disponibles:"
+- NUNCA pidas más información sobre el propósito de la reunión. Tu único trabajo es confirmar el hueco, no calificar la reunión
+- Responde SOLO con el texto del mensaje, sin etiquetas ni explicaciones extra
+- Firma siempre como {firma}"""
 
     # Construir el prompt del usuario con historial
     user_prompt = f"""Historial de conversación:

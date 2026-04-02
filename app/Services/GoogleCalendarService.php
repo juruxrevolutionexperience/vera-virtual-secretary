@@ -168,7 +168,7 @@ class GoogleCalendarService
                         $slots[] = [
                             'start' => $slotStart->copy(),
                             'end'   => $slotEnd->copy(),
-                            'label' => $slotStart->translatedFormat('l d \d\e F \a \l\a\s H:i'),
+                            'label' => $slotStart->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i'),
                         ];
 
                         if (count($slots) >= $maxSlots) {

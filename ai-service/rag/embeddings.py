@@ -1,23 +1,52 @@
-import openai # para generar vectores 
-import chromadb # para guardar los vectores  
-client = openai.OpenAI() #lee OPENAI_API_KEY del .env automáticamente
-chroma = chromadb.PersistentClient(path="./chroma_db") # persiste datos en disco entre reinicios
+import chromadb
+from chromadb.utils import embedding_functions
 
-def generate_embedding(text): # genera el vector semántico del texto para que Vera pueda buscar por significado
-    response = client.embeddings.create( # convierte el texto en vector usando la API de OpenAI
-        model="text-embedding-3-small", # modelo optimizado para búsqueda semántica con bajo coste
-        input=text # texto de entrada que se convertirá en vector
-    )
-    return response.data[0].embedding # vector listo para guardar en ChromaDB o buscar por similitud
+# ChromaDB genera los vectores localmente con all-MiniLM-L6-v2 (ONNX) — sin coste, sin API externa
+chroma = chromadb.PersistentClient(path="./chroma_db")
+default_ef = embedding_functions.DefaultEmbeddingFunction()
 
 
-def store_embedding(user_id, chunk_id, text, embedding, chunk_type, source):  # almacena el conocimiento del cliente para que Vera lo recupere en cada conversación
-    collection = chroma.get_or_create_collection(          # aísla los datos de cada cliente en su propia colección
-        name=f"user_{user_id}"
+def get_collection(user_id: str):
+    """Devuelve (o crea) la colección del usuario con la función de embedding local."""
+    return chroma.get_or_create_collection(
+        name=f"user_{user_id}",
+        embedding_function=default_ef,
     )
-    collection.add(            # guarda el chunk completo en ChromaDB con todo su metadata 
-        ids=[chunk_id],        # evita guardar el mismo chunk dos veces
-        documents=[text],      # texto que Vera devuelve al LLM cuando este chunk es relevante
-        metadatas=[{"type": chunk_type,"active": True, "source": source}], # filtra por categoría, estado activo y origen para mayor precisión, menor uso de tokens y evitar información desactualizada
-        embeddings=[embedding] # permite a ChromaDB buscar por similitud semántica, no por palabras exactas
+
+
+def store_chunk(user_id: str, chunk_id: str, text: str, chunk_type: str, source: str):
+    """
+    Guarda o actualiza un chunk en ChromaDB.
+    ChromaDB vectoriza el texto internamente — no se necesita llamada externa.
+    chunk_id es el id del chunk en MySQL, garantiza que no se duplica.
+    """
+    collection = get_collection(user_id)
+    collection.upsert(
+        ids=[chunk_id],
+        documents=[text],
+        metadatas=[{
+            "type": chunk_type,
+            "active": True,
+            "source": source,
+        }],
     )
+
+
+def deactivate_chunk(user_id: str, chunk_id: str):
+    """Marca un chunk como inactivo en ChromaDB (no lo borra, para no perder historial)."""
+    collection = get_collection(user_id)
+    try:
+        collection.update(
+            ids=[chunk_id],
+            metadatas=[{"active": False}],
+        )
+    except Exception:
+        pass  # si no existe el chunk en chroma, no hay nada que desactivar
+
+
+def delete_user_collection(user_id: str):
+    """Elimina toda la memoria vectorial de un usuario (GDPR / baja)."""
+    try:
+        chroma.delete_collection(f"user_{user_id}")
+    except Exception:
+        pass

@@ -1,6 +1,9 @@
-from groq import Groq                   # librería para llamar a Groq
-import google.generativeai as genai     # librería para llamar a Gemini
-import os                               # para leer las API keys del .env
+from groq import Groq
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # carga ai-service/.env
 
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))          # inicializa el cliente de Groq con la API key del .env
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))           # configura Gemini con la API key del .env

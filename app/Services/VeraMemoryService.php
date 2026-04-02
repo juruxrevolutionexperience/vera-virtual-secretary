@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\VeraConfig;
 use App\Models\VeraMemoryChunk;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -162,10 +163,66 @@ class VeraMemoryService
 
     private function upsertChunk(int $userId, array $data): VeraMemoryChunk
     {
-        return VeraMemoryChunk::updateOrCreate(
+        $chunk = VeraMemoryChunk::updateOrCreate(
             ['user_id' => $userId, 'type' => $data['type'], 'title' => $data['title']],
             array_merge($data, ['is_active' => true])
         );
+
+        // Sincronizar a ChromaDB (ai-service) de forma silenciosa
+        $this->syncChunkToAiService($userId, $chunk);
+
+        return $chunk;
+    }
+
+    /**
+     * Envía un chunk a ChromaDB vía ai-service.
+     * Si ai-service no está disponible, MySQL sigue funcionando (fallback).
+     */
+    private function syncChunkToAiService(int $userId, VeraMemoryChunk $chunk): void
+    {
+        $aiServiceUrl = config('services.ai_service.url');
+        if (!$aiServiceUrl) {
+            return; // ai-service no configurado — modo fallback MySQL
+        }
+
+        try {
+            Http::timeout(5)->post("{$aiServiceUrl}/memory/sync", [
+                'user_id' => (string) $userId,
+                'chunks'  => [[
+                    'chunk_id'   => (string) $chunk->id,
+                    'text'       => $chunk->title . "\n" . $chunk->content,
+                    'chunk_type' => $chunk->type,
+                    'source'     => $chunk->source,
+                ]],
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('VeraMemoryService: no se pudo sincronizar chunk a ChromaDB', [
+                'chunk_id' => $chunk->id,
+                'error'    => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Desactiva un chunk en MySQL y en ChromaDB.
+     */
+    public function deactivateChunk(int $userId, int $chunkId): void
+    {
+        VeraMemoryChunk::where('user_id', $userId)->where('id', $chunkId)->update(['is_active' => false]);
+
+        $aiServiceUrl = config('services.ai_service.url');
+        if (!$aiServiceUrl) {
+            return;
+        }
+
+        try {
+            Http::timeout(5)->delete("{$aiServiceUrl}/memory/chunk/{$userId}/{$chunkId}");
+        } catch (\Exception $e) {
+            Log::warning('VeraMemoryService: no se pudo desactivar chunk en ChromaDB', [
+                'chunk_id' => $chunkId,
+                'error'    => $e->getMessage(),
+            ]);
+        }
     }
 
     private function formatWritingStyle(array $style): string

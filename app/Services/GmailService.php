@@ -146,10 +146,10 @@ class GmailService
             }
         }
 
-        // Fallback: primer parte disponible
+        // Fallback: primer parte disponible — puede ser HTML, lo limpiamos
         foreach ($payload->getParts() ?? [] as $part) {
             $data = $part->getBody()?->getData();
-            if ($data) return $this->decodeBase64($data);
+            if ($data) return strip_tags($this->decodeBase64($data));
         }
 
         return '';

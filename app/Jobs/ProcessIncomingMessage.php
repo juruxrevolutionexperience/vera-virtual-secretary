@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Meeting;
 use App\Models\MeetingRequest;
 use App\Models\User;
 use App\Models\VeraConfig;
@@ -85,19 +86,34 @@ class ProcessIncomingMessage implements ShouldQueue
         // ── 1. Crear o recuperar la solicitud de reunión en curso ─────────────
         $meetingRequest = $this->getOrCreateMeetingRequest($user, $config);
 
-        // ── 2. Cargar historial de la conversación ────────────────────────────
+        // ── 2. Detectar confirmación de slot ANTES del LLM ───────────────────
+        // Si el usuario responde confirmando uno de los slots propuestos, lo agendamos
+        // directamente sin gastar tokens en el LLM.
+        if ($meetingRequest->state === 'negotiating') {
+            $confirmedSlot = $this->detectConfirmedSlot($meetingRequest);
+            if ($confirmedSlot) {
+                $response = $this->bookSlot($user, $config, $meetingRequest, $confirmedSlot);
+                $this->saveToHistory($meetingRequest, $response);
+                if ($response) {
+                    $this->sendResponse($user, $response, $config);
+                }
+                return;
+            }
+        }
+
+        // ── 3. Cargar historial de la conversación ────────────────────────────
         $history = $this->loadConversationHistory($meetingRequest);
 
-        // ── 3. Llamar a ai-service ────────────────────────────────────────────
+        // ── 4. Llamar a ai-service ────────────────────────────────────────────
         $aiResponse = $this->callAiService($user, $config, $history);
 
-        // ── 4. Interpretar respuesta ──────────────────────────────────────────
+        // ── 5. Interpretar respuesta ──────────────────────────────────────────
         $mode      = $aiResponse['mode']      ?? 'respuesta';
         $response  = $aiResponse['response']  ?? null;
         $escalate  = $aiResponse['escalate']  ?? false;
         $slots     = $aiResponse['suggested_slots'] ?? [];
 
-        // ── 5. Actuar según el modo ───────────────────────────────────────────
+        // ── 6. Actuar según el modo ───────────────────────────────────────────
 
         if ($escalate) {
             $this->handleEscalation($user, $meetingRequest, $aiResponse);
@@ -109,18 +125,43 @@ class ProcessIncomingMessage implements ShouldQueue
             $this->handleAgendaMode($user, $config, $meetingRequest, $slots);
         }
 
-        if ($mode === 'agenda' && empty($slots) && $config->hasCalendarConnected()) {
-            // El ai-service no devolvió slots — los consultamos nosotros
-            $response = $this->buildAvailabilityResponse($user, $config, $response);
+        // Cuando mode=agenda, SIEMPRE consultar Calendar y añadir slots reales.
+        // El LLM aporta el texto conversacional (p.ej. "las 19h están fuera de horario"),
+        // pero los horarios concretos los pone siempre el Calendar — nunca el LLM.
+        if ($mode === 'agenda' && $config->hasCalendarConnected()) {
+            $preferredDate = $this->extractPreferredDate($this->message);
+            // Si el usuario pidió un día concreto: mostrar toda la disponibilidad de ese día (hasta 16 slots).
+            // Si no: mostrar los próximos 9 slots disponibles en los próximos 5 días.
+            [$calendarText, $calendarSlots] = $this->buildAvailabilityResponse($user, $config, $preferredDate, $preferredDate ? 2 : 5, $preferredDate ? 16 : 9);
+            // Limpiar respuesta del LLM: eliminar slots falsos, firma y frases de cierre
+            // que el LLM añade aunque se le diga que no lo haga
+            if ($response) {
+                $response = preg_replace('/\n*(tengo disponibilidad en:)[\s\S]*/i', '', $response);
+                $response = preg_replace('/\n*(•\s+.+(\n|$))+/i', '', $response);
+                $response = preg_replace('/\n+--?\s*\n?.+$/m', '', $response);
+                $response = preg_replace('/\n*¿cuál (de estas opciones )?te viene mejor\?/i', '', $response);
+                $response = trim($response);
+            }
+            // Pegar explicación del LLM (si la hay) + slots reales del Calendar
+            $response = ($response ? $response . "\n\n" : '') . $calendarText;
+            // Guardar slots en contexto para detectar confirmación en el siguiente mensaje
+            if (!empty($calendarSlots)) {
+                $ctx = $meetingRequest->context ?? [];
+                $ctx['calendar_slots'] = array_map(
+                    fn ($s) => ['start' => $s['start']->toIso8601String(), 'end' => $s['end']->toIso8601String(), 'label' => $s['label']],
+                    $calendarSlots
+                );
+                $meetingRequest->update(['context' => $ctx]);
+            }
         }
 
-        // ── 6. Actualizar estado de la solicitud ──────────────────────────────
+        // ── 7. Actualizar estado de la solicitud ──────────────────────────────
         $this->updateMeetingRequestState($meetingRequest, $mode, $aiResponse);
 
-        // ── 7. Guardar mensaje en historial ───────────────────────────────────
+        // ── 8. Guardar mensaje en historial ───────────────────────────────────
         $this->saveToHistory($meetingRequest, $response);
 
-        // ── 8. Enviar respuesta al cliente ────────────────────────────────────
+        // ── 9. Enviar respuesta al cliente ────────────────────────────────────
         if ($response) {
             $this->sendResponse($user, $response, $config);
         }
@@ -275,14 +316,49 @@ class ProcessIncomingMessage implements ShouldQueue
         }
     }
 
-    private function buildAvailabilityResponse(User $user, VeraConfig $config, ?string $baseResponse): string
+    /**
+     * Consulta Google Calendar y construye el mensaje con slots disponibles.
+     * Devuelve [string $responseText, array $rawSlots] para poder guardar los slots en contexto.
+     */
+    /**
+     * Extrae el día preferido del mensaje del usuario (lunes, martes, etc.)
+     * Devuelve una fecha ISO o null si no se detecta nada.
+     */
+    private function extractPreferredDate(string $message): ?string
+    {
+        $message = strtolower($message);
+
+        $days = [
+            'lunes'     => Carbon::MONDAY,
+            'martes'    => Carbon::TUESDAY,
+            'miércoles' => Carbon::WEDNESDAY,
+            'miercoles' => Carbon::WEDNESDAY,
+            'jueves'    => Carbon::THURSDAY,
+            'viernes'   => Carbon::FRIDAY,
+        ];
+
+        foreach ($days as $word => $dayOfWeek) {
+            if (str_contains($message, $word)) {
+                $date = now()->next($dayOfWeek);
+                // Si hoy ya es ese día, usar la próxima semana
+                if (now()->dayOfWeek === $dayOfWeek) {
+                    $date = now()->addWeek()->startOfDay();
+                }
+                return $date->toDateString();
+            }
+        }
+
+        return null;
+    }
+
+    private function buildAvailabilityResponse(User $user, VeraConfig $config, ?string $preferredDate = null, int $daysAhead = 5, int $maxSlots = 9): array
     {
         try {
             $calendarService = new GoogleCalendarService();
-            $slots = $calendarService->getAvailableSlots($user, daysAhead: 5, maxSlots: 3);
+            $slots = $calendarService->getAvailableSlots($user, daysAhead: $daysAhead, maxSlots: $maxSlots, preferredDate: $preferredDate);
 
             if (empty($slots)) {
-                return ($baseResponse ?? '') . ' No tengo disponibilidad en los próximos días. Te confirmo en cuanto se libere algún hueco.';
+                return ['No tengo disponibilidad en los próximos días. Te confirmo en cuanto se libere algún hueco.', []];
             }
 
             $slotList = implode("\n", array_map(fn ($s) => "• {$s['label']}", $slots));
@@ -295,17 +371,99 @@ class ProcessIncomingMessage implements ShouldQueue
                 'metadata'      => [
                     'channel' => $this->channel,
                     'contact' => $this->contactIdentifier,
-                    'slots'   => $slots,
+                    'slots'   => array_column($slots, 'label'),
                 ],
                 'counts_towards_limit' => true,
                 'status'        => 'completed',
             ]);
 
-            return ($baseResponse ? $baseResponse . "\n\n" : '') . "Tengo disponibilidad en:\n{$slotList}\n\n¿Cuál te viene mejor?";
+            return ["Tengo disponibilidad en:\n{$slotList}\n\n¿Cuál te viene mejor?", $slots];
 
         } catch (\Exception $e) {
             Log::warning('No se pudo consultar disponibilidad en Calendar', ['error' => $e->getMessage()]);
-            return $baseResponse ?? ($config->unknown_response ?? 'Déjame consultarlo y te respondo en breve.');
+            return [$config->unknown_response ?? 'Déjame consultarlo y te respondo en breve.', []];
+        }
+    }
+
+    /**
+     * Detecta si el mensaje del usuario confirma uno de los slots propuestos.
+     * Compara la hora del mensaje contra los slots guardados en el contexto de la reunión.
+     */
+    private function detectConfirmedSlot(MeetingRequest $request): ?array
+    {
+        $calendarSlots = $request->context['calendar_slots'] ?? [];
+        if (empty($calendarSlots)) {
+            return null;
+        }
+
+        $message = strtolower(strip_tags($this->message));
+
+        foreach ($calendarSlots as $slot) {
+            $time  = Carbon::parse($slot['start'])->format('H:i');      // "12:30"
+            $label = strtolower($slot['label'] ?? '');
+
+            if (str_contains($message, $time)) {
+                return $slot;
+            }
+
+            // Comparar primeras palabras del label (día + número): "lunes 07"
+            $labelShort = implode(' ', array_slice(explode(' ', $label), 0, 2));
+            if (strlen($labelShort) > 3 && str_contains($message, $labelShort)) {
+                return $slot;
+            }
+        }
+
+        // Si solo hay un slot propuesto y el usuario confirma con positivo, asumimos que es ese
+        if (count($calendarSlots) === 1 && preg_match('/perfecto|confirm|vale|sí|si\b|ok\b|acepto|genial|bien|adelante|listo/i', $message)) {
+            return $calendarSlots[0];
+        }
+
+        return null;
+    }
+
+    /**
+     * Crea el Meeting en BD, lo agenda en Google Calendar y devuelve el mensaje de confirmación.
+     */
+    private function bookSlot(User $user, VeraConfig $config, MeetingRequest $request, array $slot): string
+    {
+        try {
+            $start    = Carbon::parse($slot['start']);
+            $timezone = $config->timezone ?? 'Europe/Madrid';
+
+            $meeting = Meeting::create([
+                'user_id'            => $user->id,
+                'contact_name'       => $this->contactName ?? $this->contactIdentifier,
+                'contact_email'      => $this->channel === 'email' ? $this->contactIdentifier : null,
+                'scheduled_at'       => $start,
+                'duration_minutes'   => $config->meeting_duration ?? 45,
+                'timezone'           => $timezone,
+                'status'             => 'pending',
+                'source_channel'     => $this->channel,
+                'meeting_request_id' => $request->id,
+            ]);
+
+            $calendarService = new GoogleCalendarService();
+            $calendarService->createEvent($user, $meeting);
+
+            $request->update(['state' => 'confirmed', 'meeting_id' => $meeting->id]);
+
+            VeraActivityLog::record([
+                'user_id'       => $user->id,
+                'activity_type' => 'meeting_confirmed',
+                'title'         => 'Reunión confirmada con ' . ($this->contactName ?? $this->contactIdentifier),
+                'description'   => 'Reunión agendada para ' . ($slot['label'] ?? $start->format('d/m/Y H:i')),
+                'metadata'      => ['channel' => $this->channel, 'contact' => $this->contactIdentifier],
+                'counts_towards_limit' => true,
+                'status'        => 'completed',
+            ]);
+
+            $firma = $config->vera_signature ?? ($config->owner_name ? "Vera · Asistente de {$config->owner_name}" : 'Vera');
+
+            return "¡Perfecto! He agendado la reunión para el {$slot['label']}. Recibirás una invitación de Google Calendar. ¡Hasta entonces!\n\n-- {$firma}";
+
+        } catch (\Exception $e) {
+            Log::error('Error al agendar reunión confirmada', ['error' => $e->getMessage(), 'slot' => $slot]);
+            return $config->unknown_response ?? 'Ha habido un problema al confirmar la reunión. Por favor, inténtalo de nuevo.';
         }
     }
 
@@ -364,8 +522,8 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
-        // Guardar mensaje del usuario
-        $conversation->addMessage('user', $this->message);
+        // Guardar mensaje del usuario — truncado a 2.000 chars para no saturar la BD
+        $conversation->addMessage('user', mb_substr(strip_tags($this->message), 0, 2000));
 
         // Guardar respuesta de Vera
         if ($response) {

@@ -1,18 +1,19 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from modes.escalation import should_escalate    # se ejecuta antes del LLM para no gastar tokens en situaciones sensibles
-from modes.detector import detect_mode          # detecta si el cliente quiere información, agendar o está en transición
-from llm.prompt_builder import build_prompt     # construye el prompt completo con brain, RAG e historial
-from llm.client import call_llm                 # llama a Groq con fallback a Gemini
+from modes.escalation import should_escalate
+from modes.detector import detect_mode
+from llm.prompt_builder import build_prompt
+from llm.client import call_llm
+from rag.embeddings import store_chunk, deactivate_chunk, delete_user_collection
 
 app = FastAPI(title="Vera ai-service", version="1.0.0")
 
 
-# ── Modelos de entrada/salida (contrato con Laravel) ──────────────────────────
+# ── Modelos de entrada/salida — contrato con Laravel ─────────────────────────
 
 class HistoryMessage(BaseModel):
-    role: str      # "user" | "assistant"
+    role: str       # "user" | "assistant"
     content: str
 
 class Brain(BaseModel):
@@ -32,18 +33,35 @@ class Brain(BaseModel):
 class ProcessRequest(BaseModel):
     user_id: str
     message: str
-    channel: str   # "whatsapp" | "telegram" | "email"
+    channel: str    # "whatsapp" | "telegram" | "email"
     history: list[HistoryMessage] = []
     brain: Brain
 
 class ProcessResponse(BaseModel):
     response: Optional[str]
-    mode: str                    # "respuesta" | "agenda" | "transicion" | "escalation"
+    mode: str                   # "respuesta" | "agenda" | "transicion" | "escalation"
     escalate: bool
     confidence: float
     suggested_slots: list[str] = []
     tokens_used: int
     escalation_reason: Optional[str] = None
+
+
+# ── Modelos para sincronización de memoria (MySQL → ChromaDB) ─────────────────
+
+class MemoryChunk(BaseModel):
+    chunk_id: str       # id del registro en MySQL (como string)
+    text: str           # contenido completo del chunk
+    chunk_type: str     # business_info | faq | communication_style | etc.
+    source: str         # onboarding | user_config | manual | auto_detected
+
+class MemorySyncRequest(BaseModel):
+    user_id: str
+    chunks: list[MemoryChunk]
+
+class MemorySyncResponse(BaseModel):
+    synced: int
+    user_id: str
 
 
 # ── Endpoint principal ────────────────────────────────────────────────────────
@@ -52,10 +70,10 @@ class ProcessResponse(BaseModel):
 async def process_message(request: ProcessRequest) -> ProcessResponse:
     """Endpoint principal. Laravel llama aquí por cada mensaje entrante."""
 
-    brain = request.brain.model_dump()  # convierte el objeto Pydantic a diccionario para usarlo en los módulos
+    brain = request.brain.model_dump()
     history = [m.model_dump() for m in request.history]
 
-    # 1. Verificar escalado ANTES del LLM — si hay trigger, para y notifica sin gastar tokens
+    # 1. Escalado ANTES del LLM — evita gastar tokens en situaciones sensibles
     if should_escalate(request.message, brain["escalation_triggers"]):
         return ProcessResponse(
             response=None,
@@ -66,16 +84,16 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
             tokens_used=0,
         )
 
-    # 2. Detectar el modo de conversación
+    # 2. Detectar modo de conversación
     mode = detect_mode(request.message, history)
 
-    # 3. Construir el prompt con brain + RAG + historial
+    # 3. Construir prompt con brain + RAG (ChromaDB) + historial
     try:
         system_prompt, user_prompt = build_prompt(brain, request.message, history, request.user_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))  # brain incompleto — error antes de llamar al LLM
+        raise HTTPException(status_code=400, detail=str(e))
 
-    # 4. Llamar al LLM — Groq con fallback a Gemini
+    # 4. LLM — Groq con fallback a Gemini
     response_text = call_llm(user_prompt, system_prompt)
 
     return ProcessResponse(
@@ -87,6 +105,51 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
         tokens_used=0,
     )
 
+
+# ── Endpoints de memoria (MySQL → ChromaDB sync) ──────────────────────────────
+
+@app.post("/memory/sync", response_model=MemorySyncResponse)
+async def sync_memory(request: MemorySyncRequest) -> MemorySyncResponse:
+    """
+    Laravel llama aquí cada vez que guarda o actualiza chunks en MySQL.
+    Guarda los chunks en ChromaDB para búsqueda semántica.
+    """
+    synced = 0
+    for chunk in request.chunks:
+        try:
+            store_chunk(
+                user_id=request.user_id,
+                chunk_id=chunk.chunk_id,
+                text=chunk.text,
+                chunk_type=chunk.chunk_type,
+                source=chunk.source,
+            )
+            synced += 1
+        except Exception as e:
+            # Log pero no para — un chunk fallido no debe romper todo el sync
+            print(f"[memory/sync] Error en chunk {chunk.chunk_id}: {e}")
+
+    return MemorySyncResponse(synced=synced, user_id=request.user_id)
+
+
+@app.delete("/memory/chunk/{user_id}/{chunk_id}")
+async def deactivate_memory_chunk(user_id: str, chunk_id: str):
+    """
+    Laravel llama aquí cuando desactiva o borra un chunk en MySQL.
+    Lo marca como inactivo en ChromaDB para que no aparezca en búsquedas.
+    """
+    deactivate_chunk(user_id=user_id, chunk_id=chunk_id)
+    return {"status": "deactivated", "chunk_id": chunk_id}
+
+
+@app.delete("/memory/user/{user_id}")
+async def delete_user_memory(user_id: str):
+    """Elimina toda la memoria vectorial de un usuario (GDPR / baja de cuenta)."""
+    delete_user_collection(user_id=user_id)
+    return {"status": "deleted", "user_id": user_id}
+
+
+# ── Health check ──────────────────────────────────────────────────────────────
 
 @app.get("/health")
 async def health():

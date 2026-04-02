@@ -1,39 +1,99 @@
 # ai-service — Cerebro de Vera
 
-Microservicio Python (FastAPI) que procesa mensajes y genera respuestas de agenda.
-Laravel lo llama via HTTP. Esta carpeta es territorio exclusivo de este servicio.
+Microservicio Python (FastAPI) que procesa mensajes y genera respuestas de Vera.
+Laravel lo llama vía HTTP. **Esta carpeta es tu territorio exclusivo.**
 
 ---
 
-## Stack
+## Arrancar el entorno completo
 
-- Python 3.11+
-- FastAPI + Uvicorn
-- Groq (llama-3.3-70b) + Gemini como fallback
-- ChromaDB o pgvector para embeddings
+Necesitas **dos terminales** abiertas en la raíz del proyecto.
+
+### Terminal 1 — Docker (Laravel + MySQL + Redis)
+
+```bash
+./vendor/bin/sail up -d
+```
+
+Esto levanta: Laravel (puerto 80), MySQL (3306), Redis, Horizon (colas), Scheduler (emails cada 5 min), phpMyAdmin (8080).
+
+> Solo hace falta la primera vez que enciendes el PC o después de un reinicio.
 
 ---
 
-## Arrancar el servicio
+### Terminal 2 — ai-service (Cerebro de Vera)
 
 ```bash
 cd ai-service
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8001
+bash start.sh
 ```
 
-Variables de entorno necesarias (crear `.env` en esta carpeta):
+El script crea el entorno virtual automáticamente, instala dependencias y levanta el servidor en el **puerto 8001**.
+
+> **No cerrar esta terminal** — si se cierra, Vera deja de razonar y cae al modo placeholder.
+
+---
+
+### Verificar que todo está levantado
+
+```bash
+# Laravel responde
+curl http://localhost
+
+# ai-service responde
+curl http://localhost:8001/health
 ```
-GROQ_API_KEY=...
-GEMINI_API_KEY=...
-DB_HOST=localhost
-DB_PORT=3306
-DB_DATABASE=vera
-DB_USER=...
-DB_PASSWORD=...
+
+`{"status":"ok","service":"vera-ai-service","version":"1.0.0"}` = todo correcto.
+
+---
+
+### Parar todo
+
+```bash
+# Docker
+./vendor/bin/sail down
+
+# ai-service: Ctrl+C en la Terminal 2
 ```
+
+---
+
+## Cómo funciona el flujo completo
+
+```
+Gmail → Laravel (ProcessIncomingMessage.php)
+    → POST http://localhost:8001/process       ← aquí entras tú
+    ← { response, mode, escalate, ... }
+Laravel → Google Calendar (slots reales)
+Laravel → Gmail (envía respuesta al cliente)
+```
+
+Laravel hace todo el trabajo de Calendar y email. Tu trabajo es que **la respuesta de Vera sea buena**: tono, razonamiento, naturalidad, intención detectada correctamente.
+
+---
+
+## Tu espacio de trabajo
+
+```
+ai-service/
+├── llm/
+│   ├── prompt_builder.py    ← AQUÍ: system prompt, instrucciones, personalidad de Vera
+│   └── client.py            ← Groq (llama-3.3-70b) + Gemini fallback. No tocar.
+├── modes/
+│   ├── detector.py          ← Detecta si el mensaje es agenda/respuesta/transicion
+│   └── escalation.py        ← Detecta triggers urgentes (queja, emergencia, etc.)
+├── rag/
+│   ├── embeddings.py        ← ChromaDB local, SentenceTransformers ONNX. No tocar.
+│   ├── chunker.py           ← Divide el cerebro del cliente en chunks. No tocar.
+│   └── search.py            ← Búsqueda semántica. No tocar.
+└── main.py                  ← Endpoints FastAPI. No tocar salvo que añadas endpoints.
+```
+
+**Lo que más importa que mejores:**
+- `prompt_builder.py` — calidad del prompt = calidad de Vera
+- `detector.py` — detección correcta del modo (`agenda` vs `respuesta`)
+- `escalation.py` — qué mensajes deben escalar al humano
 
 ---
 
@@ -41,22 +101,22 @@ DB_PASSWORD=...
 
 ### POST /process
 
-Laravel llama a este endpoint por cada mensaje entrante.
-
-**Request:**
+**Request que recibes de Laravel:**
 ```json
 {
-  "user_id": "123",
+  "user_id": "1",
   "message": "Hola, quiero una reunión el martes",
-  "channel": "whatsapp",
+  "channel": "email",
   "history": [
-    {"role": "user", "content": "Hola"},
-    {"role": "assistant", "content": "Hola, soy Vera. ¿En qué puedo ayudarte?"}
+    {"role": "user", "content": "mensaje anterior"},
+    {"role": "assistant", "content": "respuesta anterior de Vera"}
   ],
   "brain": {
-    "business_name": "Clínica Dr. García",
-    "owner_name": "Carlos García",
-    "tone": "formal",
+    "business_name": "Jurux Revolution",
+    "owner_name": "Jose",
+    "tone": "profesional y cercano",
+    "language": "es",
+    "timezone": "Europe/Madrid",
     "working_hours": {
       "monday":    {"enabled": true,  "start": "09:00", "end": "18:00"},
       "tuesday":   {"enabled": true,  "start": "09:00", "end": "18:00"},
@@ -66,7 +126,7 @@ Laravel llama a este endpoint por cada mensaje entrante.
       "saturday":  {"enabled": false},
       "sunday":    {"enabled": false}
     },
-    "meeting_duration": 45,
+    "meeting_duration": 30,
     "buffer_minutes": 15,
     "unknown_response": "Déjame consultarlo y te respondo en breve.",
     "escalation_triggers": ["urgente", "queja", "emergencia"],
@@ -75,66 +135,76 @@ Laravel llama a este endpoint por cada mensaje entrante.
 }
 ```
 
-**Response — modo normal:**
+**Response que debes devolver a Laravel:**
 ```json
 {
-  "response": "Perfecto, tengo disponibilidad el martes a las 10:00 o a las 16:00. ¿Cuál prefieres?",
+  "response": "Claro, con mucho gusto. Aquí tienes los huecos disponibles:",
   "mode": "agenda",
   "escalate": false,
-  "confidence": 0.89,
-  "suggested_slots": ["2025-01-14T10:00:00", "2025-01-14T16:00:00"],
-  "tokens_used": 450
-}
-```
-
-**Response — escalado:**
-```json
-{
-  "response": null,
-  "mode": "escalation",
-  "escalate": true,
-  "escalation_reason": "queja detectada",
-  "confidence": 0.0,
-  "tokens_used": 120
+  "confidence": 0.9,
+  "suggested_slots": [],
+  "tokens_used": 0
 }
 ```
 
 ### Modos posibles
-| Modo | Descripción |
+
+| Modo | Cuándo usarlo |
 |---|---|
-| `respuesta` | El cliente pregunta algo. Vera responde con info del negocio. |
-| `agenda` | El cliente quiere una reunión. Vera propone slots. |
-| `transicion` | Empieza como pregunta, deriva a agendar. |
-| `escalation` | Trigger detectado. Vera para y notifica al humano. |
+| `agenda` | El cliente quiere una reunión. Laravel añadirá los slots reales del Calendar. |
+| `respuesta` | El cliente pregunta algo del negocio. Vera responde con info del RAG. |
+| `transicion` | Empieza como pregunta pero deriva a querer reunión. |
+| `escalation` | Trigger urgente detectado. Poner `escalate: true`. |
+
+> **Importante sobre `mode: agenda`:** Cuando devuelves este modo, Laravel consulta Google Calendar y añade los slots disponibles reales al final del mensaje de Vera. Tú no propones horarios concretos — el Calendar los da. Vera solo pone el texto conversacional previo.
 
 ---
 
-## Estructura esperada
+## Probar sin tocar Laravel
 
+```bash
+curl -s -X POST http://localhost:8001/process \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "1",
+    "message": "Hola, quiero una reunión",
+    "channel": "email",
+    "history": [],
+    "brain": {
+      "business_name": "Test",
+      "owner_name": "Jose",
+      "tone": "profesional",
+      "language": "es",
+      "timezone": "Europe/Madrid",
+      "working_hours": {"monday": {"enabled": true, "start": "09:00", "end": "18:00"}},
+      "meeting_duration": 30,
+      "buffer_minutes": 15,
+      "escalation_triggers": [],
+      "mode": "supervised"
+    }
+  }' | python3 -m json.tool
 ```
-ai-service/
-├── main.py                  # FastAPI app, expone POST /process
-├── requirements.txt
-├── .env                     # No commitear
-├── .gitignore
-├── rag/
-│   ├── embeddings.py        # Genera embeddings (text-embedding-3-small)
-│   ├── chunker.py           # Divide documentos en chunks ~500 chars
-│   └── search.py            # Búsqueda semántica, score mínimo 0.75, filtro user_id
-├── llm/
-│   ├── prompt_builder.py    # Construye system prompt completo
-│   └── client.py            # Cliente Groq + Gemini fallback
-└── modes/
-    ├── detector.py          # Detecta modo: respuesta/agenda/transicion
-    └── escalation.py        # Detecta triggers de escalado
+
+Health check:
+```bash
+curl http://localhost:8001/health
 ```
+
+---
+
+## Memoria (RAG con ChromaDB)
+
+El cerebro de cada cliente (FAQs, info del negocio, estilo de comunicación) se guarda en ChromaDB local. Se busca automáticamente en cada mensaje para enriquecer el prompt.
+
+- Laravel sincroniza a ChromaDB cuando el cliente edita su cerebro
+- La búsqueda es semántica, score mínimo 0.75
+- Siempre filtrado por `user_id` — multitenancy
 
 ---
 
 ## Reglas importantes
 
-- Filtrar SIEMPRE por `user_id` — multitenancy obligatorio
-- Score mínimo RAG: **0.75** — si no llega, no usar el fragmento
-- Máximo **3 fragmentos** RAG por consulta
-- Nunca inventar información — si no sabe, usar `unknown_response` del brain
-- El historial incluye los últimos 10 mensajes de la conversación
+- **Nunca inventar horarios** — el Calendar los da siempre
+- **Nunca inventar info del negocio** — usar `unknown_response` si no hay contexto en RAG
+- **Siempre filtrar por `user_id`** — cada cliente es aislado
+- **Historial máximo 10 mensajes** — ya viene limitado de Laravel
