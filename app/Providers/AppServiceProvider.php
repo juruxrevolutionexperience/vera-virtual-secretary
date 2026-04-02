@@ -39,7 +39,7 @@ class AppServiceProvider extends ServiceProvider
 
         // ── Scheduler de Vera ─────────────────────────────────────────────────
         Schedule::command('vera:process-emails')
-            ->everyFiveMinutes()
+            ->everyMinute()
             ->withoutOverlapping();
 
         // Registrar listener de sesiones de usuario
