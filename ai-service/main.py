@@ -73,23 +73,15 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
     brain = request.brain.model_dump()
     history = [m.model_dump() for m in request.history]
 
-    # 1. Escalado ANTES del LLM — evita gastar tokens en situaciones sensibles
-    if should_escalate(request.message, brain["escalation_triggers"]):
-        return ProcessResponse(
-            response=None,
-            mode="escalation",
-            escalate=True,
-            escalation_reason="trigger de escalado detectado en el mensaje",
-            confidence=0.0,
-            tokens_used=0,
-        )
+    # 1. Escalado — avisa a Carlos pero sigue generando respuesta para el cliente
+    escalate = should_escalate(request.message, brain["escalation_triggers"])
 
     # 2. Detectar modo de conversación
-    mode = detect_mode(request.message, history)
+    mode = "escalation" if escalate else detect_mode(request.message, history)
 
     # 3. Construir prompt con brain + RAG (ChromaDB) + historial
     try:
-        system_prompt, user_prompt = build_prompt(brain, request.message, history, request.user_id)
+        system_prompt, user_prompt = build_prompt(brain, request.message, history, request.user_id, mode)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -99,10 +91,11 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
     return ProcessResponse(
         response=response_text,
         mode=mode,
-        escalate=False,
+        escalate=escalate,
         confidence=0.9,
         suggested_slots=[],
         tokens_used=0,
+        escalation_reason="trigger de escalado detectado en el mensaje" if escalate else None,
     )
 
 
