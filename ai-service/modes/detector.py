@@ -2,19 +2,24 @@ from llm.client import call_llm         # para detectar el modo en mensajes ambi
 
 
 def detect_mode(message, history):      # detecta si el cliente quiere información, agendar o está en transición entre los dos
-    # Detección rápida por palabras clave — evita llamar al LLM en casos obvios
-    message_lower = message.lower()
-    agenda_keywords = ["reunión", "reunion", "cita", "agendar", "reservar", "disponibilidad", "martes", "lunes", "miércoles", "jueves", "viernes", "mañana", "semana"]
-    for keyword in agenda_keywords:
-        if keyword in message_lower:
-            return "agenda"             # el cliente quiere agendar directamente
-
-    # Si no hay palabras clave claras, el LLM decide
+    # El LLM siempre decide — las keywords no tienen contexto y generan falsos positivos
+    # Coste estimado: <1€/mes por cliente incluso en casos de alto volumen
     history_text = "\n".join([f"{m['role']}: {m['content']}" for m in history[-3:]]) if history else ""
-    prompt = f"""Clasifica este mensaje en uno de estos modos:
-- respuesta: el cliente hace una pregunta o pide información
-- agenda: el cliente quiere agendar una reunión
-- transicion: empieza como pregunta pero deriva a querer agendar
+    prompt = f"""Analiza el mensaje de un cliente y clasifícalo en uno de estos modos:
+- respuesta: el cliente solo hace una pregunta o pide información
+- agenda: el cliente solo quiere agendar una cita o reunión
+- transicion: el cliente pregunta algo Y además quiere o insinúa querer agendar
+
+Razona paso a paso:
+1. ¿El cliente hace una pregunta informativa? (qué hacéis, cuánto cuesta, si lleváis X...)
+2. ¿El cliente quiere agendar, reservar o concretar una cita?
+3. Si las dos respuestas son sí → transicion. Si solo la primera → respuesta. Si solo la segunda → agenda.
+
+Ejemplos:
+- "¿qué servicios ofrecéis?" → respuesta
+- "quiero una cita para el martes" → agenda
+- "¿lleváis casos de divorcio? si es así me gustaría pedir cita" → transicion
+- "mi médico me dijo que necesito una cita urgente pero antes quiero saber si tratáis X" → transicion
 
 Historial reciente:
 {history_text}
