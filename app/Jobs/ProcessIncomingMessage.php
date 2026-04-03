@@ -104,8 +104,18 @@ class ProcessIncomingMessage implements ShouldQueue
         // ── 3. Cargar historial de la conversación ────────────────────────────
         $history = $this->loadConversationHistory($meetingRequest);
 
+        // ── 3.5 Verificar slot solicitado antes de llamar al LLM ─────────────
+        // Si el cliente pidió una hora concreta, comprobamos en Calendar si está libre
+        // para que el LLM pueda decir "a las 12:00 no hay disponibilidad" en lugar de
+        // ignorar la petición y listar huecos sin contexto.
+        $requestedTime          = $this->extractRequestedTime($this->message);
+        $requestedSlotAvailable = false;
+        if ($requestedTime && $config->hasCalendarConnected()) {
+            $requestedSlotAvailable = $this->checkRequestedSlotAvailable($user, $config, $requestedTime);
+        }
+
         // ── 4. Llamar a ai-service ────────────────────────────────────────────
-        $aiResponse = $this->callAiService($user, $config, $history);
+        $aiResponse = $this->callAiService($user, $config, $history, $requestedTime, $requestedSlotAvailable);
 
         // ── 5. Interpretar respuesta ──────────────────────────────────────────
         $mode      = $aiResponse['mode']      ?? 'respuesta';
@@ -228,7 +238,7 @@ class ProcessIncomingMessage implements ShouldQueue
      * Llama al microservicio Python de IA (ai-service de Roque).
      * Mientras no esté disponible, devuelve respuesta placeholder.
      */
-    private function callAiService(User $user, VeraConfig $config, array $history): array
+    private function callAiService(User $user, VeraConfig $config, array $history, ?string $requestedTime = null, bool $requestedSlotAvailable = false): array
     {
         $aiServiceUrl = config('services.ai_service.url');
 
@@ -239,11 +249,13 @@ class ProcessIncomingMessage implements ShouldQueue
 
         try {
             $response = Http::timeout(30)->post("{$aiServiceUrl}/process", [
-                'user_id' => (string) $user->id,
-                'message' => $this->message,
-                'channel' => $this->channel,
-                'history' => $history,
-                'brain'   => [
+                'user_id'                  => (string) $user->id,
+                'message'                  => $this->message,
+                'channel'                  => $this->channel,
+                'history'                  => $history,
+                'requested_time'           => $requestedTime,
+                'requested_slot_available' => $requestedSlotAvailable,
+                'brain'                    => [
                     'business_name'       => $config->business_name,
                     'owner_name'          => $config->owner_name,
                     'tone'                => $config->tone,
@@ -349,6 +361,57 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         return null;
+    }
+
+    /**
+     * Extrae la hora concreta que el usuario pidió del mensaje (ej. "a las 12:00", "las 3").
+     * Devuelve la porción del mensaje que menciona la hora, o null si no hay ninguna.
+     */
+    private function extractRequestedTime(string $message): ?string
+    {
+        // "a las 12:00", "las 12:30", "12:00", "15:30"
+        if (preg_match('/(?:a\s+)?las?\s+(\d{1,2}:\d{2})|\b(\d{1,2}:\d{2})\b/i', $message, $m)) {
+            return $m[0];
+        }
+        // "a las 12", "las 3" (sin minutos)
+        if (preg_match('/(?:a\s+)?las?\s+(\d{1,2})(?!\d|:\d)/i', $message, $m)) {
+            return $m[0];
+        }
+        return null;
+    }
+
+    /**
+     * Comprueba en Google Calendar si el slot pedido por el usuario está libre.
+     * Devuelve true si está libre, false si está ocupado o no se puede determinar.
+     */
+    private function checkRequestedSlotAvailable(User $user, VeraConfig $config, string $requestedTime): bool
+    {
+        try {
+            if (!preg_match('/(\d{1,2})(?::(\d{2}))?/', $requestedTime, $m)) {
+                return false;
+            }
+            $hour   = (int) $m[1];
+            $minute = isset($m[2]) ? (int) $m[2] : 0;
+
+            // Usar el día preferido del mensaje si lo hay, si no usar hoy
+            $preferredDate = $this->extractPreferredDate($this->message);
+            $base          = $preferredDate ? Carbon::parse($preferredDate) : now();
+            $slotStart     = $base->copy()->setHour($hour)->setMinute($minute)->setSecond(0);
+
+            // Si la hora ya pasó, adelantar un día
+            if ($slotStart->isPast()) {
+                $slotStart->addDay();
+            }
+
+            $slotEnd = $slotStart->copy()->addMinutes($config->meeting_duration ?? 45);
+
+            $calendarService = new GoogleCalendarService();
+            return $calendarService->checkConflicts($user, $slotStart, $slotEnd);
+
+        } catch (\Exception $e) {
+            Log::warning('No se pudo verificar disponibilidad del slot solicitado', ['error' => $e->getMessage()]);
+            return false;
+        }
     }
 
     private function buildAvailabilityResponse(User $user, VeraConfig $config, ?string $preferredDate = null, int $daysAhead = 5, int $maxSlots = 9): array
