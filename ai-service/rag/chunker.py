@@ -5,7 +5,7 @@ def chunk_text(text, user_id):  # divide el texto en chunks con ID único por us
     start = 0          # índice de corte inicial para que el bucle sepa dónde empieza cada chunk
     while start < len(text):  # recorre el texto completo hasta que todos los chunks estén generados
         end = start + chunk_size          # marca el final del chunk actual sumando 500 chars al inicio
-        if text[start:end].strip():                                               # evita vectorizar chunks vacíos que romperían la API de OpenAI
+        if text[start:end].strip():                                               # evita vectorizar chunks vacíos que romperían ChromaDB
             chunks.append((f"{user_id}_chunk_{len(chunks)}", text[start:end])) # guarda el par (ID único de usuario, texto del chunk) para que embeddings.py lo vectorice sin mezclar clientes
         start = end - overlap             # avanza al siguiente chunk repitiendo 50 chars para no perder contexto en el corte  
     return chunks      # devuelve todos los chunks listos para que embeddings.py los vectorice

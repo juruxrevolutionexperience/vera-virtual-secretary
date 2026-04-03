@@ -2,11 +2,12 @@ from rag.search import find_relevant    # para buscar chunks relevantes del cere
 
 
 def build_prompt(brain, message, history, user_id, mode="agenda"):  # construye el prompt completo que recibe el LLM — calidad del prompt = calidad de la respuesta de Vera
-    # Validación del cerebro — si faltan datos críticos, Vera no arranca antes de gastar tokens
-    if not brain.get("working_hours"):
-        raise ValueError("working_hours está vacío — Vera no puede proponer slots sin horario configurado")
+    # Validación del cerebro — tone es obligatorio siempre
     if not brain.get("tone"):
         raise ValueError("tone está vacío — Vera no puede responder sin tono configurado")
+
+    # working_hours solo es obligatorio para agenda y transicion
+    working_hours_missing = not brain.get("working_hours")
 
     # Buscar chunks relevantes del cerebro del cliente en ChromaDB
     chunks = find_relevant(user_id, message)
@@ -15,8 +16,8 @@ def build_prompt(brain, message, history, user_id, mode="agenda"):  # construye 
     # Formatear el historial — últimos 10 mensajes para no disparar el coste de tokens
     history_text = "\n".join([f"{m['role']}: {m['content']}" for m in history[-10:]])
 
-    # Formatear horario laboral
-    working_hours = ", ".join([f"{day}: {hours['start']}-{hours['end']}" for day, hours in brain["working_hours"].items() if hours.get("enabled")])
+    # Formatear horario laboral — solo si está configurado
+    working_hours = ", ".join([f"{day}: {hours['start']}-{hours['end']}" for day, hours in brain["working_hours"].items() if hours.get("enabled")]) if not working_hours_missing else ""
 
     # Construir el system prompt completo
     firma = brain.get('vera_signature') or f'Vera, asistente de {brain["business_name"]}'
@@ -34,12 +35,23 @@ def build_prompt(brain, message, history, user_id, mode="agenda"):  # construye 
 - Si no tienes la respuesta, usa: "{unknown}"
 - Al final, si es natural, orienta suavemente hacia agendar una reunión"""
     elif mode == "transicion":
-        mode_instructions = f"""MODO TRANSICIÓN — el cliente pregunta algo y además quiere agendar:
+        if working_hours_missing:
+            mode_instructions = f"""MODO TRANSICIÓN — el cliente pregunta algo y además quiere agendar:
+- Responde brevemente la pregunta usando la información del negocio que tienes arriba
+- Si no tienes la respuesta, usa: "{unknown}"
+- Informa al cliente de que el horario aún no está configurado y que se lo confirmarás pronto"""
+        else:
+            mode_instructions = f"""MODO TRANSICIÓN — el cliente pregunta algo y además quiere agendar:
 - Responde brevemente la pregunta usando la información del negocio que tienes arriba
 - Si no tienes la respuesta, usa: "{unknown}"
 - Termina siempre con exactamente esta frase: "Aquí tienes los huecos disponibles:" — el sistema añade los huecos reales automáticamente después"""
     else:
-        mode_instructions = """MODO AGENDA — el cliente quiere una cita:
+        if working_hours_missing:
+            mode_instructions = """MODO AGENDA — horario no configurado:
+- Informa al cliente de que el horario aún no está disponible y que se lo confirmarás pronto
+- No ofrezcas huecos ni menciones disponibilidad"""
+        else:
+            mode_instructions = """MODO AGENDA — el cliente quiere una cita:
 - NUNCA digas "Tengo disponibilidad en:" ni ninguna variante. Termina siempre con exactamente esta frase: "Aquí tienes los huecos disponibles:" — el sistema añade los huecos reales automáticamente después
 - NUNCA menciones ni propongas horarios concretos. Si el cliente pide una hora fuera del horario laboral, explica brevemente el horario y termina con "Aquí tienes los huecos disponibles:"
 - NUNCA pidas más información sobre el propósito de la reunión. Tu único trabajo es confirmar el hueco"""
@@ -49,7 +61,7 @@ Ayudas a los clientes resolviendo sus dudas sobre el negocio y gestionas la agen
 
 TONO: {brain['tone']}
 IDIOMA: {brain.get('language') or 'es'}
-HORARIO LABORAL (solo para informar al cliente si pide fuera de este horario, NUNCA para proponer horas): {working_hours}
+{f"HORARIO LABORAL (solo para informar al cliente si pide fuera de este horario, NUNCA para proponer horas): {working_hours}" if not working_hours_missing else ""}
 FIRMA: {firma}
 
 INFORMACIÓN DEL NEGOCIO:
