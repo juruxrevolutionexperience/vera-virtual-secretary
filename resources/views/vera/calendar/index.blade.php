@@ -1,3 +1,31 @@
+@php
+// ── Datos para la vista de grid semanal ────────────────────────────────────
+$weekDaysGrid = [];
+for ($i = 0; $i < 7; $i++) {
+    $d = $from->copy()->addDays($i);
+    $weekDaysGrid[] = [
+        'date'    => $d->format('Y-m-d'),
+        'dayNum'  => $d->format('j'),
+        'dayName' => mb_strtoupper($d->locale('es')->isoFormat('ddd')),
+        'isToday' => $d->isToday(),
+    ];
+}
+
+$weekEventsGrid = $grouped->flatten(1)->map(fn($e) => [
+    'id'          => $e['meeting_id'],
+    'title'       => $e['title'],
+    'date'        => $e['start']->format('Y-m-d'),
+    'startHour'   => (int)$e['start']->format('H'),
+    'startMinute' => (int)$e['start']->format('i'),
+    'startTime'   => $e['start']->format('H:i'),
+    'startIso'    => $e['start']->format('Y-m-d\TH:i'),
+    'duration'    => (int)$e['duration_min'],
+    'source'      => $e['source'] ?? 'manual',
+    'contactEmail'=> $e['contact_email'] ?? '',
+    'contactName' => $e['contact_name'] ?? $e['title'],
+    'meetLink'    => $e['meet_link'] ?? null,
+])->values()->toArray();
+@endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -38,6 +66,25 @@
                 </p>
             </div>
             <div class="flex items-center gap-3">
+
+                {{-- Toggle lista / grid --}}
+                <div class="flex items-center rounded-lg border border-gray-200 overflow-hidden bg-white">
+                    <button @click="viewMode = 'list'"
+                            :class="viewMode === 'list' ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:bg-gray-50'"
+                            class="p-2 transition-colors" title="Vista lista">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    <button @click="viewMode = 'grid'"
+                            :class="viewMode === 'grid' ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:bg-gray-50'"
+                            class="p-2 border-l border-gray-200 transition-colors" title="Vista semanal">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </button>
+                </div>
+
                 {{-- Filtro semana / mes --}}
                 <div class="flex rounded-lg border border-gray-200 overflow-hidden bg-white text-sm">
                     <a href="{{ route('vera.calendar.index', ['filter' => 'week']) }}"
@@ -49,6 +96,7 @@
                         Este mes
                     </a>
                 </div>
+
                 {{-- Nueva reunión --}}
                 <button @click="openCreate()"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
@@ -60,97 +108,162 @@
             </div>
         </div>
 
-        {{-- Lista de eventos agrupados por día --}}
-        @if($grouped->isEmpty())
-        <div class="bg-white rounded-xl border border-gray-200 py-16 text-center">
-            <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-            </svg>
-            <p class="text-gray-400 text-sm">Sin reuniones en este período</p>
-            <button @click="openCreate()" class="mt-3 text-sm text-purple-600 hover:text-purple-700 font-medium">
-                + Crear reunión manual
-            </button>
-        </div>
-        @else
-        <div class="space-y-6">
-            @foreach($grouped->sortKeys() as $date => $events)
-            @php
-                $day = \Carbon\Carbon::parse($date);
-                $isToday = $day->isToday();
-            @endphp
-            <div class="bg-white rounded-xl border {{ $isToday ? 'border-purple-200' : 'border-gray-200' }}">
-                {{-- Cabecera del día --}}
-                <div class="px-5 py-3 border-b {{ $isToday ? 'border-purple-100 bg-purple-50' : 'border-gray-100' }} flex items-center gap-3">
-                    <span class="text-sm font-semibold {{ $isToday ? 'text-purple-700' : 'text-gray-700' }}">
-                        {{ $day->locale('es')->isoFormat('dddd D [de] MMMM') }}
-                    </span>
-                    @if($isToday)
-                    <span class="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-medium">Hoy</span>
-                    @endif
-                    <span class="text-xs text-gray-400 ml-auto">{{ count($events) }} reunión{{ count($events) !== 1 ? 'es' : '' }}</span>
-                </div>
+        {{-- ═══ VISTA LISTA ═══════════════════════════════════════════════════ --}}
+        <div x-show="viewMode === 'list'">
+            @if($grouped->isEmpty())
+            <div class="bg-white rounded-xl border border-gray-200 py-16 text-center">
+                <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                <p class="text-gray-400 text-sm">Sin reuniones en este período</p>
+                <button @click="openCreate()" class="mt-3 text-sm text-purple-600 hover:text-purple-700 font-medium">
+                    + Crear reunión manual
+                </button>
+            </div>
+            @else
+            <div class="space-y-6">
+                @foreach($grouped->sortKeys() as $date => $events)
+                @php
+                    $day = \Carbon\Carbon::parse($date);
+                    $isToday = $day->isToday();
+                @endphp
+                <div class="bg-white rounded-xl border {{ $isToday ? 'border-purple-200' : 'border-gray-200' }}">
+                    {{-- Cabecera del día --}}
+                    <div class="px-5 py-3 border-b {{ $isToday ? 'border-purple-100 bg-purple-50' : 'border-gray-100' }} flex items-center gap-3">
+                        <span class="text-sm font-semibold {{ $isToday ? 'text-purple-700' : 'text-gray-700' }}">
+                            {{ $day->locale('es')->isoFormat('dddd D [de] MMMM') }}
+                        </span>
+                        @if($isToday)
+                        <span class="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-medium">Hoy</span>
+                        @endif
+                        <span class="text-xs text-gray-400 ml-auto">{{ count($events) }} reunión{{ count($events) !== 1 ? 'es' : '' }}</span>
+                    </div>
 
-                {{-- Eventos del día --}}
-                <div class="divide-y divide-gray-50">
-                    @foreach($events as $event)
-                    <div class="px-5 py-4 flex items-center gap-4">
-                        {{-- Hora --}}
-                        <div class="w-16 flex-shrink-0 text-center">
-                            <p class="text-sm font-semibold text-gray-900">{{ $event['start']->format('H:i') }}</p>
-                            <p class="text-xs text-gray-400">{{ $event['duration_min'] }} min</p>
-                        </div>
+                    {{-- Eventos del día --}}
+                    <div class="divide-y divide-gray-50">
+                        @foreach($events as $event)
+                        <div class="px-5 py-4 flex items-center gap-4">
+                            {{-- Hora --}}
+                            <div class="w-16 flex-shrink-0 text-center">
+                                <p class="text-sm font-semibold text-gray-900">{{ $event['start']->format('H:i') }}</p>
+                                <p class="text-xs text-gray-400">{{ $event['duration_min'] }} min</p>
+                            </div>
 
-                        {{-- Info --}}
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2">
-                                <p class="text-sm font-medium text-gray-900 truncate">{{ $event['title'] }}</p>
-                                @if($event['source'] === 'email' || $event['source'] === 'whatsapp' || $event['source'] === 'telegram')
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700 flex-shrink-0">
-                                    Vera
-                                </span>
-                                @else
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500 flex-shrink-0">
-                                    Manual
-                                </span>
+                            {{-- Info --}}
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <p class="text-sm font-medium text-gray-900 truncate">{{ $event['title'] }}</p>
+                                    @if($event['source'] === 'email' || $event['source'] === 'whatsapp' || $event['source'] === 'telegram')
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700 flex-shrink-0">
+                                        Vera
+                                    </span>
+                                    @else
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500 flex-shrink-0">
+                                        Manual
+                                    </span>
+                                    @endif
+                                </div>
+                                @if($event['contact_email'])
+                                <p class="text-xs text-gray-400 mt-0.5">{{ $event['contact_email'] }}</p>
                                 @endif
                             </div>
-                            @if($event['contact_email'])
-                            <p class="text-xs text-gray-400 mt-0.5">{{ $event['contact_email'] }}</p>
+
+                            {{-- Meet link --}}
+                            @if($event['meet_link'])
+                            <a href="{{ $event['meet_link'] }}" target="_blank"
+                               class="flex-shrink-0 px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-lg hover:bg-blue-100 transition-colors">
+                                Meet
+                            </a>
+                            @endif
+
+                            {{-- Acciones (solo si tiene meeting en BD) --}}
+                            @if($event['meeting_id'])
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                                <button @click="openEdit({{ $event['meeting_id'] }}, '{{ $event['start']->format('Y-m-d\TH:i') }}', '{{ addslashes($event['title']) }}')"
+                                        class="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Editar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </button>
+                                <button @click="openCancel({{ $event['meeting_id'] }}, '{{ addslashes($event['contact_name'] ?? $event['title']) }}', '{{ $event['contact_email'] ?? '' }}')"
+                                        class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Cancelar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </div>
                             @endif
                         </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @endif
+        </div>
 
-                        {{-- Meet link --}}
-                        @if($event['meet_link'])
-                        <a href="{{ $event['meet_link'] }}" target="_blank"
-                           class="flex-shrink-0 px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-lg hover:bg-blue-100 transition-colors">
-                            Meet
-                        </a>
-                        @endif
+        {{-- ═══ VISTA GRID SEMANAL ════════════════════════════════════════════ --}}
+        <div x-show="viewMode === 'grid'" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
 
-                        {{-- Acciones (solo si tiene meeting en BD) --}}
-                        @if($event['meeting_id'])
-                        <div class="flex items-center gap-2 flex-shrink-0">
-                            <button @click="openEdit({{ $event['meeting_id'] }}, '{{ $event['start']->format('Y-m-d\TH:i') }}', '{{ addslashes($event['title']) }}')"
-                                    class="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Editar">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                </svg>
-                            </button>
-                            <button @click="openCancel({{ $event['meeting_id'] }}, '{{ addslashes($event['contact_name'] ?? $event['title']) }}', '{{ $event['contact_email'] ?? '' }}')"
-                                    class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Cancelar">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                            </button>
+            {{-- Cabecera con días de la semana --}}
+            <div class="flex border-b border-gray-200 bg-white sticky top-0 z-10">
+                <div class="flex-shrink-0 border-r border-gray-100" style="width: 56px;"></div>
+                @foreach($weekDaysGrid as $day)
+                <div class="flex-1 py-3 text-center {{ !$loop->first ? 'border-l border-gray-100' : '' }}">
+                    <p class="text-xs font-medium text-gray-500 tracking-wide">{{ $day['dayName'] }}</p>
+                    <div class="mt-1 flex items-center justify-center">
+                        <span class="text-lg font-semibold leading-none {{ $day['isToday'] ? 'inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-600 text-white text-sm' : 'text-gray-800' }}">
+                            {{ $day['dayNum'] }}
+                        </span>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+
+            {{-- Cuerpo del grid: franja horaria 8h–20h --}}
+            <div class="overflow-y-auto" style="max-height: 580px;">
+                <div class="flex">
+
+                    {{-- Columna de horas --}}
+                    <div class="flex-shrink-0 border-r border-gray-100" style="width: 56px;">
+                        @for($h = 8; $h <= 20; $h++)
+                        <div class="relative border-b border-gray-100" style="height: 64px;">
+                            <span class="absolute right-2 text-xs text-gray-400 leading-none" style="top: -7px;">
+                                {{ str_pad($h, 2, '0', STR_PAD_LEFT) }}:00
+                            </span>
                         </div>
-                        @endif
+                        @endfor
+                    </div>
+
+                    {{-- Columnas de cada día --}}
+                    @foreach($weekDaysGrid as $day)
+                    <div class="flex-1 relative {{ $day['isToday'] ? 'bg-purple-50/30' : '' }} {{ !$loop->first ? 'border-l border-gray-100' : '' }}"
+                         style="height: {{ 13 * 64 }}px;">
+
+                        {{-- Líneas de hora --}}
+                        @for($h = 8; $h <= 20; $h++)
+                        <div class="absolute w-full border-b border-gray-100" style="top: {{ ($h - 8) * 64 }}px;"></div>
+                        @endfor
+
+                        {{-- Eventos del día (Alpine.js) --}}
+                        <template x-for="event in getEventsForDay('{{ $day['date'] }}')" :key="event.title + event.startTime">
+                            <div class="absolute left-1 right-1 rounded-md px-1.5 py-1 overflow-hidden cursor-pointer select-none transition-opacity hover:opacity-80"
+                                 :class="event.source !== 'manual'
+                                     ? 'bg-purple-100 border border-purple-200 text-purple-800'
+                                     : 'bg-gray-100 border border-gray-200 text-gray-700'"
+                                 :style="`top: ${getEventTop(event)}px; height: ${getEventHeight(event)}px; z-index: 5;`"
+                                 @click="event.id ? openEdit(event.id, event.startIso, event.title) : null"
+                                 :title="event.title + ' · ' + event.startTime">
+                                <p class="text-xs font-semibold truncate leading-tight" x-text="event.title"></p>
+                                <p class="text-xs opacity-70 truncate" x-text="event.startTime + ' · ' + event.duration + ' min'"></p>
+                            </div>
+                        </template>
                     </div>
                     @endforeach
+
                 </div>
             </div>
-            @endforeach
         </div>
-        @endif
 
     </main>
 
@@ -298,11 +411,33 @@
 <script>
 function calendarPage() {
     return {
-        // Crear
+        // ── Vista activa ──────────────────────────────────────────────────────
+        viewMode: '{{ $filter === "week" ? "grid" : "list" }}',
+
+        // ── Datos del grid semanal ────────────────────────────────────────────
+        weekDays:   @json($weekDaysGrid),
+        weekEvents: @json($weekEventsGrid),
+
+        // ── Helpers del grid ──────────────────────────────────────────────────
+        getEventsForDay(date) {
+            return this.weekEvents.filter(e => e.date === date);
+        },
+        getEventTop(event) {
+            const HOUR_PX    = 64;
+            const GRID_START = 8;
+            const top = (event.startHour - GRID_START) * HOUR_PX + (event.startMinute / 60) * HOUR_PX;
+            return Math.max(0, top);
+        },
+        getEventHeight(event) {
+            const HOUR_PX = 64;
+            return Math.max(event.duration * (HOUR_PX / 60), 28);
+        },
+
+        // ── Crear ─────────────────────────────────────────────────────────────
         showCreate: false,
         openCreate() { this.showCreate = true; },
 
-        // Editar
+        // ── Editar ────────────────────────────────────────────────────────────
         showEdit: false,
         editMeetingId: null,
         editDatetime: '',
@@ -340,7 +475,7 @@ function calendarPage() {
             }
         },
 
-        // Cancelar
+        // ── Cancelar ──────────────────────────────────────────────────────────
         showCancel: false,
         cancelMeetingId: null,
         cancelName: '',
@@ -380,7 +515,7 @@ function calendarPage() {
             }
         },
 
-        // Toast
+        // ── Toast ─────────────────────────────────────────────────────────────
         toast: '',
         showToast(msg) {
             this.toast = msg;
