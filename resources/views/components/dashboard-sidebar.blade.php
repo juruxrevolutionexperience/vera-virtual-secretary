@@ -101,6 +101,27 @@
                 <span class="flex-1">Analytics</span>
             </a>
 
+            <a href="{{ route('vera.channels.telegram') }}"
+                class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('vera.channels.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+                </svg>
+                <span class="flex-1">Canales</span>
+                @php
+                    try {
+                        $telegramConnected = isset($telegramConnected)
+                            ? $telegramConnected
+                            : (auth()->check()
+                                ? \App\Models\VeraConfig::where('user_id', auth()->id())->value('telegram_bot_token') !== null
+                                : false);
+                    } catch (\Exception) { $telegramConnected = false; }
+                @endphp
+                @if($telegramConnected)
+                <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                @endif
+            </a>
+
             <a href="{{ route('vera.config') }}"
                 class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('vera.config') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

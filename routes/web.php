@@ -194,6 +194,18 @@ Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
 });
 
 // ========================================
+// RUTAS DE VERA - CANALES (Telegram, WhatsApp…)
+// ========================================
+use App\Http\Controllers\VeraChannelsController;
+
+Route::middleware(['auth'])->prefix('vera/channels')->name('vera.channels.')->group(function () {
+    Route::get('/telegram',                  [VeraChannelsController::class, 'telegramIndex'])->name('telegram');
+    Route::post('/telegram/save-token',      [VeraChannelsController::class, 'saveTelegramToken'])->name('telegram.save-token');
+    Route::post('/telegram/register-webhook',[VeraChannelsController::class, 'registerWebhook'])->name('telegram.register-webhook');
+    Route::delete('/telegram',               [VeraChannelsController::class, 'disconnectTelegram'])->name('telegram.disconnect');
+});
+
+// ========================================
 // RUTAS DE VERA - MÉTRICAS Y ANALYTICS
 // ========================================
 use App\Http\Controllers\VeraAnalyticsController;
