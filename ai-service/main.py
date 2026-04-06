@@ -36,6 +36,8 @@ class ProcessRequest(BaseModel):
     channel: str    # "whatsapp" | "telegram" | "email"
     history: list[HistoryMessage] = []
     brain: Brain
+    requested_time: Optional[str] = None        # hora que pidió el cliente, ej. "a las 12:00" — null si no pidió ninguna
+    requested_slot_available: bool = False      # True si ese hueco está libre en Google Calendar
 
 class ProcessResponse(BaseModel):
     response: Optional[str]
