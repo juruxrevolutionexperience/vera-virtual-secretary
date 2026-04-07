@@ -83,7 +83,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
 
     # 3. Construir prompt con brain + RAG (ChromaDB) + historial
     try:
-        system_prompt, user_prompt = build_prompt(brain, request.message, history, request.user_id, mode)
+        system_prompt, user_prompt = build_prompt(brain, request.message, history, request.user_id, mode, request.requested_time, request.requested_slot_available)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -12,11 +12,14 @@ def find_relevant(user_id: str, query: str, min_score: float = 0.75) -> list[dic
     if collection.count() == 0:
         return []
 
-    results = collection.query(
-        query_texts=[query],       # ChromaDB genera el embedding internamente
-        n_results=min(3, collection.count()),
-        where={"active": True},    # ignora chunks desactivados
-    )
+    try:
+        results = collection.query(
+            query_texts=[query],       # ChromaDB genera el embedding internamente
+            n_results=min(3, collection.count()),
+            where={"active": True},    # ignora chunks desactivados
+        )
+    except Exception:
+        return []  # índice no disponible todavía — devuelve vacío para no romper el flujo
 
     documents = results["documents"][0]
     distances = results["distances"][0]

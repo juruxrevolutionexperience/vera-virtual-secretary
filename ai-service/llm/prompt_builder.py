@@ -1,7 +1,7 @@
 from rag.search import find_relevant    # para buscar chunks relevantes del cerebro del cliente
 
 
-def build_prompt(brain, message, history, user_id, mode="agenda"):  # construye el prompt completo que recibe el LLM — calidad del prompt = calidad de la respuesta de Vera
+def build_prompt(brain, message, history, user_id, mode="agenda", requested_time=None, requested_slot_available=False):  # construye el prompt completo que recibe el LLM — calidad del prompt = calidad de la respuesta de Vera
     # Validación del cerebro — tone es obligatorio siempre
     if not brain.get("tone"):
         raise ValueError("tone está vacío — Vera no puede responder sin tono configurado")
@@ -51,10 +51,25 @@ def build_prompt(brain, message, history, user_id, mode="agenda"):  # construye 
 - Informa al cliente de que el horario aún no está disponible y que se lo confirmarás pronto
 - No ofrezcas huecos ni menciones disponibilidad"""
         else:
-            mode_instructions = """MODO AGENDA — el cliente quiere una cita:
-- NUNCA digas "Tengo disponibilidad en:" ni ninguna variante. Termina siempre con exactamente esta frase: "Aquí tienes los huecos disponibles:" — el sistema añade los huecos reales automáticamente después
-- NUNCA menciones ni propongas horarios concretos. Si el cliente pide una hora fuera del horario laboral, explica brevemente el horario y termina con "Aquí tienes los huecos disponibles:"
-- NUNCA pidas más información sobre el propósito de la reunión. Tu único trabajo es confirmar el hueco"""
+            requested_time_context = ""
+            if requested_time:
+                if requested_slot_available:
+                    requested_time_context = f'- El cliente pidió las {requested_time} y ese hueco está libre en la agenda.'
+                else:
+                    requested_time_context = f'- El cliente pidió las {requested_time} pero ese hueco NO está disponible.'
+            mode_instructions = f"""MODO AGENDA — el cliente quiere una cita.
+Actúa como una secretaria profesional que gestiona la agenda.
+
+Contexto disponible:
+{requested_time_context if requested_time_context else "- El cliente no especificó una hora concreta."}
+- Los huecos disponibles reales se añaden automáticamente después de tu mensaje.
+
+Decide tú cómo responder de forma natural según el contexto:
+- Si el hueco pedido está libre, confírmalo y pide confirmación al cliente.
+- Si el hueco pedido no está libre, díselo y oriéntale hacia los huecos disponibles.
+- Si no pidió hora concreta, invítale a elegir entre los huecos disponibles.
+- NUNCA inventes huecos ni menciones horas concretas que no vengan del contexto.
+- NUNCA pidas más información sobre el propósito de la reunión."""
 
     system_prompt = f"""Eres Vera, asistente de {brain['business_name']}.
 Ayudas a los clientes resolviendo sus dudas sobre el negocio y gestionas la agenda de {brain['owner_name']}.
