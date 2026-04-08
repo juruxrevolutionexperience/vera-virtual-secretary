@@ -75,8 +75,9 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
     brain = request.brain.model_dump()
     history = [m.model_dump() for m in request.history]
 
-    # 1. Escalado — avisa a Carlos pero sigue generando respuesta para el cliente
-    escalate = should_escalate(request.message, brain["escalation_triggers"])
+# 1. Escalado — avisa a Carlos pero sigue generando respuesta para el cliente
+    triggers = brain["escalation_triggers"] or ["vergüenza", "inaceptable", "queja", "reclamación", "llevo esperando", "nadie me contacta", "indignado", "pésimo"]
+    escalate = should_escalate(request.message, triggers)
 
     # 2. Detectar modo de conversación
     mode = "escalation" if escalate else detect_mode(request.message, history)
@@ -89,6 +90,10 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
 
     # 4. LLM — Groq con fallback a Gemini
     response_text = call_llm(user_prompt, system_prompt)
+
+    # Eliminar líneas en blanco entre frases — el LLM las mete aunque se le diga que no
+    import re
+    response_text = re.sub(r'\n{2,}', '\n', response_text.strip())
 
     return ProcessResponse(
         response=response_text,
