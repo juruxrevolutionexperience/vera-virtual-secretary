@@ -1,3 +1,4 @@
+import re
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -75,8 +76,8 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
     brain = request.brain.model_dump()
     history = [m.model_dump() for m in request.history]
 
-# 1. Escalado — avisa a Carlos pero sigue generando respuesta para el cliente
-    triggers = brain["escalation_triggers"] or ["vergüenza", "inaceptable", "queja", "reclamación", "llevo esperando", "nadie me contacta", "indignado", "pésimo"]
+    # 1. Escalado — avisa a Carlos pero sigue generando respuesta para el cliente
+    triggers = brain["escalation_triggers"] or ["vergüenza", "inaceptable", "queja", "reclamación", "llevo esperando", "llevo semanas", "llevo días", "nadie me contacta", "nadie me ha contactado", "indignado", "indignante", "pésimo", "no me han llamado", "sigo sin respuesta"]
     escalate = should_escalate(request.message, triggers)
 
     # 2. Detectar modo de conversación
@@ -92,7 +93,6 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
     response_text = call_llm(user_prompt, system_prompt)
 
     # Eliminar líneas en blanco entre frases — el LLM las mete aunque se le diga que no
-    import re
     response_text = re.sub(r'\n{2,}', '\n', response_text.strip())
 
     return ProcessResponse(

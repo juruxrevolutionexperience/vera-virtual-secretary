@@ -71,7 +71,7 @@ def call_llm(prompt, system):           # llama a Groq con fallback a Gemini si 
 
     # Gemini como fallback — circuito abierto o Groq falló
     response = gemini_client.models.generate_content(
-        model="gemini-1.5-flash",
+        model="gemini-2.0-flash",
         contents=system + "\n" + prompt             # combina system y prompt para Gemini
     )
     return response.text                            # devuelve la respuesta de Gemini
