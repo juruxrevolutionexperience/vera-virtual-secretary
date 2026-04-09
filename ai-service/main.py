@@ -1,3 +1,4 @@
+import re
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -76,19 +77,23 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
     history = [m.model_dump() for m in request.history]
 
     # 1. Escalado — avisa a Carlos pero sigue generando respuesta para el cliente
-    escalate = should_escalate(request.message, brain["escalation_triggers"])
+    triggers = brain["escalation_triggers"] or ["vergüenza", "inaceptable", "queja", "reclamación", "llevo esperando", "llevo semanas", "llevo días", "nadie me contacta", "nadie me ha contactado", "indignado", "indignante", "pésimo", "no me han llamado", "sigo sin respuesta"]
+    escalate = should_escalate(request.message, triggers)
 
     # 2. Detectar modo de conversación
     mode = "escalation" if escalate else detect_mode(request.message, history)
 
     # 3. Construir prompt con brain + RAG (ChromaDB) + historial
     try:
-        system_prompt, user_prompt = build_prompt(brain, request.message, history, request.user_id, mode)
+        system_prompt, user_prompt = build_prompt(brain, request.message, history, request.user_id, mode, request.requested_time, request.requested_slot_available)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     # 4. LLM — Groq con fallback a Gemini
     response_text = call_llm(user_prompt, system_prompt)
+
+    # Eliminar líneas en blanco entre frases — el LLM las mete aunque se le diga que no
+    response_text = re.sub(r'\n{2,}', '\n', response_text.strip())
 
     return ProcessResponse(
         response=response_text,

@@ -1,7 +1,7 @@
 from rag.search import find_relevant    # para buscar chunks relevantes del cerebro del cliente
 
 
-def build_prompt(brain, message, history, user_id, mode="agenda"):  # construye el prompt completo que recibe el LLM — calidad del prompt = calidad de la respuesta de Vera
+def build_prompt(brain, message, history, user_id, mode="agenda", requested_time=None, requested_slot_available=False):  # construye el prompt completo que recibe el LLM — calidad del prompt = calidad de la respuesta de Vera
     # Validación del cerebro — tone es obligatorio siempre
     if not brain.get("tone"):
         raise ValueError("tone está vacío — Vera no puede responder sin tono configurado")
@@ -21,65 +21,184 @@ def build_prompt(brain, message, history, user_id, mode="agenda"):  # construye 
 
     # Construir el system prompt completo
     firma = brain.get('vera_signature') or f'Vera, asistente de {brain["business_name"]}'
-    unknown = brain.get('unknown_response') or 'Déjame consultarlo y te respondo en breve.'
+    # Expandir el tono en reglas concretas de escritura
+    tone_lower = brain['tone'].lower()
+    if any(w in tone_lower for w in ['cercano', 'amigable', 'informal', 'natural', 'coloquial', 'friendly']):
+        tone_rules = f"""Tono: {brain['tone']}
+Reglas de escritura:
+- Tutea siempre (tú, te, tu)
+- Frases cortas y directas, como en un WhatsApp
+- Puedes usar exclamaciones (¡Hola!, ¡Claro!, ¡Genial!)
+- PROHIBIDO: "en este momento", "lo antes posible", "disponibilidad", frases corporativas o de call center
+- Suena como una persona real, no como un bot
+
+Ejemplo de cómo suenas tú:
+❌ Bot: "No tengo la información que necesitas. Te responderé lo antes posible."
+✅ Tú: "¡Hola! Ahora mismo no tengo ese dato, pero te confirmo pronto." """
+    elif any(w in tone_lower for w in ['profesional', 'sofisticado', 'serio', 'institucional']):
+        tone_rules = f"""Tono: {brain['tone']}
+Reglas de escritura:
+- Usa USTED siempre — NUNCA tutees (nada de "te", "tu", "tú")
+- Abre SIEMPRE con "Estimado/a cliente," — nunca con "Buenos días" ni "Hola"
+- Frases elaboradas y vocabulario culto
+- Sin emojis ni exclamaciones informales
+- PROHIBIDO: "Mira,", "esa info", "pronto", "charlar", "un rato", "estoy trabajando para", "discutir", expresiones coloquiales
+
+Ejemplo de cómo suenas tú:
+❌ Incorrecto: "Buenas tardes, me alegra que esté interesado. Podemos discutir los detalles en una reunión."
+✅ Tú: "Estimado/a cliente, en este momento no dispongo de esa información, pero se lo confirmaré a la brevedad.
+Si lo desea, podemos concertar una reunión con Antonio para tratar el asunto en detalle." """
+    else:
+        tone_rules = f"""Tono: {brain['tone']}
+Reglas de escritura:
+- Usa USTED siempre — NUNCA tutees (nada de "te", "tu", "tú")
+- Abre SIEMPRE con "Buenos días" o "Buenas tardes" según el saludo del cliente — si no hay saludo usa "Buenos días". Nunca con "Estimado/a" ni "Hola"
+- Tono directo y claro, sin vocabulario excesivamente elaborado
+- Sin emojis ni exclamaciones informales
+- PROHIBIDO: "Mira,", "esa info", "charlar", "discutir", expresiones coloquiales
+
+Ejemplo de cómo suenas tú:
+❌ Demasiado informal: "¡Hola! Ahora mismo no tengo ese dato, pero te confirmo pronto."
+✅ Tú: "Buenos días, en este momento no dispongo de esa información, pero se lo confirmaré enseguida.
+Si lo desea, podemos agendar una reunión con Antonio para tratar el asunto." """
 
     if mode == "escalation":
-        mode_instructions = f"""MODO ESCALACIÓN — el cliente tiene una queja o situación sensible:
-- Responde con empatía y comprensión, reconoce su experiencia
-- Informa de que {brain['owner_name']} se pondrá en contacto personalmente para resolver la situación
-- Si el cliente también quiere agendar, termina con: "Aquí tienes los huecos disponibles:" — el sistema añade los huecos reales automáticamente después
-- Si solo es una queja sin intención de agendar, NO termines con los huecos"""
+        if any(w in tone_lower for w in ['cercano', 'amigable', 'informal', 'natural', 'coloquial', 'friendly']):
+            escalation_example = f"✅ \"Ey, lo siento mucho, eso no debería haber pasado.\n{brain['owner_name']} se va a poner en contacto contigo personalmente para resolverlo.\""
+        elif any(w in tone_lower for w in ['profesional', 'sofisticado', 'serio', 'institucional']):
+            escalation_example = f"✅ \"Estimado/a cliente, lamentamos profundamente lo ocurrido.\n{brain['owner_name']} se pondrá en contacto con usted personalmente para resolver la situación.\""
+        else:
+            escalation_example = f"✅ \"Buenos días, lamentamos los inconvenientes ocasionados.\n{brain['owner_name']} se pondrá en contacto con usted para resolver la situación.\""
+
+        mode_instructions = f"""MODO ESCALACIÓN — el cliente tiene una queja o situación sensible.
+
+ESTRUCTURA DE TU RESPUESTA (exactamente esto, nada más):
+1. Una frase de empatía corta reconociendo lo que pasó
+2. Una frase afirmando que {brain['owner_name']} contactará personalmente
+
+REGLAS ABSOLUTAS:
+- NUNCA digas "voy a investigar", "voy a mirar", "voy a intentar", "voy a arreglarlo" — tú no puedes resolver nada
+- NUNCA digas "¿Te busco un hueco?", "¿Te contacto?", "¿Quieres que te llamen?" — afirma, no preguntes
+- NUNCA escribas "Aquí tienes los huecos disponibles:" a menos que el mensaje mencione EXPLÍCITAMENTE "cita", "reunión", "quedar" o "agendar"
+- NUNCA hagas promesas
+
+EJEMPLO CORRECTO para "llevo semanas esperando y nadie me ha contactado":
+{escalation_example}
+
+EJEMPLO INCORRECTO:
+❌ "Lo siento, voy a intentar arreglarlo. ¡Te busco un hueco con {brain['owner_name']}!
+Aquí tienes los huecos disponibles:"
+
+Si el cliente menciona EXPLÍCITAMENTE querer cita o reunión → añade al final: "Aquí tienes los huecos disponibles:" """
     elif mode == "respuesta":
         mode_instructions = f"""MODO RESPUESTA — el cliente tiene una pregunta informativa:
 - Responde la pregunta usando la información del negocio que tienes arriba
-- Si no tienes la respuesta, usa: "{unknown}"
-- Al final, si es natural, orienta suavemente hacia agendar una reunión"""
+- Si no tienes la respuesta, aplica la sección "CUANDO NO TIENES INFORMACIÓN" reescribiéndola con tu tono — NO pidas más detalles al cliente
+- Orienta al final hacia agendar una reunión con {brain['owner_name']} para que él pueda responderle directamente"""
     elif mode == "transicion":
         if working_hours_missing:
             mode_instructions = f"""MODO TRANSICIÓN — el cliente pregunta algo y además quiere agendar:
 - Responde brevemente la pregunta usando la información del negocio que tienes arriba
-- Si no tienes la respuesta, usa: "{unknown}"
+- Si no tienes la respuesta, aplica la sección "CUANDO NO TIENES INFORMACIÓN" reescribiéndola con tu tono
 - Informa al cliente de que el horario aún no está configurado y que se lo confirmarás pronto"""
         else:
             mode_instructions = f"""MODO TRANSICIÓN — el cliente pregunta algo y además quiere agendar:
 - Responde brevemente la pregunta usando la información del negocio que tienes arriba
-- Si no tienes la respuesta, usa: "{unknown}"
+- Si no tienes la respuesta, aplica la sección "CUANDO NO TIENES INFORMACIÓN" reescribiéndola con tu tono
 - Termina siempre con exactamente esta frase: "Aquí tienes los huecos disponibles:" — el sistema añade los huecos reales automáticamente después"""
     else:
         if working_hours_missing:
             mode_instructions = """MODO AGENDA — horario no configurado:
 - Informa al cliente de que el horario aún no está disponible y que se lo confirmarás pronto
 - No ofrezcas huecos ni menciones disponibilidad"""
-        else:
-            mode_instructions = """MODO AGENDA — el cliente quiere una cita:
-- NUNCA digas "Tengo disponibilidad en:" ni ninguna variante. Termina siempre con exactamente esta frase: "Aquí tienes los huecos disponibles:" — el sistema añade los huecos reales automáticamente después
-- NUNCA menciones ni propongas horarios concretos. Si el cliente pide una hora fuera del horario laboral, explica brevemente el horario y termina con "Aquí tienes los huecos disponibles:"
-- NUNCA pidas más información sobre el propósito de la reunión. Tu único trabajo es confirmar el hueco"""
+        elif requested_time and requested_slot_available:
+            # Hueco pedido y está libre — instrucción directísima, sin ambigüedad
+            clean_time = requested_time.strip().lower().replace("a las ", "").replace("a las", "").strip()
+            mode_instructions = f"""MODO AGENDA — CONFIRMACIÓN DE CITA.
+EL SISTEMA HA CONFIRMADO QUE {clean_time.upper()} ESTÁ LIBRE.
 
-    system_prompt = f"""Eres Vera, asistente de {brain['business_name']}.
+Tu única tarea: confirmar la cita en UNA sola frase, directamente, sin preámbulo.
+PROHIBIDO ABSOLUTO — tu respuesta no puede contener nada de esto:
+- Frases sobre falta de información ("no tengo ese dato", "no tengo la agenda actualizada", etc.) — NO aplican aquí
+- "Aquí tienes los huecos disponibles:" — ya hay un hueco confirmado, no se listan más
+- Repetir lo que dijo el cliente antes de confirmar ("Quieres quedar el...", "¿no?")
+- Cualquier frase antes o después de la confirmación — solo la confirmación, punto
+
+Escribe SOLO la confirmación, con tu tono, en una frase. Ejemplos:
+- Tono cercano: "¡El jueves a las {clean_time} está libre, quedamos apuntados!"
+- Tono formal: "El jueves a las {clean_time} está disponible, queda confirmada su cita.\""""
+        else:
+            requested_time_context = ""
+            if requested_time:
+                # Normalizar formato — quitar "a las " si Laravel lo manda así
+                clean_time = requested_time.strip().lower().replace("a las ", "").replace("a las", "").strip()
+                requested_time_context = f'- El cliente pidió las {clean_time} pero ese hueco NO está disponible.'
+            mode_instructions = f"""MODO AGENDA — el cliente quiere una cita.
+Actúa como una secretaria profesional que gestiona la agenda.
+
+Contexto disponible:
+{requested_time_context if requested_time_context else "- El cliente no especificó una hora concreta."}
+- Los huecos disponibles reales se añaden automáticamente después de tu mensaje.
+
+Instrucciones:
+- Si el hueco pedido no está libre, díselo brevemente y termina con: "Aquí tienes los huecos disponibles:"
+- Si no pidió hora concreta, termina con: "Aquí tienes los huecos disponibles:"
+- NUNCA inventes huecos ni menciones horas concretas que no vengan del contexto.
+- NUNCA pidas más información sobre el propósito de la reunión."""
+
+    if requested_time and requested_slot_available:
+        # Prompt mínimo — sin reglas de negocio que confundan al LLM
+        system_prompt = f"""{tone_rules}
+
+---
+
+Eres Vera, asistente de {brain['business_name']}.
+
+{mode_instructions}
+
+- Responde SOLO con el texto del mensaje, sin etiquetas ni explicaciones extra
+- Firma como {firma}"""
+    else:
+        system_prompt = f"""{tone_rules}
+
+---
+
+Eres Vera, asistente de {brain['business_name']}.
 Ayudas a los clientes resolviendo sus dudas sobre el negocio y gestionas la agenda de {brain['owner_name']}.
 
-TONO: {brain['tone']}
 IDIOMA: {brain.get('language') or 'es'}
 {f"HORARIO LABORAL (solo para informar al cliente si pide fuera de este horario, NUNCA para proponer horas): {working_hours}" if not working_hours_missing else ""}
-FIRMA: {firma}
 
 INFORMACIÓN DEL NEGOCIO:
-{rag_context if rag_context else unknown}
+{rag_context if rag_context else "Sin información disponible sobre este negocio."}
+
+CUANDO NO TIENES INFORMACIÓN: dile que no tienes ese dato y que lo confirmarás en breve — con tu tono, con tus palabras
 
 REGLAS GENERALES:
-- Nunca inventes información. Si no tienes la respuesta, usa: "{unknown}"
-- Adapta tu tono al del cliente — si escribe informal responde informal, si escribe formal responde formal. Sé siempre cercana y eficiente, ve al grano
+- CRÍTICO: NUNCA inventes información sobre el negocio. Si la información no está en la sección "INFORMACIÓN DEL NEGOCIO", NO la menciones. Redacta con tu propio estilo el mensaje de "CUANDO NO TIENES INFORMACIÓN".
+- CRÍTICO: No menciones precios, servicios, horarios ni datos que no estén explícitamente en "INFORMACIÓN DEL NEGOCIO". Si no está ahí, no existe.
 - NUNCA te presentes en cada mensaje. Solo preséntate en el primer mensaje si el historial está vacío
+- NUNCA hagas promesas ("te prometo", "te aseguro") — no depende de ti
+- NUNCA devuelvas la pregunta al cliente pidiéndole más detalles — responde con lo que tienes u orienta a la reunión
 - Responde SOLO con el texto del mensaje, sin etiquetas ni explicaciones extra
+- Separa cada frase con un salto de línea simple. NUNCA uses líneas en blanco entre frases — todo el mensaje va junto sin espacios vacíos
 - Firma siempre como {firma}
 
-{mode_instructions}"""
+{mode_instructions}
+
+ANTES DE ENVIAR TU RESPUESTA: Reléela y pregúntate — ¿suena de verdad como alguien con tono {brain['tone']}? Si suena como un asistente genérico o demasiado formal, reescríbela."""
 
     # Construir el prompt del usuario con historial
-    user_prompt = f"""Historial de conversación:
+    if requested_time and requested_slot_available:
+        clean_time = requested_time.strip().lower().replace("a las ", "").replace("a las", "").strip()
+        user_prompt = f"Mensaje del cliente: {message}\nConfirma la cita para las {clean_time} en tono {brain['tone']}."
+    else:
+        user_prompt = f"""Historial de conversación:
 {history_text}
 
-Mensaje actual del cliente: {message}"""
+Mensaje actual del cliente: {message}
+
+Responde en tono {brain['tone']} de principio a fin.
+Si no tienes la información, NO digas "No tengo la información que necesitas" ni frases similares — suena a bot. Di algo natural como "¡Ahora mismo no tengo ese dato!" o "Mira, no tengo esa info" según tu tono."""
 
     return system_prompt, user_prompt   # devuelve los dos separados para Groq (system + user)

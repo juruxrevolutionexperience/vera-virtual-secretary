@@ -1,9 +1,16 @@
 import chromadb
+import os
 from chromadb.utils import embedding_functions
+from dotenv import load_dotenv
 
-# ChromaDB genera los vectores localmente con all-MiniLM-L6-v2 (ONNX) — sin coste, sin API externa
+load_dotenv()
+
+# Gemini embeddings — modelo multilingüe de alta calidad, tier gratuito 1.500 req/día
 chroma = chromadb.PersistentClient(path="./chroma_db")
-default_ef = embedding_functions.DefaultEmbeddingFunction()
+default_ef = embedding_functions.GoogleGenerativeAiEmbeddingFunction(
+    api_key=os.getenv("GOOGLE_API_KEY"),
+    model_name="models/gemini-embedding-001"
+)
 
 
 def get_collection(user_id: str):
