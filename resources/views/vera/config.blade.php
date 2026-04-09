@@ -189,6 +189,9 @@
                                 </span>
                             </template>
                         </div>
+                        <p x-show="triggers.length === 0" class="mt-1.5 text-xs text-gray-400">
+                            Si no añades ninguna, Vera usará las predefinidas: <em>vergüenza, inaceptable, queja, reclamación, llevo esperando, indignado, pésimo, sigo sin respuesta…</em>
+                        </p>
                         <input type="hidden" name="escalation_triggers" :value="JSON.stringify(triggers)">
                     </div>
                 </div>

@@ -188,9 +188,15 @@ class GmailService
 
         $subject = 'Re: ' . ltrim($originalEmail['subject'], 'Re: ');
 
+        // Codificar el asunto en RFC 2047 (Base64) para preservar tildes, ñ, etc.
+        // Sin esto, los bytes UTF-8 en el header se interpretan como Latin-1 → "reuniÃƒÂ³n"
+        $encodedSubject = mb_detect_encoding($subject, 'ASCII', true)
+            ? $subject
+            : '=?UTF-8?B?' . base64_encode($subject) . '?=';
+
         $rawMessage = implode("\r\n", [
             "To: {$toEmail}",
-            "Subject: {$subject}",
+            "Subject: {$encodedSubject}",
             "Content-Type: text/plain; charset=utf-8",
             "",
             $replyBody,

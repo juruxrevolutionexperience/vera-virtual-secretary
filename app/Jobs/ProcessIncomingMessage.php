@@ -131,18 +131,36 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
+        // Si el LLM acaba de confirmar un slot concreto que estaba libre → reservarlo ahora
+        // y salir sin listar más huecos (evita el "confirmado + lista de disponibilidad" confuso).
+        if ($requestedSlotAvailable && $requestedTime) {
+            if ($config->hasCalendarConnected()) {
+                $this->bookConfirmedRequestedSlot($user, $config, $meetingRequest, $requestedTime);
+            }
+            $this->updateMeetingRequestState($meetingRequest, $mode, $aiResponse);
+            $this->saveToHistory($meetingRequest, $response);
+            if ($response) {
+                $this->sendResponse($user, $response, $config);
+            }
+            Log::info('✅ Slot confirmado por LLM y reservado', [
+                'user_id'        => $user->id,
+                'requested_time' => $requestedTime,
+            ]);
+            return;
+        }
+
         if ($mode === 'agenda' && !empty($slots)) {
             $this->handleAgendaMode($user, $config, $meetingRequest, $slots);
         }
 
-        // Cuando mode=agenda, SIEMPRE consultar Calendar y añadir slots reales.
+        // Cuando mode=agenda, consultar Calendar y añadir slots reales.
         // El LLM aporta el texto conversacional (p.ej. "las 19h están fuera de horario"),
         // pero los horarios concretos los pone siempre el Calendar — nunca el LLM.
         if ($mode === 'agenda' && $config->hasCalendarConnected()) {
             $preferredDate = $this->extractPreferredDate($this->message);
-            // Si el usuario pidió un día concreto: mostrar toda la disponibilidad de ese día (hasta 16 slots).
-            // Si no: mostrar los próximos 9 slots disponibles en los próximos 5 días.
-            [$calendarText, $calendarSlots] = $this->buildAvailabilityResponse($user, $config, $preferredDate, $preferredDate ? 2 : 5, $preferredDate ? 16 : 9);
+            // Máximo 5 slots: suficiente para el cliente sin abrumarlo.
+            // Con día preferido buscamos 2 días; sin él, los próximos 5 días.
+            [$calendarText, $calendarSlots] = $this->buildAvailabilityResponse($user, $config, $preferredDate, $preferredDate ? 2 : 5, 5);
             // Limpiar respuesta del LLM: eliminar slots falsos, firma y frases de cierre
             // que el LLM añade aunque se le diga que no lo haga
             if ($response) {
@@ -365,12 +383,14 @@ class ProcessIncomingMessage implements ShouldQueue
 
     /**
      * Extrae la hora concreta que el usuario pidió del mensaje (ej. "a las 12:00", "las 3").
+     * Solo detecta horas con preposición explícita ("a las", "las") para evitar capturar
+     * timestamps de cabeceras o texto citado en los emails de respuesta.
      * Devuelve la porción del mensaje que menciona la hora, o null si no hay ninguna.
      */
     private function extractRequestedTime(string $message): ?string
     {
-        // "a las 12:00", "las 12:30", "12:00", "15:30"
-        if (preg_match('/(?:a\s+)?las?\s+(\d{1,2}:\d{2})|\b(\d{1,2}:\d{2})\b/i', $message, $m)) {
+        // "a las 12:00", "las 12:30" (con minutos)
+        if (preg_match('/(?:a\s+)?las?\s+(\d{1,2}:\d{2})/i', $message, $m)) {
             return $m[0];
         }
         // "a las 12", "las 3" (sin minutos)
@@ -381,26 +401,41 @@ class ProcessIncomingMessage implements ShouldQueue
     }
 
     /**
+     * Convierte el texto de hora pedido ("a las 12", "las 15:30") en un Carbon
+     * con la fecha correcta (hoy o el día preferido del mensaje).
+     * Devuelve null si no se puede parsear.
+     */
+    private function resolveRequestedSlotStart(string $requestedTime): ?Carbon
+    {
+        if (!preg_match('/(\d{1,2})(?::(\d{2}))?/', $requestedTime, $m)) {
+            return null;
+        }
+
+        $hour   = (int) $m[1];
+        $minute = isset($m[2]) ? (int) $m[2] : 0;
+
+        $preferredDate = $this->extractPreferredDate($this->message);
+        $base          = $preferredDate ? Carbon::parse($preferredDate) : now();
+        $slotStart     = $base->copy()->setHour($hour)->setMinute($minute)->setSecond(0);
+
+        // Si la hora ya pasó, adelantar un día
+        if ($slotStart->isPast()) {
+            $slotStart->addDay();
+        }
+
+        return $slotStart;
+    }
+
+    /**
      * Comprueba en Google Calendar si el slot pedido por el usuario está libre.
      * Devuelve true si está libre, false si está ocupado o no se puede determinar.
      */
     private function checkRequestedSlotAvailable(User $user, VeraConfig $config, string $requestedTime): bool
     {
         try {
-            if (!preg_match('/(\d{1,2})(?::(\d{2}))?/', $requestedTime, $m)) {
+            $slotStart = $this->resolveRequestedSlotStart($requestedTime);
+            if (!$slotStart) {
                 return false;
-            }
-            $hour   = (int) $m[1];
-            $minute = isset($m[2]) ? (int) $m[2] : 0;
-
-            // Usar el día preferido del mensaje si lo hay, si no usar hoy
-            $preferredDate = $this->extractPreferredDate($this->message);
-            $base          = $preferredDate ? Carbon::parse($preferredDate) : now();
-            $slotStart     = $base->copy()->setHour($hour)->setMinute($minute)->setSecond(0);
-
-            // Si la hora ya pasó, adelantar un día
-            if ($slotStart->isPast()) {
-                $slotStart->addDay();
             }
 
             $slotEnd = $slotStart->copy()->addMinutes($config->meeting_duration ?? 45);
@@ -410,6 +445,59 @@ class ProcessIncomingMessage implements ShouldQueue
 
         } catch (\Exception $e) {
             Log::warning('No se pudo verificar disponibilidad del slot solicitado', ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Crea el Meeting en BD y el evento en Google Calendar cuando el LLM ya confirmó
+     * un slot concreto que estaba libre (requested_slot_available=true).
+     * Complementa el flujo de bookSlot(), que solo cubre confirmaciones desde listas propuestas.
+     */
+    private function bookConfirmedRequestedSlot(User $user, VeraConfig $config, MeetingRequest $request, string $requestedTime): bool
+    {
+        try {
+            $slotStart = $this->resolveRequestedSlotStart($requestedTime);
+            if (!$slotStart) {
+                return false;
+            }
+
+            $timezone = $config->timezone ?? 'Europe/Madrid';
+
+            $meeting = Meeting::create([
+                'user_id'            => $user->id,
+                'contact_name'       => $this->contactName ?? $this->contactIdentifier,
+                'contact_email'      => $this->channel === 'email' ? $this->contactIdentifier : null,
+                'scheduled_at'       => $slotStart,
+                'duration_minutes'   => $config->meeting_duration ?? 45,
+                'timezone'           => $timezone,
+                'status'             => 'pending',
+                'source_channel'     => $this->channel,
+                'meeting_request_id' => $request->id,
+            ]);
+
+            $calendarService = new GoogleCalendarService();
+            $calendarService->createEvent($user, $meeting);
+
+            $request->update(['state' => 'confirmed', 'meeting_id' => $meeting->id]);
+
+            VeraActivityLog::record([
+                'user_id'       => $user->id,
+                'activity_type' => 'meeting_confirmed',
+                'title'         => 'Reunión confirmada con ' . ($this->contactName ?? $this->contactIdentifier),
+                'description'   => 'Reunión agendada para ' . $slotStart->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i'),
+                'metadata'      => ['channel' => $this->channel, 'contact' => $this->contactIdentifier],
+                'counts_towards_limit' => true,
+                'status'        => 'completed',
+            ]);
+
+            return true;
+
+        } catch (\Exception $e) {
+            Log::error('Error al reservar slot confirmado por LLM', [
+                'error'          => $e->getMessage(),
+                'requested_time' => $requestedTime,
+            ]);
             return false;
         }
     }
