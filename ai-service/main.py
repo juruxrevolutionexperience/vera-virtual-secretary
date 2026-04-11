@@ -82,7 +82,6 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
 
     # 2. Detectar modo de conversación
     mode = "escalation" if escalate else detect_mode(request.message, history)
-
     # 3. Construir prompt con brain + RAG (ChromaDB) + historial
     try:
         system_prompt, user_prompt = build_prompt(brain, request.message, history, request.user_id, mode, request.requested_time, request.requested_slot_available)
@@ -94,6 +93,12 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
 
     # Eliminar líneas en blanco entre frases — el LLM las mete aunque se le diga que no
     response_text = re.sub(r'\n{2,}', '\n', response_text.strip())
+
+    # En escalation sin intención de agenda — eliminar "Aquí tienes los huecos disponibles:" si el LLM la cuela igual
+    if mode == "escalation":
+        agenda_keywords = ["cita", "reunión", "reunion", "quedar", "agendar", "reservar"]
+        if not any(kw in request.message.lower() for kw in agenda_keywords):
+            response_text = re.sub(r'\nAquí tienes los huecos disponibles:.*', '', response_text, flags=re.DOTALL).strip()
 
     return ProcessResponse(
         response=response_text,
