@@ -149,14 +149,14 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
-        if ($mode === 'agenda' && !empty($slots)) {
+        if (\in_array($mode, ['agenda', 'transicion']) && !empty($slots)) {
             $this->handleAgendaMode($user, $config, $meetingRequest, $slots);
         }
 
-        // Cuando mode=agenda, consultar Calendar y añadir slots reales.
+        // Cuando mode=agenda o transicion, consultar Calendar y añadir slots reales.
         // El LLM aporta el texto conversacional (p.ej. "las 19h están fuera de horario"),
         // pero los horarios concretos los pone siempre el Calendar — nunca el LLM.
-        if ($mode === 'agenda' && $config->hasCalendarConnected()) {
+        if (\in_array($mode, ['agenda', 'transicion']) && $config->hasCalendarConnected()) {
             $preferredDate = $this->extractPreferredDate($this->message);
             // Máximo 5 slots: suficiente para el cliente sin abrumarlo.
             // Con día preferido buscamos 2 días; sin él, los próximos 5 días.
