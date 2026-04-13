@@ -17,10 +17,13 @@ Razona paso a paso:
 IMPORTANTE: "¿podría quedar...?", "¿tendríais hueco...?", "¿hay disponibilidad...?" son siempre agenda, no respuesta.
 
 Ejemplos:
-- "hola, buenos días" → respuesta
+- "hola, buenos días" → respuesta (solo saludo, sin intención de cita)
 - "¿qué servicios ofrecéis?" → respuesta
 - "¿cuánto cuesta una consulta?" → respuesta
 - "quiero una cita para el martes" → agenda
+- "me gustaría pedir una cita" → agenda
+- "buenos días, me gustaría concertar una reunión" → agenda
+- "hola, quisiera pedir cita" → agenda
 - "¿podría quedar el martes a las 11?" → agenda
 - "¿tendríais hueco esta semana?" → agenda
 - "¿hay disponibilidad el jueves por la tarde?" → agenda
