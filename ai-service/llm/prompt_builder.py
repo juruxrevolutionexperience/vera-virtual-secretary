@@ -161,6 +161,13 @@ Instrucciones:
 - NUNCA preguntes al cliente qué hora prefiere — los huecos se muestran automáticamente después
 - NUNCA pidas más información sobre el propósito de la reunión"""
 
+    # Determinar si la respuesta terminará con huecos — en ese caso no incluir firma (quedaría en medio)
+    ends_with_slots = (
+        (mode == "agenda" and not (requested_time and requested_slot_available)) or
+        (mode == "transicion" and not working_hours_missing)
+    )
+    firma_instruction = "" if ends_with_slots else f"- Firma como {firma}"
+
     # En agenda y confirmación de hueco no hay info del negocio que dar — prompt mínimo para evitar que el LLM active "no tengo ese dato"
     if mode == "agenda" or (requested_time and requested_slot_available):
         system_prompt = f"""{tone_rules}
@@ -172,7 +179,7 @@ Eres Vera, asistente de {brain['business_name']}.
 {mode_instructions}
 
 - Responde SOLO con el texto del mensaje, sin etiquetas ni explicaciones extra
-- Firma como {firma}"""
+{firma_instruction}"""
     else:
         system_prompt = f"""{tone_rules}
 
@@ -195,7 +202,7 @@ REGLAS GENERALES:
 - NUNCA devuelvas la pregunta al cliente pidiéndole más detalles — responde con lo que tienes u orienta a la reunión
 - Responde SOLO con el texto del mensaje, sin etiquetas ni explicaciones extra
 - Separa cada frase con un salto de línea simple. NUNCA uses líneas en blanco entre frases — todo el mensaje va junto sin espacios vacíos
-- Firma siempre como {firma}
+{firma_instruction}
 
 {mode_instructions}
 

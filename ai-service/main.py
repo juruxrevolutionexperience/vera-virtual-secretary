@@ -76,6 +76,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
     brain = request.brain.model_dump()
     history = [m.model_dump() for m in request.history]
 
+
     # 1. Escalado — avisa a Carlos pero sigue generando respuesta para el cliente
     triggers = brain["escalation_triggers"] or ["vergüenza", "inaceptable", "queja", "reclamación", "llevo esperando", "llevo semanas", "llevo días", "nadie me contacta", "nadie me ha contactado", "indignado", "indignante", "pésimo", "no me han llamado", "sigo sin respuesta"]
     escalate = should_escalate(request.message, triggers)
