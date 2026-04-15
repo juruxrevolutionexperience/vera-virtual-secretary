@@ -54,11 +54,12 @@ def _record_success():
     _write_circuit({"failures": 0, "opened_at": None})
 
 
-def call_llm(prompt, system):           # llama a Groq con fallback a Gemini si falla — nunca deja a Vera sin respuesta
+def call_llm(prompt, system, temperature=0.7):   # llama a Groq con fallback a Gemini si falla — nunca deja a Vera sin respuesta
     if not _is_circuit_open():
         try:
             response = groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile",        # modelo principal según el Plan Maestro
+                temperature=temperature,
                 messages=[
                     {"role": "system", "content": system},  # instrucciones de comportamiento de Vera
                     {"role": "user", "content": prompt}     # mensaje del cliente con el contexto completo

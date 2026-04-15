@@ -156,7 +156,8 @@ Instrucciones:
   - Cercano: "Ese hueco ya está ocupado, pero aquí tienes los disponibles:"
   - Formal: "Lamentablemente ese horario no está disponible. Aquí tienes los huecos disponibles:"
   - Profesional: "Le informamos de que ese horario no se encuentra disponible. A continuación le presentamos las opciones disponibles:"
-- Si no pidió hora concreta, escribe UNA sola frase de apertura con tu tono + EXACTAMENTE esta frase sin cambiarla ni adaptarla al tono: "Aquí tienes los huecos disponibles:" — nada más
+- Si no pidió hora concreta, escribe UNA sola frase de apertura corta con tu tono + EXACTAMENTE esta frase sin cambiarla ni adaptarla al tono: "Aquí tienes los huecos disponibles:" — nada más
+- PROHIBIDO en la frase de apertura: "para proceder", "le agradecemos", "le damos la bienvenida", "estamos dispuestos", "es un placer", "me alegra", "con mucho gusto"
 - NUNCA digas que no tienes información ni datos — en este modo no das información del negocio, solo gestionas la cita
 - NUNCA preguntes al cliente qué hora prefiere — los huecos se muestran automáticamente después
 - NUNCA pidas más información sobre el propósito de la reunión"""
