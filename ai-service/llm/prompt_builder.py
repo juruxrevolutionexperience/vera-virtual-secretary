@@ -240,3 +240,4 @@ Mensaje actual del cliente: {message}
 Responde en tono {brain['tone']} de principio a fin."""
 
     return system_prompt, user_prompt   # devuelve los dos separados para Groq (system + user)
+#prueba 16 abril
