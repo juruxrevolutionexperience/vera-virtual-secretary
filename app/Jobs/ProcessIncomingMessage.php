@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * ProcessIncomingMessage — Sprint 3
- *
+ * Antonio esto funciionaaa
  * Job asíncrono que orquesta el flujo completo de Vera:
  *
  * 1. Carga el contexto del usuario (Cerebro de Vera)
@@ -38,7 +38,9 @@ class ProcessIncomingMessage implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 3;
+    // tries=1: este Job hace acciones no idempotentes (enviar email, crear evento en Calendar).
+    // Con tries>1, un fallo después de sendResponse reintentaría y mandaría el email duplicado.
+    public int $tries   = 1;
     public int $timeout = 60;
 
     public function __construct(
