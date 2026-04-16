@@ -120,7 +120,7 @@ class VeraCalendarController extends Controller
     public function update(Request $request, int $meetingId)
     {
         $data = $request->validate([
-            'scheduled_at' => 'required|date|after:now',
+            'scheduled_at' => 'required|date',
         ]);
 
         $user    = Auth::user();
