@@ -501,7 +501,7 @@ class ProcessIncomingMessage implements ShouldQueue
                 return false;
             }
 
-            $timezone = $user->timezone ?? 'Europe/Madrid';
+            $timezone = ($user->timezone && $user->timezone !== 'UTC') ? $user->timezone : config('app.timezone', 'Europe/Madrid');
 
             $meeting = Meeting::create([
                 'user_id'            => $user->id,
@@ -621,7 +621,7 @@ class ProcessIncomingMessage implements ShouldQueue
     {
         try {
             $start    = Carbon::parse($slot['start']);
-            $timezone = $user->timezone ?? 'Europe/Madrid';
+            $timezone = ($user->timezone && $user->timezone !== 'UTC') ? $user->timezone : config('app.timezone', 'Europe/Madrid');
 
             $meeting = Meeting::create([
                 'user_id'            => $user->id,
