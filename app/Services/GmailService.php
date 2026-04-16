@@ -186,7 +186,10 @@ class GmailService
         preg_match('/<(.+?)>/', $originalEmail['from'], $matches);
         $toEmail = $matches[1] ?? $originalEmail['from'];
 
-        $subject = 'Re: ' . ltrim($originalEmail['subject'], 'Re: ');
+        // Usar regex para quitar el prefijo "Re:" solo si ya existe — ltrim() trata el segundo
+        // argumento como máscara de caracteres, lo que rompe asuntos como "Reunión" (→ "ón").
+        $base    = preg_replace('/^(Re:\s*)+/i', '', $originalEmail['subject']);
+        $subject = 'Re: ' . $base;
 
         // Codificar el asunto en RFC 2047 (Base64) para preservar tildes, ñ, etc.
         // Sin esto, los bytes UTF-8 en el header se interpretan como Latin-1 → "reuniÃƒÂ³n"

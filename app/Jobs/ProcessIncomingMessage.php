@@ -162,9 +162,12 @@ class ProcessIncomingMessage implements ShouldQueue
             // Con día preferido buscamos 2 días; sin él, los próximos 5 días.
             [$calendarText, $calendarSlots] = $this->buildAvailabilityResponse($user, $config, $preferredDate, $preferredDate ? 2 : 5, 5);
             // Limpiar respuesta del LLM: eliminar slots falsos, firma y frases de cierre
-            // que el LLM añade aunque se le diga que no lo haga
+            // que el LLM añade aunque se le diga que no lo haga.
+            // También eliminamos cualquier frase introductoria de huecos del LLM
+            // (ej. "Aquí tienes los huecos disponibles:") para evitar duplicarla con
+            // el bloque de slots reales que Laravel añade justo después.
             if ($response) {
-                $response = preg_replace('/\n*(tengo disponibilidad en:)[\s\S]*/i', '', $response);
+                $response = preg_replace('/\n*(tengo disponibilidad en:|aquí tienes los huecos disponibles:)[\s\S]*/i', '', $response);
                 $response = preg_replace('/\n*(•\s+.+(\n|$))+/i', '', $response);
                 $response = preg_replace('/\n+--?\s*\n?.+$/m', '', $response);
                 $response = preg_replace('/\n*¿cuál (de estas opciones )?te viene mejor\?/i', '', $response);
@@ -356,7 +359,16 @@ class ProcessIncomingMessage implements ShouldQueue
      */
     private function extractPreferredDate(string $message): ?string
     {
-        $message = strtolower($message);
+        // Limpiar texto citado para no detectar fechas de emails anteriores
+        $message = strtolower($this->stripQuotedEmailText($message));
+
+        // Fechas relativas — antes que los días de la semana para evitar falsos positivos
+        if (str_contains($message, 'pasado mañana') || str_contains($message, 'pasado manana')) {
+            return now()->addDays(2)->toDateString();
+        }
+        if (str_contains($message, 'mañana') || str_contains($message, 'manana')) {
+            return now()->addDay()->toDateString();
+        }
 
         $days = [
             'lunes'     => Carbon::MONDAY,
@@ -382,13 +394,38 @@ class ProcessIncomingMessage implements ShouldQueue
     }
 
     /**
+     * Elimina el texto citado de los hilos de email para evitar que se extraigan
+     * horas o fechas de respuestas anteriores en lugar del mensaje nuevo del cliente.
+     * Quita líneas que empiezan por ">" y bloques tras separadores de cita habituales.
+     */
+    private function stripQuotedEmailText(string $message): string
+    {
+        // Eliminar líneas que empiezan por ">" (texto citado estándar de email)
+        $lines = explode("\n", $message);
+        $clean = [];
+        foreach ($lines as $line) {
+            if (!preg_match('/^\s*>/', $line)) {
+                $clean[] = $line;
+            }
+        }
+        $text = implode("\n", $clean);
+
+        // Eliminar texto desde separadores de cita habituales en español e inglés
+        $text = preg_replace('/\n[-_]{2,}\s*Mensaje original\s*[-_]{2,}[\s\S]*/i', '', $text);
+        $text = preg_replace('/\nEl \w+, \d+ .+ escribi[oó]:[\s\S]*/iu', '', $text);
+        $text = preg_replace('/\nOn .+wrote:[\s\S]*/i', '', $text);
+
+        return trim($text);
+    }
+
+    /**
      * Extrae la hora concreta que el usuario pidió del mensaje (ej. "a las 12:00", "las 3").
-     * Solo detecta horas con preposición explícita ("a las", "las") para evitar capturar
-     * timestamps de cabeceras o texto citado en los emails de respuesta.
-     * Devuelve la porción del mensaje que menciona la hora, o null si no hay ninguna.
+     * Limpia el texto citado antes de buscar para evitar capturar timestamps de emails anteriores.
      */
     private function extractRequestedTime(string $message): ?string
     {
+        $message = $this->stripQuotedEmailText($message);
+
         // "a las 12:00", "las 12:30" (con minutos)
         if (preg_match('/(?:a\s+)?las?\s+(\d{1,2}:\d{2})/i', $message, $m)) {
             return $m[0];
@@ -462,7 +499,7 @@ class ProcessIncomingMessage implements ShouldQueue
                 return false;
             }
 
-            $timezone = $config->timezone ?? 'Europe/Madrid';
+            $timezone = $user->timezone ?? 'Europe/Madrid';
 
             $meeting = Meeting::create([
                 'user_id'            => $user->id,
@@ -528,7 +565,10 @@ class ProcessIncomingMessage implements ShouldQueue
                 'status'        => 'completed',
             ]);
 
-            return ["Tengo disponibilidad en:\n{$slotList}\n\n¿Cuál te viene mejor?", $slots];
+            // Sin prefijo "Tengo disponibilidad en:" — el LLM ya introduce los huecos
+            // con su propia frase ("Aquí tienes los huecos disponibles:") que Laravel limpia.
+            // Devolver directamente la lista para evitar duplicar la introducción.
+            return ["{$slotList}\n\n¿Cuál te viene mejor?", $slots];
 
         } catch (\Exception $e) {
             Log::warning('No se pudo consultar disponibilidad en Calendar', ['error' => $e->getMessage()]);
@@ -579,7 +619,7 @@ class ProcessIncomingMessage implements ShouldQueue
     {
         try {
             $start    = Carbon::parse($slot['start']);
-            $timezone = $config->timezone ?? 'Europe/Madrid';
+            $timezone = $user->timezone ?? 'Europe/Madrid';
 
             $meeting = Meeting::create([
                 'user_id'            => $user->id,
