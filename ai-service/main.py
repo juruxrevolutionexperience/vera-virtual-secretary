@@ -39,6 +39,8 @@ class ProcessRequest(BaseModel):
     brain: Brain
     requested_time: Optional[str] = None        # hora que pidió el cliente, ej. "a las 12:00" — null si no pidió ninguna
     requested_slot_available: bool = False      # True si ese hueco está libre en Google Calendar
+    booking_confirmed: bool = False             # True cuando el cliente eligió un hueco y ya está reservado
+    confirmed_slot_label: Optional[str] = None  # ej: "jueves 17 de abril a las 09:00"
 
 class ProcessResponse(BaseModel):
     response: Optional[str]
@@ -85,7 +87,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
     mode = "escalation" if escalate else detect_mode(request.message, history)
     # 3. Construir prompt con brain + RAG (ChromaDB) + historial
     try:
-        system_prompt, user_prompt = build_prompt(brain, request.message, history, request.user_id, mode, request.requested_time, request.requested_slot_available)
+        system_prompt, user_prompt = build_prompt(brain, request.message, history, request.user_id, mode, request.requested_time, request.requested_slot_available, request.booking_confirmed, request.confirmed_slot_label)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

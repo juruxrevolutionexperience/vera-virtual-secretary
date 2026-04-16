@@ -31,7 +31,7 @@ Mensaje: {clean_message}
 
 Responde solo con una palabra: respuesta, agenda o transicion."""
 
-    mode = call_llm(prompt, system="Eres un clasificador de intenciones. Responde solo con una palabra.", temperature=0).strip().lower()
+    mode = call_llm(prompt, system="Eres un clasificador de intenciones. Responde solo con una palabra.", temperature=0, model="llama-3.1-8b-instant").strip().lower()
     if mode not in ("respuesta", "agenda", "transicion"):
         mode = "respuesta"  # fallback seguro si el LLM devuelve algo inesperado
 
