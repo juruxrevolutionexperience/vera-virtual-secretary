@@ -1,7 +1,7 @@
 from rag.search import find_relevant    # para buscar chunks relevantes del cerebro del cliente
 
 
-def build_prompt(brain, message, history, user_id, mode="agenda", requested_time=None, requested_slot_available=False):  # construye el prompt completo que recibe el LLM — calidad del prompt = calidad de la respuesta de Vera
+def build_prompt(brain, message, history, user_id, mode="agenda", requested_time=None, requested_slot_available=False, booking_confirmed=False, confirmed_slot_label=None):  # construye el prompt completo que recibe el LLM — calidad del prompt = calidad de la respuesta de Vera
     # Validación del cerebro — tone es obligatorio siempre
     if not brain.get("tone"):
         raise ValueError("tone está vacío — Vera no puede responder sin tono configurado")
@@ -120,6 +120,19 @@ Aquí tienes los huecos disponibles:" """
             mode_instructions = """MODO AGENDA — horario no configurado:
 - Informa al cliente de que el horario aún no está disponible y que se lo confirmarás pronto
 - No ofrezcas huecos ni menciones disponibilidad"""
+        elif booking_confirmed and confirmed_slot_label:
+            mode_instructions = f"""MODO CONFIRMACIÓN DE RESERVA — el cliente eligió un hueco y ya está reservado en Calendar.
+Tu única tarea: confirmar la reserva de '{confirmed_slot_label}' en UNA sola frase con tu tono.
+PROHIBIDO ABSOLUTO:
+- Listar más huecos o mencionar disponibilidad
+- Mencionar invitación de Calendar o Google
+- Pedir más datos al cliente
+- Cualquier frase antes o después de la confirmación — solo la confirmación, punto
+
+Escribe SOLO la confirmación, con tu tono, en una frase. Ejemplos:
+- Tono cercano: "¡Perfecto, quedamos el {confirmed_slot_label}!"
+- Tono formal: "Queda confirmada su cita para el {confirmed_slot_label}."
+- Tono profesional: "Estimado/a cliente, queda confirmada su reserva para el {confirmed_slot_label}.\""""
         elif requested_time and requested_slot_available:
             # Hueco pedido y está libre — instrucción directísima, sin ambigüedad
             clean_time = requested_time.strip().lower().replace("a las ", "").replace("a las", "").strip()
@@ -156,7 +169,8 @@ Instrucciones:
   - Cercano: "Ese hueco ya está ocupado, pero aquí tienes los disponibles:"
   - Formal: "Lamentablemente ese horario no está disponible. Aquí tienes los huecos disponibles:"
   - Profesional: "Le informamos de que ese horario no se encuentra disponible. A continuación le presentamos las opciones disponibles:"
-- Si no pidió hora concreta, escribe UNA sola frase de apertura corta con tu tono + EXACTAMENTE esta frase sin cambiarla ni adaptarla al tono: "Aquí tienes los huecos disponibles:" — nada más
+- Si el cliente menciona un día (lunes, martes, miércoles...) pero no una hora concreta, es una preferencia de día — NO es un hueco denegado. Responde afirmativamente con tu tono + EXACTAMENTE esta frase sin cambiarla: "Aquí tienes los huecos disponibles:"
+- Si no pidió ni día ni hora concreta, escribe UNA sola frase de apertura corta con tu tono + EXACTAMENTE esta frase sin cambiarla ni adaptarla al tono: "Aquí tienes los huecos disponibles:" — nada más
 - PROHIBIDO en la frase de apertura: "para proceder", "le agradecemos", "le damos la bienvenida", "estamos dispuestos", "es un placer", "me alegra", "con mucho gusto"
 - NUNCA digas que no tienes información ni datos — en este modo no das información del negocio, solo gestionas la cita
 - NUNCA preguntes al cliente qué hora prefiere — los huecos se muestran automáticamente después
@@ -164,13 +178,13 @@ Instrucciones:
 
     # Determinar si la respuesta terminará con huecos — en ese caso no incluir firma (quedaría en medio)
     ends_with_slots = (
-        (mode == "agenda" and not (requested_time and requested_slot_available)) or
+        (mode == "agenda" and not (requested_time and requested_slot_available) and not booking_confirmed) or
         (mode == "transicion" and not working_hours_missing)
     )
     firma_instruction = "" if ends_with_slots else f"- Firma como {firma}"
 
-    # En agenda y confirmación de hueco no hay info del negocio que dar — prompt mínimo para evitar que el LLM active "no tengo ese dato"
-    if mode == "agenda" or (requested_time and requested_slot_available):
+    # En agenda, confirmación de hueco o booking_confirmed — prompt mínimo para evitar que el LLM active "no tengo ese dato"
+    if mode == "agenda" or (requested_time and requested_slot_available) or booking_confirmed:
         system_prompt = f"""{tone_rules}
 
 ---
@@ -210,7 +224,9 @@ REGLAS GENERALES:
 ANTES DE ENVIAR TU RESPUESTA: Reléela y pregúntate — ¿suena de verdad como alguien con tono {brain['tone']}? Si suena como un asistente genérico o demasiado formal, reescríbela."""
 
     # Construir el prompt del usuario con historial
-    if requested_time and requested_slot_available:
+    if booking_confirmed and confirmed_slot_label:
+        user_prompt = f"El cliente confirmó el hueco. Confirma la reserva para '{confirmed_slot_label}' en tono {brain['tone']}."
+    elif requested_time and requested_slot_available:
         clean_time = requested_time.strip().lower().replace("a las ", "").replace("a las", "").strip()
         user_prompt = f"Mensaje del cliente: {message}\nConfirma la cita para las {clean_time} en tono {brain['tone']}."
     elif mode == "agenda":
