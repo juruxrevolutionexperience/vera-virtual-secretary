@@ -103,6 +103,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
         if not any(kw in request.message.lower() for kw in agenda_keywords):
             response_text = re.sub(r'\nAquí tienes los huecos disponibles:.*', '', response_text, flags=re.DOTALL).strip()
 
+
     return ProcessResponse(
         response=response_text,
         mode=mode,
