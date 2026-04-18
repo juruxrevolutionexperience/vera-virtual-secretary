@@ -1,0 +1,192 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .plan { padding: 16px 0; }
+  .header { text-align: center; margin-bottom: 24px; }
+  .header h1 { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+  .header p { font-size: 13px; color: var(--color-text-secondary); margin-top: 4px; }
+  .paso { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); margin-bottom: 16px; overflow: hidden; }
+  .paso-header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; }
+  .paso-header:hover { background: var(--color-background-secondary); }
+  .badge { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+  .b-coral  { background: #FAECE7; color: #993C1D; }
+  .b-teal   { background: #E1F5EE; color: #0F6E56; }
+  .b-purple { background: #EEEDFE; color: #3C3489; }
+  .b-blue   { background: #E6F1FB; color: #185FA5; }
+  @media (prefers-color-scheme: dark) {
+    .b-coral  { background: #4A1B0C; color: #F0997B; }
+    .b-teal   { background: #04342C; color: #5DCAA5; }
+    .b-purple { background: #26215C; color: #AFA9EC; }
+    .b-blue   { background: #042C53; color: #85B7EB; }
+  }
+  .paso-title { font-size: 15px; font-weight: 500; color: var(--color-text-primary); flex: 1; }
+  .paso-tag { font-size: 11px; color: var(--color-text-secondary); }
+  .chevron { font-size: 12px; color: var(--color-text-tertiary); transition: transform .2s; }
+  .chevron.open { transform: rotate(90deg); }
+  .paso-body { padding: 0 16px 16px; display: none; }
+  .paso-body.open { display: block; }
+  .objetivo { font-size: 13px; color: var(--color-text-secondary); background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px 12px; margin-bottom: 14px; border-left: 3px solid var(--color-border-secondary); }
+  .objetivo span { font-weight: 500; color: var(--color-text-primary); }
+  .subtask-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .subtask { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--color-text-primary); }
+  .cb { width: 16px; height: 16px; min-width: 16px; border: 0.5px solid var(--color-border-secondary); border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-top: 1px; transition: background .15s; }
+  .cb.checked { background: var(--color-text-info); border-color: var(--color-text-info); }
+  .cb.checked::after { content: '✓'; font-size: 10px; color: #fff; }
+  .subtask-text { line-height: 1.5; }
+  .subtask-text.done { text-decoration: line-through; color: var(--color-text-tertiary); }
+  .note { font-size: 12px; color: var(--color-text-secondary); margin-top: 12px; border-top: 0.5px solid var(--color-border-tertiary); padding-top: 10px; font-style: italic; }
+  .progress-bar-wrap { height: 4px; background: var(--color-border-tertiary); border-radius: 2px; margin: 10px 0 0; }
+  .progress-bar { height: 4px; border-radius: 2px; transition: width .3s; }
+  .p-coral  { background: #D85A30; }
+  .p-teal   { background: #1D9E75; }
+  .p-purple { background: #7F77DD; }
+  .p-blue   { background: #378ADD; }
+  .ask-btn { margin-top: 14px; font-size: 12px; padding: 6px 14px; border-radius: 20px; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-secondary); color: var(--color-text-secondary); cursor: pointer; }
+  .ask-btn:hover { background: var(--color-background-primary); color: var(--color-text-primary); }
+  .status-row { display: flex; justify-content: space-between; align-items: center; }
+  .step-tag { font-size: 11px; color: var(--color-text-tertiary); }
+  .new-badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 10px; background: #E1F5EE; color: #0F6E56; margin-left: 6px; }
+  @media (prefers-color-scheme: dark) { .new-badge { background: #04342C; color: #5DCAA5; } }
+</style>
+<div class="plan">
+  <div class="header">
+    <h1>Plan de trabajo — Finde Jurux</h1>
+    <p>4 fases · del más urgente al más estructural</p>
+  </div>
+
+  <!-- PASO 1 -->
+  <div class="paso" id="p1">
+    <div class="paso-header" onclick="toggle('p1')">
+      <span class="badge b-coral">Paso 1</span>
+      <span class="paso-title">Vera — Respuestas hardcodeadas & flujo Gmail</span>
+      <span class="paso-tag">🔴 Urgente</span>
+      <span class="chevron" id="chev-p1">›</span>
+    </div>
+    <div class="paso-body" id="body-p1">
+      <div class="objetivo"><span>Objetivo:</span> Entender por qué Vera responde con texto fijo y por qué el calendario se crea automáticamente sin pasar por IA real.</div>
+      <div class="status-row"><span class="step-tag">Tareas</span><span class="step-tag" id="prog1-label">0 / 7</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar p-coral" id="prog1" style="width:0%"></div></div>
+      <br>
+      <ul class="subtask-list">
+        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Comparar variables de entorno (.env) entre tu máquina y la de tu compañero — especialmente las que apuntan al ai-service</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Verificar que todos los servicios necesarios estén arrancados (ai-service, queue, Redis si aplica)</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Revisar el prompt que recibe Vera: ¿llega a Claude/IA o va directo a una respuesta estática?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Inspeccionar logs del ai-service en tiempo real mientras se envía un correo de prueba</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Localizar el código que genera el evento de calendario — ¿hay condición que lo dispara automáticamente?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Comparar versiones de dependencias del ai-service entre ambas máquinas</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Documentar qué está fallando exactamente y en qué punto del flujo se rompe</span></li>
+      </ul>
+      <p class="note">⚡ Esto se hace con el proyecto abierto y logs a la vista. Comparte estructura de carpetas + .env (sin claves) cuando estés listo.</p>
+      <button class="ask-btn" onclick="sendPrompt('Vamos a empezar el Paso 1 de Vera, tengo el proyecto abierto')">Empezar Paso 1 →</button>
+    </div>
+  </div>
+
+  <!-- PASO 2 -->
+  <div class="paso" id="p2">
+    <div class="paso-header" onclick="toggle('p2')">
+      <span class="badge b-teal">Paso 2</span>
+      <span class="paso-title">Auditoría BDD + ChromaDB</span>
+      <span class="paso-tag">🟡 Importante</span>
+      <span class="chevron" id="chev-p2">›</span>
+    </div>
+    <div class="paso-body" id="body-p2">
+      <div class="objetivo"><span>Objetivo:</span> Verificar que la base de datos relacional y ChromaDB están bien estructuradas, se usan correctamente y escalan de forma segura.</div>
+      <div class="status-row"><span class="step-tag">Tareas</span><span class="step-tag" id="prog2-label">0 / 9</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar p-teal" id="prog2" style="width:0%"></div></div>
+      <br>
+      <ul class="subtask-list">
+        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Mapear qué se guarda en la BDD relacional: reuniones, correos, usuarios, tokens, etc.</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Mapear qué se vectoriza y guarda en ChromaDB — ¿qué colecciones existen?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Verificar la relación entre ambas: ¿los IDs de ChromaDB se corresponden con registros de la BDD?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Comprobar si ChromaDB está realmente siendo consultado en el flujo de Vera</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Revisar índices: ¿las consultas frecuentes tienen índices? ¿hay N+1 queries?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Evaluar crecimiento de datos: con 100 usuarios, ¿cuántas filas genera cada tabla por semana?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Revisar si hay soft delete o se borran datos de forma permanente</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Verificar seguridad: datos sensibles cifrados, acceso por usuario aislado correctamente</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Identificar mejoras: ¿qué se podría aprovechar más de ChromaDB que ahora mismo no se usa?</span></li>
+      </ul>
+      <p class="note">🗄️ Para esto necesitamos ver el schema de la BDD, las migraciones de Laravel y el código que escribe/lee de ChromaDB.</p>
+      <button class="ask-btn" onclick="sendPrompt('Vamos con el Paso 2, aquí está el schema de mi base de datos')">Empezar Paso 2 →</button>
+    </div>
+  </div>
+
+  <!-- PASO 3 -->
+  <div class="paso" id="p3">
+    <div class="paso-header" onclick="toggle('p3')">
+      <span class="badge b-purple">Paso 3</span>
+      <span class="paso-title">Security & Code Audit completo</span>
+      <span class="paso-tag">🟣 Pre-producción</span>
+      <span class="chevron" id="chev-p3">›</span>
+    </div>
+    <div class="paso-body" id="body-p3">
+      <div class="objetivo"><span>Objetivo:</span> Dejar el proyecto listo para subir a servidor real — código, conexiones, dependencias y seguridad auditados.</div>
+      <div class="status-row"><span class="step-tag">Tareas</span><span class="step-tag" id="prog3-label">0 / 10</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar p-purple" id="prog3" style="width:0%"></div></div>
+      <br>
+      <ul class="subtask-list">
+        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Ejecutar <code>composer audit</code> — dependencias con CVEs conocidos</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Ejecutar <code>php artisan enlightn</code> — auditoría completa de seguridad y performance</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Verificar que .env no esté en el repositorio y que APP_DEBUG=false en producción</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Revisar todas las rutas: ¿middleware de auth aplicado? ¿rate limiting en login y API?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Validación de inputs: ¿todos los Request tienen reglas? ¿hay queries crudas sin sanitizar?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Autenticación: contraseñas con bcrypt/argon2, tokens JWT firmados y con expiración</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Revisar políticas y Gates de Laravel — cada usuario solo accede a sus propios datos</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Claves API y secretos: ¿alguna hardcodeada en el código o accesible desde el frontend?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Revisar configuración de CORS, HTTPS y cabeceras de seguridad (CSP, X-Frame, etc.)</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Checklist OWASP Top 10 — verificar que ninguna vulnerabilidad principal aplica al proyecto</span></li>
+      </ul>
+      <p class="note">🛡️ Este paso se hace después del Paso 2. Con la BDD ordenada, el audit tiene más valor real.</p>
+      <button class="ask-btn" onclick="sendPrompt('Vamos con el Paso 3, el Security Audit del proyecto')">Empezar Paso 3 →</button>
+    </div>
+  </div>
+
+  <!-- PASO 4 — NUEVO -->
+  <div class="paso" id="p4">
+    <div class="paso-header" onclick="toggle('p4')">
+      <span class="badge b-blue">Paso 4</span>
+      <span class="paso-title">Auditoría & revisión de APIs <span class="new-badge">nuevo</span></span>
+      <span class="paso-tag">🔵 Pre-deploy</span>
+      <span class="chevron" id="chev-p4">›</span>
+    </div>
+    <div class="paso-body" id="body-p4">
+      <div class="objetivo"><span>Objetivo:</span> Verificar que todas las APIs del proyecto (internas, externas y de terceros) están bien implementadas, son seguras, eficientes y listas para producción.</div>
+      <div class="status-row"><span class="step-tag">Tareas</span><span class="step-tag" id="prog4-label">0 / 11</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar p-blue" id="prog4" style="width:0%"></div></div>
+      <br>
+      <ul class="subtask-list">
+        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Mapear todas las APIs externas usadas: Gmail, Google Calendar, Anthropic (Claude), ChromaDB — ¿cuáles están activas?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Verificar que todas las API keys están en .env y nunca expuestas en código o en el frontend</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Revisar manejo de errores: ¿qué pasa si una API externa cae? ¿hay fallback o el sistema se rompe?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Revisar timeouts: ¿todas las llamadas a APIs externas tienen timeout definido?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Verificar rate limits de cada API externa — ¿podría el uso real superar los límites del plan actual?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Revisar la API interna de Laravel: ¿todos los endpoints están protegidos con auth? ¿responden correctamente los errores (401, 403, 404, 422)?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Comprobar que no hay endpoints que devuelvan más datos de los necesarios (over-fetching)</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Verificar que el flujo OAuth de Gmail/Google Calendar renueva tokens correctamente cuando caducan</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Revisar webhooks entrantes (si los hay): ¿se valida la firma/origen antes de procesarlos?</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Comprobar que las llamadas a la API de Claude tienen el prompt correcto, temperatura adecuada y max_tokens controlado</span></li>
+        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Documentar todas las APIs usadas: endpoint, propósito, autenticación, límites — para tener un mapa claro antes de subir a producción</span></li>
+      </ul>
+      <p class="note">🔌 Este paso es clave antes de subir a servidor real. Una API mal gestionada en producción puede tumbar todo el sistema o exponer datos.</p>
+      <button class="ask-btn" onclick="sendPrompt('Vamos con el Paso 4, la auditoría de APIs del proyecto')">Empezar Paso 4 →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggle(id) {
+  const body = document.getElementById('body-' + id);
+  const chev = document.getElementById('chev-' + id);
+  const open = body.classList.toggle('open');
+  chev.classList.toggle('open', open);
+}
+function check(el, barId, labelId, total) {
+  el.classList.toggle('checked');
+  const txt = el.nextElementSibling;
+  txt.classList.toggle('done', el.classList.contains('checked'));
+  const body = el.closest('.paso-body');
+  const checked = body.querySelectorAll('.cb.checked').length;
+  const all = body.querySelectorAll('.cb').length;
+  document.getElementById(barId).style.width = (checked / all * 100) + '%';
+  document.getElementById(labelId).textContent = checked + ' / ' + all;
+}
+</script>

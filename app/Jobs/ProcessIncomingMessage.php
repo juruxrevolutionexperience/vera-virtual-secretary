@@ -169,7 +169,7 @@ class ProcessIncomingMessage implements ShouldQueue
             // (ej. "Aquí tienes los huecos disponibles:") para evitar duplicarla con
             // el bloque de slots reales que Laravel añade justo después.
             if ($response) {
-                $response = preg_replace('/\n*(tengo disponibilidad en:|aquí tienes los huecos disponibles:)[\s\S]*/i', '', $response);
+                $response = preg_replace('/[,]?\s*(tengo disponibilidad en:|aquí tienes los huecos disponibles:)[\s\S]*/i', '', $response);
                 $response = preg_replace('/\n*(•\s+.+(\n|$))+/i', '', $response);
                 $response = preg_replace('/\n+--?\s*\n?.+$/m', '', $response);
                 $response = preg_replace('/\n*¿cuál (de estas opciones )?te viene mejor\?/i', '', $response);
@@ -452,6 +452,19 @@ class ProcessIncomingMessage implements ShouldQueue
 
         $hour   = (int) $m[1];
         $minute = isset($m[2]) ? (int) $m[2] : 0;
+
+        // Detectar AM/PM desde el mensaje original
+        $msg  = strtolower($this->stripQuotedEmailText($this->message));
+        $isPm = (bool) preg_match('/de la tarde|de la noche|por la tarde|por la noche|\bpm\b/i', $msg);
+        $isAm = (bool) preg_match('/de la ma[ñn]ana|por la ma[ñn]ana|\bam\b/i', $msg);
+
+        if ($isPm && $hour < 12) {
+            $hour += 12;  // "7 de la tarde" → 19h
+        } elseif ($isAm && $hour === 12) {
+            $hour = 0;    // "12 de la mañana" → 00h (medianoche)
+        } elseif (!$isAm && !$isPm && $hour >= 1 && $hour <= 7) {
+            $hour += 12;  // sin contexto, 1-7h es casi siempre tarde en horario laboral
+        }
 
         $preferredDate = $this->extractPreferredDate($this->message);
         $base          = $preferredDate ? Carbon::parse($preferredDate) : now();
