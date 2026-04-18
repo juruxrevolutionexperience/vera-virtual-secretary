@@ -25,9 +25,9 @@ def build_prompt(brain, message, history, user_id, mode="agenda", requested_time
     tone_lower = brain['tone'].lower()
     # Ejemplo de tono adaptado al modo — en agenda el ejemplo muestra cómo ofrecer huecos, no cómo decir "no tengo info"
     if mode == "agenda":
-        tone_example_cercano = '✅ Tú: "¡Hola! Aquí tienes los huecos disponibles:"'
-        tone_example_profesional = '✅ Tú: "Estimado/a cliente, a continuación le presento los huecos disponibles:"'
-        tone_example_formal = '✅ Tú: "Buenos días, aquí tienes los huecos disponibles:"'
+        tone_example_cercano = '✅ "¡Hola! Aquí tienes los huecos disponibles:"\n✅ "¡Claro! Mira, estos son los huecos libres:"\n✅ "¡Por supuesto! Te muestro cuándo hay hueco:"\n❌ NO: "¡Perfecto! Estaré encantada de ayudarte a gestionar tu cita. Aquí tienes los huecos disponibles:"'
+        tone_example_profesional = '✅ "Estimado/a cliente, aquí tiene los huecos disponibles:"\n✅ "Por supuesto, estimado/a cliente. A continuación las opciones disponibles:"\n✅ "Estimado/a cliente, le presento los huecos disponibles:"\n❌ NO: "Estimado/a cliente, con sumo placer procedemos a mostrarle los huecos disponibles:"'
+        tone_example_formal = '✅ "Buenos días, aquí tienes los huecos disponibles:"\n✅ "Claro que sí. Estos son los huecos disponibles:"\n✅ "Con mucho gusto. Le muestro las opciones disponibles:"\n❌ NO: "Buenos días, podemos proceder a buscar un hueco adecuado para su cita:"'
     else:
         tone_example_cercano = '❌ Bot: "No tengo la información que necesitas. Te responderé lo antes posible."\n✅ Tú: "¡Hola! Ahora mismo no tengo ese dato, pero te confirmo pronto."'
         tone_example_profesional = f'❌ Incorrecto: "Buenas tardes, me alegra que esté interesado. Podemos discutir los detalles en una reunión."\n✅ Tú: "Estimado/a cliente, en este momento no dispongo de esa información, pero se lo confirmaré a la brevedad.\nSi lo desea, podemos concertar una reunión con {brain["owner_name"]} para tratar el asunto en detalle."'
@@ -169,9 +169,10 @@ Instrucciones:
   - Cercano: "Ese hueco ya está ocupado, pero aquí tienes los disponibles:"
   - Formal: "Lamentablemente ese horario no está disponible. Aquí tienes los huecos disponibles:"
   - Profesional: "Le informamos de que ese horario no se encuentra disponible. A continuación le presentamos las opciones disponibles:"
-- Si el cliente menciona un día (lunes, martes, miércoles...) pero no una hora concreta, es una preferencia de día — NO es un hueco denegado. Responde afirmativamente con tu tono + EXACTAMENTE esta frase sin cambiarla: "Aquí tienes los huecos disponibles:"
-- Si no pidió ni día ni hora concreta, escribe UNA sola frase de apertura corta con tu tono + EXACTAMENTE esta frase sin cambiarla ni adaptarla al tono: "Aquí tienes los huecos disponibles:" — nada más
-- PROHIBIDO en la frase de apertura: "para proceder", "le agradecemos", "le damos la bienvenida", "estamos dispuestos", "es un placer", "me alegra", "con mucho gusto"
+- Si el cliente menciona un día (lunes, martes, miércoles...) pero no una hora concreta, es una preferencia de día — NO es un hueco denegado. Responde afirmativamente con tu tono y termina con la frase de introducción de huecos
+- Si no pidió ni día ni hora concreta, escribe SOLO el saludo corto (1-3 palabras) + la frase de introducción de huecos — nada más
+- PROHIBIDO en la frase de apertura: "para proceder", "proceder", "podemos proceder", "le agradecemos", "le damos la bienvenida", "estamos dispuestos", "es un placer", "me alegra", "con mucho gusto", "procedemos", "facilitamos", "disponibilidad horaria", "su disponibilidad", "gestionar su cita", "le informamos de que", "buscar un hueco", "encontrar un hueco"
+- Tu respuesta SIEMPRE termina con una frase corta que introduzca los huecos, terminando en dos puntos (:). No copies siempre la misma — razona y varía según el contexto, usando los ejemplos de tono de arriba como guía de estilo. El sistema añade los huecos reales automáticamente después de tu frase
 - NUNCA digas que no tienes información ni datos — en este modo no das información del negocio, solo gestionas la cita
 - NUNCA preguntes al cliente qué hora prefiere — los huecos se muestran automáticamente después
 - NUNCA pidas más información sobre el propósito de la reunión"""
