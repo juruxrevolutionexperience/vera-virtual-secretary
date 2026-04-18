@@ -109,6 +109,20 @@ services:
             - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
         networks:
             - sail
+    ai-service:
+        build:
+            context: ./ai-service
+            dockerfile: Dockerfile
+        ports:
+            - '8001:8001'
+        environment:
+            GROQ_API_KEY: '${GROQ_API_KEY}'
+            GOOGLE_API_KEY: '${GEMINI_API_KEY}'
+        volumes:
+            - './ai-service/chroma_db:/app/chroma_db'
+        networks:
+            - sail
+        restart: unless-stopped
     phpmyadmin:
         image: 'phpmyadmin:latest'
         ports:
