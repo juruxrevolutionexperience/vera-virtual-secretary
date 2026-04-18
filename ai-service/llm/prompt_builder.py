@@ -231,7 +231,11 @@ ANTES DE ENVIAR TU RESPUESTA: Reléela y pregúntate — ¿suena de verdad como 
         clean_time = requested_time.strip().lower().replace("a las ", "").replace("a las", "").strip()
         user_prompt = f"Mensaje del cliente: {message}\nConfirma la cita para las {clean_time} en tono {brain['tone']}."
     elif mode == "agenda":
-        user_prompt = f"Mensaje del cliente: {message}\nResponde en tono {brain['tone']}."
+        user_prompt = f"""Historial de conversación:
+{history_text}
+
+Mensaje actual del cliente: {message}
+Responde en tono {brain['tone']}."""
     else:
         user_prompt = f"""Historial de conversación:
 {history_text}
