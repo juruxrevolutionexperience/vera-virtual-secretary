@@ -1,14 +1,24 @@
 import re
-from fastapi import FastAPI, HTTPException
+import os
+from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional
+from dotenv import load_dotenv
 from modes.escalation import should_escalate
 from modes.detector import detect_mode
 from llm.prompt_builder import build_prompt
 from llm.client import call_llm
 from rag.embeddings import store_chunk, deactivate_chunk, delete_user_collection
 
+load_dotenv()
+
 app = FastAPI(title="Vera ai-service", version="1.0.0")
+
+_SECRET = os.getenv("AI_SERVICE_SECRET", "")
+
+def verify_token(x_service_token: Optional[str] = Header(default=None)):
+    if not _SECRET or x_service_token != _SECRET:
+        raise HTTPException(status_code=401, detail="No autorizado")
 
 
 # ── Modelos de entrada/salida — contrato con Laravel ─────────────────────────
@@ -71,7 +81,7 @@ class MemorySyncResponse(BaseModel):
 
 # ── Endpoint principal ────────────────────────────────────────────────────────
 
-@app.post("/process", response_model=ProcessResponse)
+@app.post("/process", response_model=ProcessResponse, dependencies=[__import__('fastapi').Depends(verify_token)])
 async def process_message(request: ProcessRequest) -> ProcessResponse:
     """Endpoint principal. Laravel llama aquí por cada mensaje entrante."""
 
@@ -117,7 +127,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
 
 # ── Endpoints de memoria (MySQL → ChromaDB sync) ──────────────────────────────
 
-@app.post("/memory/sync", response_model=MemorySyncResponse)
+@app.post("/memory/sync", response_model=MemorySyncResponse, dependencies=[__import__('fastapi').Depends(verify_token)])
 async def sync_memory(request: MemorySyncRequest) -> MemorySyncResponse:
     """
     Laravel llama aquí cada vez que guarda o actualiza chunks en MySQL.
@@ -141,7 +151,7 @@ async def sync_memory(request: MemorySyncRequest) -> MemorySyncResponse:
     return MemorySyncResponse(synced=synced, user_id=request.user_id)
 
 
-@app.delete("/memory/chunk/{user_id}/{chunk_id}")
+@app.delete("/memory/chunk/{user_id}/{chunk_id}", dependencies=[__import__('fastapi').Depends(verify_token)])
 async def deactivate_memory_chunk(user_id: str, chunk_id: str):
     """
     Laravel llama aquí cuando desactiva o borra un chunk en MySQL.
@@ -151,7 +161,7 @@ async def deactivate_memory_chunk(user_id: str, chunk_id: str):
     return {"status": "deactivated", "chunk_id": chunk_id}
 
 
-@app.delete("/memory/user/{user_id}")
+@app.delete("/memory/user/{user_id}", dependencies=[__import__('fastapi').Depends(verify_token)])
 async def delete_user_memory(user_id: str):
     """Elimina toda la memoria vectorial de un usuario (GDPR / baja de cuenta)."""
     delete_user_collection(user_id=user_id)

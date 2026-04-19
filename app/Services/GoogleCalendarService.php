@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\VeraConfig;
 use App\Models\Meeting;
+use App\Traits\GoogleOAuthTrait;
 use Carbon\Carbon;
 use Google\Client as GoogleClient;
 use Google\Service\Calendar;
@@ -27,6 +28,8 @@ use Illuminate\Support\Facades\Log;
  */
 class GoogleCalendarService
 {
+    use GoogleOAuthTrait;
+
     private GoogleClient $client;
 
     public function __construct()
@@ -37,45 +40,11 @@ class GoogleCalendarService
         $this->client->setAccessType('offline');
     }
 
-    // ─── Gestión de tokens ────────────────────────────────────────────────────
+    // ─── Autenticación ────────────────────────────────────────────────────────
 
-    /**
-     * Configura el cliente con los tokens OAuth del usuario.
-     * Refresca el token automáticamente si ha expirado.
-     */
-    private function authenticateUser(VeraConfig $config): void
-    {
-        $this->client->setAccessToken([
-            'access_token'  => $config->google_access_token,
-            'refresh_token' => $config->google_refresh_token,
-            'expires_in'    => $config->google_token_expires_at
-                ? now()->diffInSeconds($config->google_token_expires_at, false)
-                : 0,
-        ]);
-
-        // Refrescar si expiró
-        if ($this->client->isAccessTokenExpired()) {
-            if (!$config->google_refresh_token) {
-                throw new \RuntimeException('Google Calendar no tiene refresh_token. El usuario debe reconectar su cuenta.');
-            }
-
-            $newToken = $this->client->fetchAccessTokenWithRefreshToken($config->google_refresh_token);
-
-            $config->update([
-                'google_access_token'     => $newToken['access_token'],
-                'google_token_expires_at' => now()->addSeconds($newToken['expires_in'] ?? 3600),
-            ]);
-
-            Log::info('🔄 Google token refrescado', ['user_id' => $config->user_id]);
-        }
-    }
-
-    /**
-     * Devuelve una instancia del servicio Calendar autenticada para el usuario.
-     */
     private function getCalendarService(VeraConfig $config): Calendar
     {
-        $this->authenticateUser($config);
+        $this->refreshGoogleToken($this->client, $config);
         return new Calendar($this->client);
     }
 
@@ -83,11 +52,6 @@ class GoogleCalendarService
 
     /**
      * Obtiene slots disponibles para los próximos N días.
-     *
-     * @param User   $user
-     * @param int    $daysAhead     Cuántos días hacia adelante buscar
-     * @param int    $maxSlots      Máximo de slots a devolver
-     * @param string $preferredDate Fecha preferida por el cliente (Y-m-d), opcional
      *
      * @return array  Array de ['start' => Carbon, 'end' => Carbon, 'label' => string]
      */
@@ -103,108 +67,124 @@ class GoogleCalendarService
             throw new \RuntimeException('Google Calendar no está conectado para este usuario.');
         }
 
-        $service      = $this->getCalendarService($config);
-        $calendarId   = 'primary';
-        $duration     = $config->meeting_duration ?? 45;
-        $buffer       = $config->buffer_minutes ?? 15;
-        $workingHours = $config->working_hours ?? [];
+        try {
+            $service      = $this->getCalendarService($config);
+            $calendarId   = 'primary';
+            $duration     = $config->meeting_duration ?? 45;
+            $buffer       = $config->buffer_minutes ?? 15;
+            $workingHours = $config->working_hours ?? [];
 
-        // Rango de búsqueda
-        $start = $preferredDate
-            ? Carbon::parse($preferredDate)->startOfDay()
-            : now()->addHour()->roundMinutes(15);
+            $start = $preferredDate
+                ? Carbon::parse($preferredDate)->startOfDay()
+                : now()->addHour()->roundMinutes(15);
 
-        $end = $start->copy()->addDays($daysAhead)->endOfDay();
+            $end = $start->copy()->addDays($daysAhead)->endOfDay();
 
-        // Obtener eventos ya existentes en Calendar
-        $existingEvents = $service->events->listEvents($calendarId, [
-            'timeMin'      => $start->toRfc3339String(),
-            'timeMax'      => $end->toRfc3339String(),
-            'singleEvents' => true,
-            'orderBy'      => 'startTime',
-        ]);
+            $existingEvents = $service->events->listEvents($calendarId, [
+                'timeMin'      => $start->toRfc3339String(),
+                'timeMax'      => $end->toRfc3339String(),
+                'singleEvents' => true,
+                'orderBy'      => 'startTime',
+            ]);
 
-        // Construir lista de bloques ocupados
-        $busyBlocks = [];
-        foreach ($existingEvents->getItems() as $event) {
-            $eventStart = $event->getStart()->getDateTime() ?? $event->getStart()->getDate();
-            $eventEnd   = $event->getEnd()->getDateTime() ?? $event->getEnd()->getDate();
+            $busyBlocks = [];
+            foreach ($existingEvents->getItems() as $event) {
+                $eventStart = $event->getStart()->getDateTime() ?? $event->getStart()->getDate();
+                $eventEnd   = $event->getEnd()->getDateTime() ?? $event->getEnd()->getDate();
 
-            if ($eventStart && $eventEnd) {
-                $busyBlocks[] = [
-                    'start' => Carbon::parse($eventStart),
-                    'end'   => Carbon::parse($eventEnd),
-                ];
-            }
-        }
-
-        // Generar slots libres dentro del horario laboral
-        $slots   = [];
-        $current = $start->copy();
-
-        // English keys as stored by the frontend
-        $dayMap = [0 => 'sunday', 1 => 'monday', 2 => 'tuesday', 3 => 'wednesday', 4 => 'thursday', 5 => 'friday', 6 => 'saturday'];
-
-        while ($current->lessThan($end) && count($slots) < $maxSlots) {
-            $dayKey = $dayMap[$current->dayOfWeek];
-            $dayConfig = $workingHours[$dayKey] ?? null;
-
-            if (!empty($dayConfig) && ($dayConfig['enabled'] ?? false)) {
-                $dayStart = $dayConfig['start'] ?? '09:00';
-                $dayEnd   = $dayConfig['end']   ?? '18:00';
-
-                $slotStart = $current->copy()->setTimeFromTimeString($dayStart . ':00');
-                $dayEndTime = $current->copy()->setTimeFromTimeString($dayEnd . ':00');
-
-                // Si ya pasamos el inicio del día, empezar desde ahora
-                if ($slotStart->lessThan(now()->addMinutes(30))) {
-                    $slotStart = now()->addMinutes(30)->roundMinutes(15);
+                if ($eventStart && $eventEnd) {
+                    $busyBlocks[] = [
+                        'start' => Carbon::parse($eventStart),
+                        'end'   => Carbon::parse($eventEnd),
+                    ];
                 }
+            }
 
-                while ($slotStart->copy()->addMinutes($duration)->lessThanOrEqualTo($dayEndTime)) {
-                    $slotEnd = $slotStart->copy()->addMinutes($duration);
+            $slots   = [];
+            $current = $start->copy();
 
-                    if ($this->isSlotFree($slotStart, $slotEnd, $busyBlocks, $buffer)) {
-                        $slots[] = [
-                            'start' => $slotStart->copy(),
-                            'end'   => $slotEnd->copy(),
-                            'label' => $slotStart->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i'),
-                        ];
+            $dayMap = [0 => 'sunday', 1 => 'monday', 2 => 'tuesday', 3 => 'wednesday', 4 => 'thursday', 5 => 'friday', 6 => 'saturday'];
 
-                        if (count($slots) >= $maxSlots) {
-                            break 2;
-                        }
+            while ($current->lessThan($end) && count($slots) < $maxSlots) {
+                $dayKey    = $dayMap[$current->dayOfWeek];
+                $dayConfig = $workingHours[$dayKey] ?? null;
+
+                if (!empty($dayConfig) && ($dayConfig['enabled'] ?? false)) {
+                    $dayStart = $dayConfig['start'] ?? '09:00';
+                    $dayEnd   = $dayConfig['end']   ?? '18:00';
+
+                    $slotStart  = $current->copy()->setTimeFromTimeString($dayStart . ':00');
+                    $dayEndTime = $current->copy()->setTimeFromTimeString($dayEnd . ':00');
+
+                    if ($slotStart->lessThan(now()->addMinutes(30))) {
+                        $slotStart = now()->addMinutes(30)->roundMinutes(15);
                     }
 
-                    $slotStart->addMinutes(30); // Buscar en intervalos de 30 min
+                    while ($slotStart->copy()->addMinutes($duration)->lessThanOrEqualTo($dayEndTime)) {
+                        $slotEnd = $slotStart->copy()->addMinutes($duration);
+
+                        if ($this->isSlotFree($slotStart, $slotEnd, $busyBlocks, $buffer)) {
+                            $slots[] = [
+                                'start' => $slotStart->copy(),
+                                'end'   => $slotEnd->copy(),
+                                'label' => $slotStart->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i'),
+                            ];
+
+                            if (count($slots) >= $maxSlots) {
+                                break 2;
+                            }
+                        }
+
+                        $slotStart->addMinutes(30);
+                    }
                 }
+
+                $current->addDay()->startOfDay();
             }
 
-            $current->addDay()->startOfDay();
+            return $slots;
+        } catch (\Google\Service\Exception $e) {
+            $this->logGoogleError('getAvailableSlots', $user->id, $e);
+            throw $this->wrapGoogleException($e);
+        } catch (\RuntimeException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('GoogleCalendar: error inesperado en getAvailableSlots', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+            throw new \RuntimeException('Error inesperado consultando Google Calendar.', 0, $e);
         }
-
-        return $slots;
     }
 
     /**
      * Verifica si un slot concreto está libre (sin conflictos).
-     *
-     * @param User   $user
-     * @param Carbon $start
-     * @param Carbon $end
      */
     public function checkConflicts(User $user, Carbon $start, Carbon $end): bool
     {
-        $config  = VeraConfig::where('user_id', $user->id)->firstOrFail();
-        $service = $this->getCalendarService($config);
+        try {
+            $config  = VeraConfig::where('user_id', $user->id)->firstOrFail();
+            $service = $this->getCalendarService($config);
 
-        $events = $service->events->listEvents('primary', [
-            'timeMin'      => $start->toRfc3339String(),
-            'timeMax'      => $end->toRfc3339String(),
-            'singleEvents' => true,
-        ]);
+            $events = $service->events->listEvents('primary', [
+                'timeMin'      => $start->toRfc3339String(),
+                'timeMax'      => $end->toRfc3339String(),
+                'singleEvents' => true,
+            ]);
 
-        return count($events->getItems()) === 0;
+            return count($events->getItems()) === 0;
+        } catch (\Google\Service\Exception $e) {
+            $this->logGoogleError('checkConflicts', $user->id, $e);
+            throw $this->wrapGoogleException($e);
+        } catch (\RuntimeException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('GoogleCalendar: error inesperado en checkConflicts', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+            throw new \RuntimeException('Error inesperado verificando conflictos en Google Calendar.', 0, $e);
+        }
     }
 
     // ─── CRUD de eventos ──────────────────────────────────────────────────────
@@ -216,51 +196,64 @@ class GoogleCalendarService
      */
     public function createEvent(User $user, Meeting $meeting): string
     {
-        $config  = VeraConfig::where('user_id', $user->id)->firstOrFail();
-        $service = $this->getCalendarService($config);
+        try {
+            $config  = VeraConfig::where('user_id', $user->id)->firstOrFail();
+            $service = $this->getCalendarService($config);
 
-        $start = Carbon::parse($meeting->scheduled_at)->timezone($meeting->timezone);
-        $end   = $start->copy()->addMinutes($meeting->duration_minutes);
+            $start = Carbon::parse($meeting->scheduled_at)->timezone($meeting->timezone);
+            $end   = $start->copy()->addMinutes($meeting->duration_minutes);
 
-        $event = new Event([
-            'summary'     => "Reunión con {$meeting->contact_name}",
-            'description' => $meeting->notes ?? "Reunión gestionada por Vera",
-            'attendees'   => $meeting->contact_email
-                ? [['email' => $meeting->contact_email]]
-                : [],
-        ]);
+            $event = new Event([
+                'summary'     => "Reunión con {$meeting->contact_name}",
+                'description' => $meeting->notes ?? "Reunión gestionada por Vera",
+                'attendees'   => $meeting->contact_email
+                    ? [['email' => $meeting->contact_email]]
+                    : [],
+            ]);
 
-        $event->setStart(new EventDateTime([
-            'dateTime' => $start->toRfc3339String(),
-            'timeZone' => $meeting->timezone,
-        ]));
+            $event->setStart(new EventDateTime([
+                'dateTime' => $start->toRfc3339String(),
+                'timeZone' => $meeting->timezone,
+            ]));
 
-        $event->setEnd(new EventDateTime([
-            'dateTime' => $end->toRfc3339String(),
-            'timeZone' => $meeting->timezone,
-        ]));
+            $event->setEnd(new EventDateTime([
+                'dateTime' => $end->toRfc3339String(),
+                'timeZone' => $meeting->timezone,
+            ]));
 
-        $createdEvent = $service->events->insert('primary', $event, [
-            'sendUpdates' => 'all', // Envía notificación a los asistentes
-        ]);
+            $createdEvent = $service->events->insert('primary', $event, [
+                'sendUpdates' => 'all',
+            ]);
 
-        $googleEventId = $createdEvent->getId();
-        $meetLink      = $createdEvent->getHangoutLink();
+            $googleEventId = $createdEvent->getId();
+            $meetLink      = $createdEvent->getHangoutLink();
 
-        // Actualizar modelo Meeting
-        $meeting->update([
-            'google_event_id' => $googleEventId,
-            'google_meet_link'=> $meetLink,
-            'status'          => 'confirmed',
-        ]);
+            $meeting->update([
+                'google_event_id' => $googleEventId,
+                'google_meet_link'=> $meetLink,
+                'status'          => 'confirmed',
+            ]);
 
-        Log::info('✅ Evento creado en Google Calendar', [
-            'user_id'        => $user->id,
-            'meeting_id'     => $meeting->id,
-            'google_event_id'=> $googleEventId,
-        ]);
+            Log::info('✅ Evento creado en Google Calendar', [
+                'user_id'        => $user->id,
+                'meeting_id'     => $meeting->id,
+                'google_event_id'=> $googleEventId,
+            ]);
 
-        return $googleEventId;
+            return $googleEventId;
+        } catch (\Google\Service\Exception $e) {
+            $this->logGoogleError('createEvent', $user->id, $e, ['meeting_id' => $meeting->id]);
+            throw $this->wrapGoogleException($e);
+        } catch (\RuntimeException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('GoogleCalendar: error inesperado en createEvent', [
+                'user_id'    => $user->id,
+                'meeting_id' => $meeting->id,
+                'error'      => $e->getMessage(),
+            ]);
+            throw new \RuntimeException('Error inesperado creando evento en Google Calendar.', 0, $e);
+        }
     }
 
     /**
@@ -272,37 +265,53 @@ class GoogleCalendarService
             throw new \RuntimeException("Meeting #{$meeting->id} no tiene google_event_id.");
         }
 
-        $config  = VeraConfig::where('user_id', $user->id)->firstOrFail();
-        $service = $this->getCalendarService($config);
+        try {
+            $config  = VeraConfig::where('user_id', $user->id)->firstOrFail();
+            $service = $this->getCalendarService($config);
 
-        $event = $service->events->get('primary', $meeting->google_event_id);
+            $event  = $service->events->get('primary', $meeting->google_event_id);
+            $newEnd = $newStart->copy()->addMinutes($meeting->duration_minutes);
 
-        $newEnd = $newStart->copy()->addMinutes($meeting->duration_minutes);
+            $event->setStart(new EventDateTime([
+                'dateTime' => $newStart->toRfc3339String(),
+                'timeZone' => $meeting->timezone,
+            ]));
+            $event->setEnd(new EventDateTime([
+                'dateTime' => $newEnd->toRfc3339String(),
+                'timeZone' => $meeting->timezone,
+            ]));
 
-        $event->setStart(new EventDateTime([
-            'dateTime' => $newStart->toRfc3339String(),
-            'timeZone' => $meeting->timezone,
-        ]));
-        $event->setEnd(new EventDateTime([
-            'dateTime' => $newEnd->toRfc3339String(),
-            'timeZone' => $meeting->timezone,
-        ]));
+            $service->events->update('primary', $meeting->google_event_id, $event, [
+                'sendUpdates' => 'all',
+            ]);
 
-        $service->events->update('primary', $meeting->google_event_id, $event, [
-            'sendUpdates' => 'all',
-        ]);
+            $meeting->update([
+                'scheduled_at' => $newStart,
+                'status'       => 'confirmed',
+            ]);
 
-        $meeting->update([
-            'scheduled_at' => $newStart,
-            'status'       => 'confirmed',
-        ]);
-
-        Log::info('✅ Evento actualizado en Google Calendar', [
-            'user_id'        => $user->id,
-            'meeting_id'     => $meeting->id,
-            'google_event_id'=> $meeting->google_event_id,
-            'new_start'      => $newStart->toDateTimeString(),
-        ]);
+            Log::info('✅ Evento actualizado en Google Calendar', [
+                'user_id'        => $user->id,
+                'meeting_id'     => $meeting->id,
+                'google_event_id'=> $meeting->google_event_id,
+                'new_start'      => $newStart->toDateTimeString(),
+            ]);
+        } catch (\Google\Service\Exception $e) {
+            $this->logGoogleError('updateEvent', $user->id, $e, [
+                'meeting_id'     => $meeting->id,
+                'google_event_id'=> $meeting->google_event_id,
+            ]);
+            throw $this->wrapGoogleException($e);
+        } catch (\RuntimeException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('GoogleCalendar: error inesperado en updateEvent', [
+                'user_id'    => $user->id,
+                'meeting_id' => $meeting->id,
+                'error'      => $e->getMessage(),
+            ]);
+            throw new \RuntimeException('Error inesperado actualizando evento en Google Calendar.', 0, $e);
+        }
     }
 
     /**
@@ -311,25 +320,48 @@ class GoogleCalendarService
     public function cancelEvent(User $user, Meeting $meeting): void
     {
         if (!$meeting->google_event_id) {
-            // No hay evento en Calendar, solo actualizar estado local
             $meeting->update(['status' => 'cancelled']);
             return;
         }
 
-        $config  = VeraConfig::where('user_id', $user->id)->firstOrFail();
-        $service = $this->getCalendarService($config);
+        try {
+            $config  = VeraConfig::where('user_id', $user->id)->firstOrFail();
+            $service = $this->getCalendarService($config);
 
-        $service->events->delete('primary', $meeting->google_event_id, [
-            'sendUpdates' => 'all',
-        ]);
+            $service->events->delete('primary', $meeting->google_event_id, [
+                'sendUpdates' => 'all',
+            ]);
 
-        $meeting->update(['status' => 'cancelled']);
+            $meeting->update(['status' => 'cancelled']);
 
-        Log::info('✅ Evento cancelado en Google Calendar', [
-            'user_id'        => $user->id,
-            'meeting_id'     => $meeting->id,
-            'google_event_id'=> $meeting->google_event_id,
-        ]);
+            Log::info('✅ Evento cancelado en Google Calendar', [
+                'user_id'        => $user->id,
+                'meeting_id'     => $meeting->id,
+                'google_event_id'=> $meeting->google_event_id,
+            ]);
+        } catch (\Google\Service\Exception $e) {
+            // Si el evento ya no existe en Calendar (404), cancelamos localmente igualmente
+            if ($e->getCode() === 404) {
+                $meeting->update(['status' => 'cancelled']);
+                Log::warning('GoogleCalendar: evento no encontrado al cancelar, cancelado localmente', [
+                    'user_id'        => $user->id,
+                    'meeting_id'     => $meeting->id,
+                    'google_event_id'=> $meeting->google_event_id,
+                ]);
+                return;
+            }
+            $this->logGoogleError('cancelEvent', $user->id, $e, ['meeting_id' => $meeting->id]);
+            throw $this->wrapGoogleException($e);
+        } catch (\RuntimeException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('GoogleCalendar: error inesperado en cancelEvent', [
+                'user_id'    => $user->id,
+                'meeting_id' => $meeting->id,
+                'error'      => $e->getMessage(),
+            ]);
+            throw new \RuntimeException('Error inesperado cancelando evento en Google Calendar.', 0, $e);
+        }
     }
 
     // ─── Vista Calendar ──────────────────────────────────────────────────────
@@ -342,46 +374,58 @@ class GoogleCalendarService
      */
     public function getUpcomingEvents(User $user, Carbon $from, Carbon $to): array
     {
-        $config  = VeraConfig::where('user_id', $user->id)->firstOrFail();
-        $service = $this->getCalendarService($config);
+        try {
+            $config  = VeraConfig::where('user_id', $user->id)->firstOrFail();
+            $service = $this->getCalendarService($config);
 
-        $results = $service->events->listEvents('primary', [
-            'timeMin'      => $from->startOfDay()->toRfc3339String(),
-            'timeMax'      => $to->endOfDay()->toRfc3339String(),
-            'singleEvents' => true,
-            'orderBy'      => 'startTime',
-            'maxResults'   => 100,
-        ]);
+            $results = $service->events->listEvents('primary', [
+                'timeMin'      => $from->startOfDay()->toRfc3339String(),
+                'timeMax'      => $to->endOfDay()->toRfc3339String(),
+                'singleEvents' => true,
+                'orderBy'      => 'startTime',
+                'maxResults'   => 100,
+            ]);
 
-        $events = [];
-        foreach ($results->getItems() as $event) {
-            $startRaw = $event->getStart()->getDateTime() ?? $event->getStart()->getDate();
-            $endRaw   = $event->getEnd()->getDateTime()   ?? $event->getEnd()->getDate();
+            $events = [];
+            foreach ($results->getItems() as $event) {
+                $startRaw = $event->getStart()->getDateTime() ?? $event->getStart()->getDate();
+                $endRaw   = $event->getEnd()->getDateTime()   ?? $event->getEnd()->getDate();
 
-            $start = Carbon::parse($startRaw);
-            $end   = Carbon::parse($endRaw);
+                $start = Carbon::parse($startRaw);
+                $end   = Carbon::parse($endRaw);
 
-            // Buscar Meeting en BD para saber si fue propuesto por Vera
-            $meeting = Meeting::where('user_id', $user->id)
-                ->where('google_event_id', $event->getId())
-                ->first();
+                $meeting = Meeting::where('user_id', $user->id)
+                    ->where('google_event_id', $event->getId())
+                    ->first();
 
-            $events[] = [
-                'id'           => $event->getId(),
-                'meeting_id'   => $meeting?->id,
-                'title'        => $event->getSummary() ?? '(sin título)',
-                'start'        => $start,
-                'end'          => $end,
-                'meet_link'    => $event->getHangoutLink(),
-                'source'       => $meeting?->source_channel ?? 'manual',
-                'contact_name' => $meeting?->contact_name,
-                'contact_email'=> $meeting?->contact_email,
-                'duration_min' => $start->diffInMinutes($end),
-                'status'       => $meeting?->status ?? 'confirmed',
-            ];
+                $events[] = [
+                    'id'           => $event->getId(),
+                    'meeting_id'   => $meeting?->id,
+                    'title'        => $event->getSummary() ?? '(sin título)',
+                    'start'        => $start,
+                    'end'          => $end,
+                    'meet_link'    => $event->getHangoutLink(),
+                    'source'       => $meeting?->source_channel ?? 'manual',
+                    'contact_name' => $meeting?->contact_name,
+                    'contact_email'=> $meeting?->contact_email,
+                    'duration_min' => $start->diffInMinutes($end),
+                    'status'       => $meeting?->status ?? 'confirmed',
+                ];
+            }
+
+            return $events;
+        } catch (\Google\Service\Exception $e) {
+            $this->logGoogleError('getUpcomingEvents', $user->id, $e);
+            throw $this->wrapGoogleException($e);
+        } catch (\RuntimeException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('GoogleCalendar: error inesperado en getUpcomingEvents', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+            throw new \RuntimeException('Error inesperado obteniendo eventos de Google Calendar.', 0, $e);
         }
-
-        return $events;
     }
 
     /**
@@ -409,21 +453,44 @@ class GoogleCalendarService
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    /**
-     * Verifica si un slot propuesto no solapa con ningún bloque ocupado (con buffer).
-     */
     private function isSlotFree(Carbon $start, Carbon $end, array $busyBlocks, int $bufferMinutes): bool
     {
         $startWithBuffer = $start->copy()->subMinutes($bufferMinutes);
         $endWithBuffer   = $end->copy()->addMinutes($bufferMinutes);
 
         foreach ($busyBlocks as $block) {
-            // Solapamiento: el slot toca el bloque (incluyendo buffer)
             if ($startWithBuffer->lessThan($block['end']) && $endWithBuffer->greaterThan($block['start'])) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    private function logGoogleError(string $method, int $userId, \Google\Service\Exception $e, array $extra = []): void
+    {
+        Log::error("GoogleCalendar: API error en {$method}", array_merge([
+            'user_id' => $userId,
+            'code'    => $e->getCode(),
+            'error'   => $e->getMessage(),
+        ], $extra));
+    }
+
+    private function wrapGoogleException(\Google\Service\Exception $e): \RuntimeException
+    {
+        return match (true) {
+            in_array($e->getCode(), [401, 403]) => new \RuntimeException(
+                'Google Calendar: acceso denegado. Reconecta tu cuenta de Google.', $e->getCode(), $e
+            ),
+            $e->getCode() === 429 => new \RuntimeException(
+                'Google Calendar: límite de peticiones alcanzado. Inténtalo en unos minutos.', 429, $e
+            ),
+            $e->getCode() === 404 => new \RuntimeException(
+                'Google Calendar: recurso no encontrado.', 404, $e
+            ),
+            default => new \RuntimeException(
+                'Error de Google Calendar API: ' . $e->getMessage(), $e->getCode(), $e
+            ),
+        };
     }
 }

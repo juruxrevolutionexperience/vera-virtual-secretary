@@ -16,6 +16,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\VeraActivityLog;
 use App\Services\GmailService;
+use App\Services\VeraMemoryService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -271,7 +272,7 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         try {
-            $response = Http::timeout(30)->post("{$aiServiceUrl}/process", [
+            $response = Http::timeout(30)->withHeaders(['X-Service-Token' => config('services.ai_service.secret')])->post("{$aiServiceUrl}/process", [
                 'user_id'                  => (string) $user->id,
                 'message'                  => $this->message,
                 'channel'                  => $this->channel,
@@ -288,6 +289,7 @@ class ProcessIncomingMessage implements ShouldQueue
                     'unknown_response'    => $config->unknown_response,
                     'escalation_triggers' => $config->escalation_triggers ?? [],
                     'mode'                => $config->mode,
+                    'vera_signature'      => $config->vera_signature,
                 ],
             ]);
 
@@ -543,6 +545,15 @@ class ProcessIncomingMessage implements ShouldQueue
                 'status'        => 'completed',
             ]);
 
+            try {
+                (new VeraMemoryService())->savePastResponse(
+                    $user->id,
+                    $this->message,
+                    'Reunión confirmada para ' . $slotStart->format('d/m/Y H:i'),
+                    'meeting_confirmed'
+                );
+            } catch (\Exception) {}
+
             return true;
 
         } catch (\Exception $e) {
@@ -665,7 +676,19 @@ class ProcessIncomingMessage implements ShouldQueue
 
             $firma = $config->vera_signature ?? ($config->owner_name ? "Vera · Asistente de {$config->owner_name}" : 'Vera');
 
-            return "¡Perfecto! He agendado la reunión para el {$slot['label']}. Recibirás una invitación de Google Calendar. ¡Hasta entonces!\n\n-- {$firma}";
+            $confirmationText = "¡Perfecto! He agendado la reunión para el {$slot['label']}. Recibirás una invitación de Google Calendar. ¡Hasta entonces!\n\n-- {$firma}";
+
+            // Guardar respuesta exitosa como past_response para que Vera aprenda el patrón
+            try {
+                (new VeraMemoryService())->savePastResponse(
+                    $user->id,
+                    $this->message,
+                    $confirmationText,
+                    'meeting_confirmed'
+                );
+            } catch (\Exception) {}
+
+            return $confirmationText;
 
         } catch (\Exception $e) {
             Log::error('Error al agendar reunión confirmada', ['error' => $e->getMessage(), 'slot' => $slot]);

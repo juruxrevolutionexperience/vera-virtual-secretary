@@ -228,7 +228,7 @@ use App\Http\Controllers\VeraChatController;
 
 Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
     Route::get('/chat', [VeraChatController::class, 'index'])->name('chat.index');
-    Route::post('/chat/message', [VeraChatController::class, 'sendMessage'])->name('chat.send');
+    Route::post('/chat/message', [VeraChatController::class, 'sendMessage'])->name('chat.send')->middleware('throttle:30,1');
     Route::get('/chat/conversation/{conversationId}/messages', [VeraChatController::class, 'getMessages'])->name('chat.messages');
     Route::post('/chat/conversation', [VeraChatController::class, 'createConversation'])->name('chat.create');
     Route::post('/chat/conversation/{conversationId}/archive', [VeraChatController::class, 'archiveConversation'])->name('chat.archive');

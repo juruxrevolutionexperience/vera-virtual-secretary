@@ -89,7 +89,7 @@ class VeraSyncMemoryToChroma extends Command
             ];
 
             try {
-                $response = Http::timeout(30)->post("{$aiServiceUrl}/memory/sync", $payload);
+                $response = Http::timeout(30)->withHeaders(['X-Service-Token' => config('services.ai_service.secret')])->post("{$aiServiceUrl}/memory/sync", $payload);
 
                 if ($response->successful()) {
                     $synced = $response->json('synced', 0);

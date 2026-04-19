@@ -60,7 +60,8 @@ return [
 
     // ai-service Python FastAPI (Roque)
     'ai_service' => [
-        'url' => env('AI_SERVICE_URL'),
+        'url'    => env('AI_SERVICE_URL'),
+        'secret' => env('AI_SERVICE_SECRET'),
     ],
 
 ];

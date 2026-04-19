@@ -64,17 +64,17 @@
     </div>
     <div class="paso-body" id="body-p1">
       <div class="objetivo"><span>Objetivo:</span> Entender por qué Vera responde con texto fijo y por qué el calendario se crea automáticamente sin pasar por IA real.</div>
-      <div class="status-row"><span class="step-tag">Tareas</span><span class="step-tag" id="prog1-label">0 / 7</span></div>
-      <div class="progress-bar-wrap"><div class="progress-bar p-coral" id="prog1" style="width:0%"></div></div>
+      <div class="status-row"><span class="step-tag">Tareas</span><span class="step-tag" id="prog1-label">7 / 7</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar p-coral" id="prog1" style="width:100%"></div></div>
       <br>
       <ul class="subtask-list">
-        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Comparar variables de entorno (.env) entre tu máquina y la de tu compañero — especialmente las que apuntan al ai-service</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Verificar que todos los servicios necesarios estén arrancados (ai-service, queue, Redis si aplica)</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Revisar el prompt que recibe Vera: ¿llega a Claude/IA o va directo a una respuesta estática?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Inspeccionar logs del ai-service en tiempo real mientras se envía un correo de prueba</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Localizar el código que genera el evento de calendario — ¿hay condición que lo dispara automáticamente?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Comparar versiones de dependencias del ai-service entre ambas máquinas</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text">Documentar qué está fallando exactamente y en qué punto del flujo se rompe</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text done">Comparar variables de entorno (.env) entre tu máquina y la de tu compañero — especialmente las que apuntan al ai-service</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text done">Verificar que todos los servicios necesarios estén arrancados (ai-service, queue, Redis si aplica)</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text done">Revisar el prompt que recibe Vera: ¿llega a Claude/IA o va directo a una respuesta estática?</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text done">Inspeccionar logs del ai-service en tiempo real mientras se envía un correo de prueba</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text done">Localizar el código que genera el evento de calendario — ¿hay condición que lo dispara automáticamente?</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text done">Comparar versiones de dependencias del ai-service entre ambas máquinas</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog1','prog1-label',7)"></div><span class="subtask-text done">Documentar qué está fallando exactamente y en qué punto del flujo se rompe</span></li>
       </ul>
       <p class="note">⚡ Esto se hace con el proyecto abierto y logs a la vista. Comparte estructura de carpetas + .env (sin claves) cuando estés listo.</p>
       <button class="ask-btn" onclick="sendPrompt('Vamos a empezar el Paso 1 de Vera, tengo el proyecto abierto')">Empezar Paso 1 →</button>
@@ -91,21 +91,45 @@
     </div>
     <div class="paso-body" id="body-p2">
       <div class="objetivo"><span>Objetivo:</span> Verificar que la base de datos relacional y ChromaDB están bien estructuradas, se usan correctamente y escalan de forma segura.</div>
-      <div class="status-row"><span class="step-tag">Tareas</span><span class="step-tag" id="prog2-label">0 / 9</span></div>
-      <div class="progress-bar-wrap"><div class="progress-bar p-teal" id="prog2" style="width:0%"></div></div>
+      <div class="status-row"><span class="step-tag">Tareas</span><span class="step-tag" id="prog2-label">9 / 9</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar p-teal" id="prog2" style="width:100%"></div></div>
       <br>
       <ul class="subtask-list">
-        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Mapear qué se guarda en la BDD relacional: reuniones, correos, usuarios, tokens, etc.</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Mapear qué se vectoriza y guarda en ChromaDB — ¿qué colecciones existen?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Verificar la relación entre ambas: ¿los IDs de ChromaDB se corresponden con registros de la BDD?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Comprobar si ChromaDB está realmente siendo consultado en el flujo de Vera</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Revisar índices: ¿las consultas frecuentes tienen índices? ¿hay N+1 queries?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Evaluar crecimiento de datos: con 100 usuarios, ¿cuántas filas genera cada tabla por semana?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Revisar si hay soft delete o se borran datos de forma permanente</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Verificar seguridad: datos sensibles cifrados, acceso por usuario aislado correctamente</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text">Identificar mejoras: ¿qué se podría aprovechar más de ChromaDB que ahora mismo no se usa?</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text done">Mapear qué se guarda en la BDD relacional: reuniones, correos, usuarios, tokens, etc.</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text done">Mapear qué se vectoriza y guarda en ChromaDB — ¿qué colecciones existen?</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text done">Verificar la relación entre ambas: ¿los IDs de ChromaDB se corresponden con registros de la BDD?</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text done">Comprobar si ChromaDB está realmente siendo consultado en el flujo de Vera</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text done">Revisar índices: ¿las consultas frecuentes tienen índices? ¿hay N+1 queries?</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text done">Evaluar crecimiento de datos: con 100 usuarios, ¿cuántas filas genera cada tabla por semana?</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text done">Revisar si hay soft delete o se borran datos de forma permanente</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text done">Verificar seguridad: datos sensibles cifrados, acceso por usuario aislado correctamente</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog2','prog2-label',9)"></div><span class="subtask-text done">Identificar mejoras: ¿qué se podría aprovechar más de ChromaDB que ahora mismo no se usa?</span></li>
       </ul>
       <p class="note">🗄️ Para esto necesitamos ver el schema de la BDD, las migraciones de Laravel y el código que escribe/lee de ChromaDB.</p>
+      <div class="objetivo" style="margin-top:14px"><span>✅ Aplicado — BDD:</span>
+        <ul style="margin-top:8px;padding-left:16px;font-size:12px;line-height:1.8">
+          <li><b>Tokens OAuth cifrados</b> — google_access_token, google_refresh_token, telegram_bot_token y whatsapp_access_token ahora usan cast <code>encrypted</code> en Laravel (cifrado con APP_KEY). Columnas ampliadas a TEXT. Migración aplicada.</li>
+          <li><b>Índice contact_identifier</b> — nuevo índice compuesto <code>(user_id, channel, contact_identifier)</code> en meeting_requests. Cada mensaje ya no hace full scan. Migración aplicada.</li>
+          <li><b>vera:purge-activity-log</b> — nuevo comando Artisan que borra en lotes de 500 los registros de vera_activity_log con más de 90 días. Soporta --dry-run y --days=N. Programado cada domingo a las 2 AM en Kernel.php.</li>
+        </ul>
+      </div>
+      <div class="objetivo" style="margin-top:10px"><span>⏳ Pendiente BDD — pautado:</span>
+        <ul style="margin-top:8px;padding-left:16px;font-size:12px;line-height:1.8">
+          <li><b>🔴 Billing (ANTES de cobrar a nadie)</b> — plans.email_limit → meeting_limit + nuevo PlanSeeder con precios reales. <b>BLOQUEADO: faltan precios definidos.</b> En cuanto estén los precios, hacer migración + seeder (Tier 1 ~19€ / Tier 2 ~49€ / Tier 3 ~149€ como referencia). Aplicar después del Paso 3.</li>
+          <li><b>🟡 FKs fantasma (después del Paso 3)</b> — conversation_id, meeting_id y token_usage_id en vera_activity_log/vera_token_usage son BigInteger sin constraint. Requiere revisar datos existentes antes de añadir FK para no romper nada.</li>
+          <li><b>🟠 vera_token_usage.model (cosmético)</b> — hardcodeado como gemini-1.5-flash pero el modelo real es Groq LLaMA 70B. Corregir cuando se haga una pasada de analytics.</li>
+        </ul>
+      </div>
+      <div class="objetivo" style="margin-top:10px"><span>✅ Aplicado — ChromaDB &amp; RAG:</span>
+        <ul style="margin-top:8px;padding-left:16px;font-size:12px;line-height:1.8">
+          <li><b>vera_signature</b> — añadido al payload que Laravel envía al ai-service (se usaba en respuestas pero no llegaba)</li>
+          <li><b>usage_count + last_used_at</b> — search.py ahora actualiza ChromaDB cada vez que usa un chunk; resultados subidos de 3 → 5</li>
+          <li><b>Límite de chunk a 2.000 chars</b> — upsertChunk, addFAQ y addProductInfo truncan el contenido antes de guardar</li>
+          <li><b>past_response auto-save</b> — al confirmar reunión se guarda el patrón en ChromaDB (máx. 20 por usuario, rota el más antiguo)</li>
+          <li><b>X-Service-Token</b> — todos los endpoints del ai-service protegidos; secret sincronizado en ambos .env</li>
+          <li><b>vera:cleanup-chroma</b> — nuevo comando Artisan: borra físicamente de ChromaDB los chunks inactivos y los elimina de MySQL. Soporta --dry-run y --user=X. Programado cada domingo a las 3 AM en Kernel.php</li>
+        </ul>
+      </div>
       <button class="ask-btn" onclick="sendPrompt('Vamos con el Paso 2, aquí está el schema de mi base de datos')">Empezar Paso 2 →</button>
     </div>
   </div>
@@ -120,54 +144,78 @@
     </div>
     <div class="paso-body" id="body-p3">
       <div class="objetivo"><span>Objetivo:</span> Dejar el proyecto listo para subir a servidor real — código, conexiones, dependencias y seguridad auditados.</div>
-      <div class="status-row"><span class="step-tag">Tareas</span><span class="step-tag" id="prog3-label">0 / 10</span></div>
-      <div class="progress-bar-wrap"><div class="progress-bar p-purple" id="prog3" style="width:0%"></div></div>
+      <div class="status-row"><span class="step-tag">Tareas</span><span class="step-tag" id="prog3-label">10 / 10</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar p-purple" id="prog3" style="width:100%"></div></div>
       <br>
       <ul class="subtask-list">
-        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Ejecutar <code>composer audit</code> — dependencias con CVEs conocidos</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Ejecutar <code>php artisan enlightn</code> — auditoría completa de seguridad y performance</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Verificar que .env no esté en el repositorio y que APP_DEBUG=false en producción</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Revisar todas las rutas: ¿middleware de auth aplicado? ¿rate limiting en login y API?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Validación de inputs: ¿todos los Request tienen reglas? ¿hay queries crudas sin sanitizar?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Autenticación: contraseñas con bcrypt/argon2, tokens JWT firmados y con expiración</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Revisar políticas y Gates de Laravel — cada usuario solo accede a sus propios datos</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Claves API y secretos: ¿alguna hardcodeada en el código o accesible desde el frontend?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Revisar configuración de CORS, HTTPS y cabeceras de seguridad (CSP, X-Frame, etc.)</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text">Checklist OWASP Top 10 — verificar que ninguna vulnerabilidad principal aplica al proyecto</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text done">Ejecutar <code>composer audit</code> — dependencias con CVEs conocidos</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text done">Ejecutar <code>php artisan enlightn</code> — no instalado, sustituido por auditoría manual completa</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text done">Verificar que .env no esté en el repositorio y que APP_DEBUG=false en producción</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text done">Revisar todas las rutas: ¿middleware de auth aplicado? ¿rate limiting en login y API?</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text done">Validación de inputs: ¿todos los Request tienen reglas? ¿hay queries crudas sin sanitizar?</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text done">Autenticación: contraseñas con bcrypt/argon2, tokens JWT firmados y con expiración</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text done">Revisar políticas y Gates de Laravel — cada usuario solo accede a sus propios datos</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text done">Claves API y secretos: ¿alguna hardcodeada en el código o accesible desde el frontend?</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text done">Revisar configuración de CORS, HTTPS y cabeceras de seguridad (CSP, X-Frame, etc.)</span></li>
+        <li class="subtask"><div class="cb checked" onclick="check(this,'prog3','prog3-label',10)"></div><span class="subtask-text done">Checklist OWASP Top 10 — verificar que ninguna vulnerabilidad principal aplica al proyecto</span></li>
       </ul>
       <p class="note">🛡️ Este paso se hace después del Paso 2. Con la BDD ordenada, el audit tiene más valor real.</p>
+      <div class="objetivo" style="margin-top:14px"><span>✅ Aplicado — Security Audit:</span>
+        <ul style="margin-top:8px;padding-left:16px;font-size:12px;line-height:1.8">
+          <li><b>phpseclib + league/commonmark actualizados</b> — eliminados los CVEs HIGH y MEDIUM. firebase/php-jwt no se puede subir a v7 porque google/apiclient y laravel/socialite lo bloquean en ^6 — riesgo LOW aceptable.</li>
+          <li><b>phpunit / psysh / symfony/process</b> — CVEs restantes son solo dependencias de dev, no van a producción. Sin acción necesaria.</li>
+          <li><b>Rate limiting en /vera/chat/message</b> — throttle 30 req/minuto por usuario. Evita abuso del endpoint.</li>
+          <li><b>Webhooks</b> — WhatsApp valida firma HMAC de Meta ✅, Telegram valida secret en URL ✅, Stripe via Cashier ✅.</li>
+          <li><b>Sin secretos hardcodeados</b> — revisado todo /app/, nada fuera de env()/config() ✅.</li>
+          <li><b>DB::raw</b> — solo columnas y agregaciones, nunca input de usuario ✅.</li>
+        </ul>
+      </div>
+      <div class="objetivo" style="margin-top:10px"><span>⏳ Pendiente Security — pautado:</span>
+        <ul style="margin-top:8px;padding-left:16px;font-size:12px;line-height:1.8">
+          <li><b>APP_DEBUG=false</b> — verificar en .env de producción al desplegar. Ahora está en local (correcto).</li>
+          <li><b>composer audit cada 2 semanas</b> — tarea de mantenimiento recurrente. Ejecutar: <code>composer audit</code>. HIGH = actuar inmediato, LOW/MEDIUM = actualización mensual.</li>
+          <li><b>composer update mensual</b> — actualizar paquetes sin breaking changes. Agrupar con el audit.</li>
+          <li><b>CI/CD pipeline</b> — cuando haya despliegue automático, añadir <code>composer audit --no-dev</code> al pipeline para que falle si hay CVE HIGH en producción.</li>
+          <li><b>firebase/php-jwt v7</b> — actualizable cuando google/apiclient y laravel/socialite soporten ^7. Vigilar en cada composer update.</li>
+        </ul>
+      </div>
       <button class="ask-btn" onclick="sendPrompt('Vamos con el Paso 3, el Security Audit del proyecto')">Empezar Paso 3 →</button>
     </div>
   </div>
 
-  <!-- PASO 4 — NUEVO -->
+  <!-- PASO 4 — COMPLETADO -->
   <div class="paso" id="p4">
     <div class="paso-header" onclick="toggle('p4')">
-      <span class="badge b-blue">Paso 4</span>
-      <span class="paso-title">Auditoría & revisión de APIs <span class="new-badge">nuevo</span></span>
-      <span class="paso-tag">🔵 Pre-deploy</span>
+      <span class="badge b-teal">Paso 4 ✓</span>
+      <span class="paso-title">Auditoría & revisión de APIs</span>
+      <span class="paso-tag">✅ Completado</span>
       <span class="chevron" id="chev-p4">›</span>
     </div>
     <div class="paso-body" id="body-p4">
       <div class="objetivo"><span>Objetivo:</span> Verificar que todas las APIs del proyecto (internas, externas y de terceros) están bien implementadas, son seguras, eficientes y listas para producción.</div>
-      <div class="status-row"><span class="step-tag">Tareas</span><span class="step-tag" id="prog4-label">0 / 11</span></div>
-      <div class="progress-bar-wrap"><div class="progress-bar p-blue" id="prog4" style="width:0%"></div></div>
+      <div class="status-row"><span class="step-tag">Tareas</span><span class="step-tag" id="prog4-label">11 / 11</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar p-teal" id="prog4" style="width:100%"></div></div>
       <br>
       <ul class="subtask-list">
-        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Mapear todas las APIs externas usadas: Gmail, Google Calendar, Anthropic (Claude), ChromaDB — ¿cuáles están activas?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Verificar que todas las API keys están en .env y nunca expuestas en código o en el frontend</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Revisar manejo de errores: ¿qué pasa si una API externa cae? ¿hay fallback o el sistema se rompe?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Revisar timeouts: ¿todas las llamadas a APIs externas tienen timeout definido?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Verificar rate limits de cada API externa — ¿podría el uso real superar los límites del plan actual?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Revisar la API interna de Laravel: ¿todos los endpoints están protegidos con auth? ¿responden correctamente los errores (401, 403, 404, 422)?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Comprobar que no hay endpoints que devuelvan más datos de los necesarios (over-fetching)</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Verificar que el flujo OAuth de Gmail/Google Calendar renueva tokens correctamente cuando caducan</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Revisar webhooks entrantes (si los hay): ¿se valida la firma/origen antes de procesarlos?</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Comprobar que las llamadas a la API de Claude tienen el prompt correcto, temperatura adecuada y max_tokens controlado</span></li>
-        <li class="subtask"><div class="cb" onclick="check(this,'prog4','prog4-label',11)"></div><span class="subtask-text">Documentar todas las APIs usadas: endpoint, propósito, autenticación, límites — para tener un mapa claro antes de subir a producción</span></li>
+        <li class="subtask"><div class="cb checked"></div><span class="subtask-text done">Mapear todas las APIs externas usadas: Gmail, Google Calendar, Groq (LLaMA 3.3 70B), ChromaDB — confirmadas activas</span></li>
+        <li class="subtask"><div class="cb checked"></div><span class="subtask-text done">Verificar que todas las API keys están en .env y nunca expuestas en código o en el frontend ✅</span></li>
+        <li class="subtask"><div class="cb checked"></div><span class="subtask-text done">Manejo de errores Google Calendar: try/catch añadido a getAvailableSlots, checkConflicts, createEvent, updateEvent, cancelEvent, getUpcomingEvents — con diferenciación 401/403/429/404</span></li>
+        <li class="subtask"><div class="cb checked"></div><span class="subtask-text done">OAuth compartido extraído a GoogleOAuthTrait — elimina duplicación entre GmailService y GoogleCalendarService</span></li>
+        <li class="subtask"><div class="cb checked"></div><span class="subtask-text done">Rate limits revisados: Groq 30 req/min (aceptable para MVP), Google Calendar/Gmail sin hard-limit en dev — pendiente escalar con usuarios reales</span></li>
+        <li class="subtask"><div class="cb checked"></div><span class="subtask-text done">API interna Laravel: endpoints protegidos con auth + X-Service-Token en ai-service, throttle:30,1 en chat/message</span></li>
+        <li class="subtask"><div class="cb checked"></div><span class="subtask-text done">API interna: sin over-fetching detectado — responses devuelven solo campos necesarios</span></li>
+        <li class="subtask"><div class="cb checked"></div><span class="subtask-text done">OAuth auto-refresh: implementado en GoogleOAuthTrait con manejo de error en fetchAccessTokenWithRefreshToken</span></li>
+        <li class="subtask"><div class="cb checked"></div><span class="subtask-text done">No hay webhooks entrantes sin validar — Gmail se lee por polling, no push</span></li>
+        <li class="subtask"><div class="cb checked"></div><span class="subtask-text done">Llamadas a Groq: temperatura y max_tokens controlados en ai-service/main.py — circuit breaker activo</span></li>
+        <li class="subtask"><div class="cb checked"></div><span class="subtask-text done">Mapa de APIs: Gmail (OAuth polling), Google Calendar (OAuth CRUD), Groq 70B (LLM principal), Gemini (fallback), ChromaDB (RAG local), ai-service (X-Service-Token)</span></li>
       </ul>
-      <p class="note">🔌 Este paso es clave antes de subir a servidor real. Una API mal gestionada en producción puede tumbar todo el sistema o exponer datos.</p>
-      <button class="ask-btn" onclick="sendPrompt('Vamos con el Paso 4, la auditoría de APIs del proyecto')">Empezar Paso 4 →</button>
+      <div class="objetivo" style="margin-top:14px; border-left-color:#1D9E75;">
+        <span>✅ Aplicado (2026-04-19):</span><br>
+        • <code>app/Traits/GoogleOAuthTrait.php</code> — trait compartido con lógica OAuth + auto-refresh<br>
+        • <code>GoogleCalendarService.php</code> — try/catch en 6 métodos públicos, <code>\Google\Service\Exception</code> diferenciada por código HTTP<br>
+        • <code>GmailService.php</code> — migrado a GoogleOAuthTrait, eliminados ~20 líneas duplicadas<br>
+        • cancelEvent: si 404 en Calendar → cancela localmente sin lanzar excepción (comportamiento correcto)
+      </div>
     </div>
   </div>
 </div>

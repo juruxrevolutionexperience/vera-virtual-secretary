@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\VeraConfig;
+use App\Traits\GoogleOAuthTrait;
 use Google\Client as GoogleClient;
 use Google\Service\Gmail;
 use Google\Service\Gmail\ModifyMessageRequest;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Log;
  */
 class GmailService
 {
+    use GoogleOAuthTrait;
+
     private GoogleClient $client;
 
     public function __construct()
@@ -30,35 +33,9 @@ class GmailService
 
     // ─── Autenticación ────────────────────────────────────────────────────────
 
-    private function authenticate(VeraConfig $config): void
-    {
-        $this->client->setAccessToken([
-            'access_token'  => $config->google_access_token,
-            'refresh_token' => $config->google_refresh_token,
-            'expires_in'    => $config->google_token_expires_at
-                ? now()->diffInSeconds($config->google_token_expires_at, false)
-                : 0,
-        ]);
-
-        if ($this->client->isAccessTokenExpired()) {
-            if (!$config->google_refresh_token) {
-                throw new \RuntimeException('Gmail: no hay refresh_token. El usuario debe reconectar su cuenta.');
-            }
-
-            $newToken = $this->client->fetchAccessTokenWithRefreshToken($config->google_refresh_token);
-
-            $config->update([
-                'google_access_token'     => $newToken['access_token'],
-                'google_token_expires_at' => now()->addSeconds($newToken['expires_in'] ?? 3600),
-            ]);
-
-            Log::info('🔄 Gmail token refrescado', ['user_id' => $config->user_id]);
-        }
-    }
-
     private function getGmailService(VeraConfig $config): Gmail
     {
-        $this->authenticate($config);
+        $this->refreshGoogleToken($this->client, $config);
         return new Gmail($this->client);
     }
 

@@ -1,0 +1,39 @@
+version: 2
+updates:
+  # PHP / Composer — revisa vulnerabilidades y actualizaciones semanalmente
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Madrid"
+    # Agrupa todas las actualizaciones de seguridad en un solo PR
+    groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    # Máximo 5 PRs abiertos a la vez para no saturar
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "security"
+
+  # Python / pip — ai-service
+  - package-ecosystem: "pip"
+    directory: "/ai-service"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Madrid"
+    groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "ai-service"

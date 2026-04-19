@@ -54,12 +54,17 @@ class VeraConfig extends Model
         'escalation_triggers' => 'array',
         'writing_style'       => 'array',
         'important_contacts'  => 'array',
-        'confidence_threshold'       => 'decimal:2',
-        'onboarding_completed'       => 'boolean',
-        'onboarding_completed_at'    => 'datetime',
-        'google_token_expires_at'    => 'datetime',
-        'meeting_duration'           => 'integer',
-        'buffer_minutes'             => 'integer',
+        'confidence_threshold'    => 'decimal:2',
+        'onboarding_completed'    => 'boolean',
+        'onboarding_completed_at' => 'datetime',
+        'google_token_expires_at' => 'datetime',
+        'meeting_duration'        => 'integer',
+        'buffer_minutes'          => 'integer',
+        // Tokens sensibles — cifrados en reposo con APP_KEY
+        'google_access_token'  => 'encrypted',
+        'google_refresh_token' => 'encrypted',
+        'telegram_bot_token'   => 'encrypted',
+        'whatsapp_access_token'=> 'encrypted',
     ];
 
     public function user(): BelongsTo

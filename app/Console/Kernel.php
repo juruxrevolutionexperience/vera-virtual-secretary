@@ -45,6 +45,45 @@ class Kernel extends ConsoleKernel
         // FASE 1F: FIXES CRÍTICOS
         // ========================================
 
+        // Auditoría de seguridad semanal — cada lunes a las 9 AM
+        $schedule->command('security:audit-check --notify=' . config('mail.from.address'))
+            ->weekly()
+            ->mondays()
+            ->at('09:00')
+            ->name('security-audit-check')
+            ->onSuccess(function () {
+                \Log::info('✅ Auditoría de seguridad completada — sin CVEs HIGH');
+            })
+            ->onFailure(function () {
+                \Log::critical('🚨 Auditoría de seguridad — CVEs HIGH detectados, revisar inmediatamente');
+            });
+
+        // Purgar vera_activity_log con más de 90 días cada domingo a las 2 AM
+        $schedule->command('vera:purge-activity-log --days=90')
+            ->weekly()
+            ->sundays()
+            ->at('02:00')
+            ->name('vera-purge-activity-log')
+            ->onSuccess(function () {
+                \Log::info('✅ Purga de vera_activity_log completada');
+            })
+            ->onFailure(function () {
+                \Log::error('❌ Error en purga de vera_activity_log');
+            });
+
+        // Limpiar chunks inactivos de ChromaDB cada domingo a las 3 AM
+        $schedule->command('vera:cleanup-chroma')
+            ->weekly()
+            ->sundays()
+            ->at('03:00')
+            ->name('vera-cleanup-chroma')
+            ->onSuccess(function () {
+                \Log::info('✅ Limpieza de chunks inactivos en ChromaDB completada');
+            })
+            ->onFailure(function () {
+                \Log::error('❌ Error en limpieza de chunks inactivos en ChromaDB');
+            });
+
         // Resetear límites mensuales de Vera (día 1 de cada mes a la 1 AM)
         $schedule->command('vera:reset-monthly-limits --force')
             ->monthlyOn(1, '01:00')

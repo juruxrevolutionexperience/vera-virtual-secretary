@@ -88,6 +88,7 @@ class VeraMemoryService
     public function addFAQ(int $userId, string $question, string $answer, array $keywords = []): VeraMemoryChunk
     {
         $content = "Pregunta: {$question}\nRespuesta: {$answer}";
+        $content = mb_substr($content, 0, 2000);
 
         $kw = !empty($keywords)
             ? implode(' ', $keywords)
@@ -110,6 +111,8 @@ class VeraMemoryService
      */
     public function addProductInfo(int $userId, string $name, string $description, array $keywords = []): VeraMemoryChunk
     {
+        $description = mb_substr($description, 0, 2000);
+
         $kw = !empty($keywords)
             ? implode(' ', $keywords)
             : $this->extractKeywords($name . ' ' . $description);
@@ -124,6 +127,37 @@ class VeraMemoryService
             'source'         => 'manual',
             'is_active'      => true,
         ]);
+    }
+
+    /**
+     * Guardar una respuesta exitosa para que Vera aprenda el patrón.
+     * Solo guarda las últimas 20 para no inflar ChromaDB.
+     */
+    public function savePastResponse(int $userId, string $trigger, string $response, string $context = ''): void
+    {
+        $count = VeraMemoryChunk::where('user_id', $userId)->where('type', 'past_response')->count();
+        if ($count >= 20) {
+            VeraMemoryChunk::where('user_id', $userId)
+                ->where('type', 'past_response')
+                ->orderBy('created_at')
+                ->first()
+                ?->delete();
+        }
+
+        $content = mb_substr("Situación: {$trigger}\nRespuesta exitosa: {$response}", 0, 2000);
+
+        $chunk = VeraMemoryChunk::create([
+            'user_id'        => $userId,
+            'type'           => 'past_response',
+            'title'          => mb_substr($trigger, 0, 100),
+            'content'        => $content,
+            'keywords_text'  => $this->extractKeywords($trigger . ' ' . $context),
+            'relevance_tags' => $context ? [$context] : [],
+            'source'         => 'auto_detected',
+            'is_active'      => true,
+        ]);
+
+        $this->syncChunkToAiService($userId, $chunk);
     }
 
     /**
@@ -163,6 +197,10 @@ class VeraMemoryService
 
     private function upsertChunk(int $userId, array $data): VeraMemoryChunk
     {
+        if (isset($data['content'])) {
+            $data['content'] = mb_substr($data['content'], 0, 2000);
+        }
+
         $chunk = VeraMemoryChunk::updateOrCreate(
             ['user_id' => $userId, 'type' => $data['type'], 'title' => $data['title']],
             array_merge($data, ['is_active' => true])
@@ -186,7 +224,7 @@ class VeraMemoryService
         }
 
         try {
-            Http::timeout(5)->post("{$aiServiceUrl}/memory/sync", [
+            Http::timeout(5)->withHeaders(['X-Service-Token' => config('services.ai_service.secret')])->post("{$aiServiceUrl}/memory/sync", [
                 'user_id' => (string) $userId,
                 'chunks'  => [[
                     'chunk_id'   => (string) $chunk->id,
@@ -216,7 +254,7 @@ class VeraMemoryService
         }
 
         try {
-            Http::timeout(5)->delete("{$aiServiceUrl}/memory/chunk/{$userId}/{$chunkId}");
+            Http::timeout(5)->withHeaders(['X-Service-Token' => config('services.ai_service.secret')])->delete("{$aiServiceUrl}/memory/chunk/{$userId}/{$chunkId}");
         } catch (\Exception $e) {
             Log::warning('VeraMemoryService: no se pudo desactivar chunk en ChromaDB', [
                 'chunk_id' => $chunkId,
