@@ -39,3 +39,5 @@ Thumbs.db
   /storage/logs/*
   !/storage/logs/.gitkeep
 
+.agents/
+.claude/
