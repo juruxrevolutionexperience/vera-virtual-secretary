@@ -9,8 +9,9 @@ use Laravel\Cashier\Http\Controllers\WebhookController;
 use App\Http\Controllers\VeraController;
 use App\Http\Controllers\ContactController;
 
-// Landing Page
-Route::view('/', 'landing-new')->name('landing-new');
+// Beta cerrada: redirige la raíz a login. Descomentar Route::view cuando abramos al público.
+// Route::view('/', 'landing-new')->name('landing-new');
+Route::redirect('/', '/login', 301)->name('landing-new');
 
 // Legal Pages (public)
 Route::view('/privacy', 'legal.privacy')->name('privacy');
