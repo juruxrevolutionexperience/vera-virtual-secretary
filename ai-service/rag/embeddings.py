@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Gemini embeddings — modelo multilingüe de alta calidad, tier gratuito 1.500 req/día
-chroma = chromadb.PersistentClient(path="./chroma_db")
+chroma = chromadb.PersistentClient(path=os.getenv("CHROMA_DB_PATH", "./chroma_db")) 
 default_ef = embedding_functions.GoogleGenerativeAiEmbeddingFunction(
     api_key=os.getenv("GOOGLE_API_KEY"),
     model_name="models/gemini-embedding-001"
