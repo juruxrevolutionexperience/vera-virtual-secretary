@@ -10,12 +10,18 @@ trait GoogleOAuthTrait
 {
     private function refreshGoogleToken(GoogleClient $client, VeraConfig $config): void
     {
+        // La librería de Google interpreta expires_in + created para saber si el token caducó.
+        // Pasamos created=now() y expires_in=segundos restantes para que el cálculo sea correcto.
+        $secondsRemaining = $config->google_token_expires_at
+            ? max(0, $config->google_token_expires_at->getTimestamp() - time())
+            : 0;
+
         $client->setAccessToken([
             'access_token'  => $config->google_access_token,
             'refresh_token' => $config->google_refresh_token,
-            'expires_in'    => $config->google_token_expires_at
-                ? now()->diffInSeconds($config->google_token_expires_at, false)
-                : 0,
+            'token_type'    => 'Bearer',
+            'created'       => time(),
+            'expires_in'    => $secondsRemaining,
         ]);
 
         if (!$client->isAccessTokenExpired()) {
