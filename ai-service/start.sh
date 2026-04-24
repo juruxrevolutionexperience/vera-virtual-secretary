@@ -5,16 +5,18 @@
 set -e
 cd "$(dirname "$0")"
 
-# Crear venv si no existe
-if [ ! -d "venv" ]; then
-    echo "Creando entorno virtual..."
-    python3 -m venv venv
+# venv persistente fuera de releases para sobrevivir deploys
+VENV_PATH="/home/forge/app.jurux.app/shared/ai-service-venv"
+
+if [ ! -d "$VENV_PATH" ]; then
+    echo "Creando entorno virtual persistente..."
+    python3 -m venv "$VENV_PATH"
 fi
 
 # Instalar / actualizar dependencias
 echo "Instalando dependencias..."
-venv/bin/pip install --quiet --upgrade pip
-venv/bin/pip install --quiet -r requirements.txt
+"$VENV_PATH/bin/pip" install --quiet --upgrade pip
+"$VENV_PATH/bin/pip" install --quiet -r requirements.txt
 
 # Verificar .env
 if [ ! -f ".env" ]; then
@@ -24,4 +26,4 @@ fi
 
 # Arrancar
 echo "Arrancando Vera ai-service en puerto 8001..."
-venv/bin/uvicorn main:app --host 0.0.0.0 --port 8001 --workers 2
+"$VENV_PATH/bin/uvicorn" main:app --host 0.0.0.0 --port 8001 --workers 2

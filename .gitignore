@@ -41,3 +41,9 @@ Thumbs.db
 
 .agents/
 .claude/
+
+# ai-service — generados en servidor, no en git
+ai-service/venv/
+ai-service/chroma_db/
+ai-service/__pycache__/
+ai-service/**/__pycache__/
