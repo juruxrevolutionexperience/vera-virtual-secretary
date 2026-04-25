@@ -426,7 +426,7 @@ class ProcessIncomingMessage implements ShouldQueue
             }
         }
 
-        Log::debug('extractPreferredDate', ['message_snippet' => mb_substr($message, 0, 100)]);
+        Log::info('🗓️ extractPreferredDate input', ['msg' => mb_substr($message, 0, 150)]);
 
         // Fechas numéricas: "28/04", "28-04", "28/04/2026"
         if (preg_match('/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{4}))?/', $message, $m)) {
