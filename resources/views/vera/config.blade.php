@@ -19,7 +19,7 @@
 <div class="flex min-h-screen" x-data="veraConfig()" x-init="init()">
     @include('components.dashboard-sidebar')
 
-    <main class="flex-1 ml-56 p-8">
+    <main class="flex-1 lg:ml-56 p-8">
         <div class="max-w-3xl mx-auto">
 
         <!-- Header -->

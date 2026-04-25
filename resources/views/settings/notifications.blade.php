@@ -10,7 +10,7 @@
 <body class="bg-[#fafafa] font-['Inter']">
     <div class="flex min-h-screen">
         @include('components.dashboard-sidebar')
-        <main class="flex-1 md:ml-56">
+        <main class="flex-1 lg:ml-56">
             <header class="h-14 bg-white border-b border-gray-200 flex items-center px-6">
                 <h1 class="text-sm font-semibold text-gray-900">Configuración de Notificaciones</h1>
             </header>

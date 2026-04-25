@@ -27,7 +27,7 @@
 <div class="flex min-h-screen">
     @include('components.dashboard-sidebar')
 
-    <main class="flex-1 md:ml-56">
+    <main class="flex-1 lg:ml-56">
 
         {{-- ── TOP BAR ──────────────────────────────────────────────────────── --}}
         <header class="h-14 bg-white border-b border-gray-200 sticky top-0 z-40 flex items-center justify-between px-6 bg-white/90 backdrop-blur-sm">

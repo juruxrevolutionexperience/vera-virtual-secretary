@@ -20,7 +20,7 @@
 <div class="flex min-h-screen">
     @include('components.dashboard-sidebar')
 
-    <main class="flex-1 ml-56 p-8 max-w-3xl">
+    <main class="flex-1 lg:ml-56 p-8 max-w-3xl">
 
         {{-- Breadcrumb --}}
         <div class="flex items-center gap-2 text-sm text-gray-400 mb-6">

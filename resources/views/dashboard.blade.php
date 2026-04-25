@@ -218,7 +218,7 @@
 
     <div class="flex min-h-screen">
         <!-- Sidebar - Linear Style Enhanced -->
-        <aside id="sidebar" class="sidebar w-56 bg-white border-r border-gray-200 fixed h-full z-50 flex flex-col">
+        <aside id="sidebar" class="sidebar w-56 bg-white border-r border-gray-200 fixed h-full z-50 flex-col hidden lg:flex">
             <!-- Logo -->
             <div class="h-14 flex items-center justify-between px-4 border-b border-gray-200">
                 <a href="/" class="flex items-center gap-2 group">
@@ -229,7 +229,7 @@
                     <span class="text-gray-900 font-semibold text-sm">Vera</span>
                 </a>
                 <button onclick="toggleSidebar()"
-                    class="md:hidden text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100">
+                    class="lg:hidden text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M6 18L18 6M6 6l12 12" />
@@ -489,13 +489,13 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-1 md:ml-56">
+        <main class="flex-1 lg:ml-56">
             <!-- Top Bar - Linear Style Enhanced -->
             <header
                 class="h-14 bg-white border-b border-gray-200 sticky top-0 z-40 flex items-center justify-between px-6 backdrop-blur-sm bg-white/80">
                 <div class="flex items-center gap-3">
                     <button onclick="toggleSidebar()"
-                        class="md:hidden text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100">
+                        class="lg:hidden text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 6h16M4 12h16M4 18h16" />
@@ -1039,7 +1039,7 @@
     </div>
 
     <!-- Mobile Sidebar Overlay -->
-    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden" onclick="toggleSidebar()">
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleSidebar()">
     </div>
 
     <!-- Search Modal -->

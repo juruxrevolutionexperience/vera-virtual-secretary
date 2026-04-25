@@ -1,4 +1,4 @@
-<aside id="sidebar" class="sidebar w-56 bg-white border-r border-gray-200 fixed h-full z-50 flex flex-col">
+<aside id="sidebar" class="sidebar w-56 bg-white border-r border-gray-200 fixed h-full z-50 flex-col hidden lg:flex">
     <!-- Logo -->
     <div class="h-14 flex items-center justify-between px-4 border-b border-gray-200">
         <a href="{{ route('dashboard') }}" class="flex items-center gap-2 group">
@@ -268,6 +268,35 @@
         </button>
     </div>
 </aside>
+
+{{-- Botón hamburger — solo visible en móvil y tablet (< lg) --}}
+<button id="mobile-menu-btn" onclick="toggleSidebar()"
+    class="lg:hidden fixed top-3 left-3 z-40 p-2 bg-white border border-gray-200 rounded-md shadow-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+    </svg>
+</button>
+
+{{-- Overlay oscuro al abrir sidebar en móvil/tablet --}}
+<div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="toggleSidebar()"></div>
+
+<script>
+function toggleSidebar() {
+    const sidebar  = document.getElementById('sidebar');
+    const overlay  = document.getElementById('sidebar-overlay');
+    const btn      = document.getElementById('mobile-menu-btn');
+    const isOpen   = !sidebar.classList.contains('hidden');
+
+    if (isOpen) {
+        sidebar.classList.add('hidden');
+        overlay.classList.add('hidden');
+    } else {
+        sidebar.classList.remove('hidden');
+        sidebar.classList.add('flex');
+        overlay.classList.remove('hidden');
+    }
+}
+</script>
 
 {{-- Dev Toolbar flotante (solo visible para usuarios is_dev) --}}
 @include('components.dev-toolbar')

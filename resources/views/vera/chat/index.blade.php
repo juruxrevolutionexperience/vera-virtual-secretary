@@ -79,7 +79,7 @@
     <div class="flex h-screen">
         @include('components.dashboard-sidebar')
 
-        <main class="flex-1 md:ml-56 flex flex-col">
+        <main class="flex-1 lg:ml-56 flex flex-col">
             <!-- Header Mejorado -->
             <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6">
                 <div class="flex items-center gap-3">

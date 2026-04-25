@@ -20,7 +20,7 @@
     @include('components.dashboard-sidebar')
 
     <!-- Main content -->
-    <main class="flex-1 ml-56 p-8">
+    <main class="flex-1 lg:ml-56 p-8">
 
         <!-- Header -->
         <div class="flex items-center justify-between mb-8">

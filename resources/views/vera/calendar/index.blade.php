@@ -43,7 +43,7 @@ $weekEventsGrid = $grouped->flatten(1)->map(fn($e) => [
 <div class="flex min-h-screen" x-data="calendarPage()">
     @include('components.dashboard-sidebar')
 
-    <main class="flex-1 ml-56 p-8">
+    <main class="flex-1 lg:ml-56 p-8">
 
         {{-- Flash messages --}}
         @if(session('success'))
