@@ -1,61 +1,274 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Vera — Secretaria Virtual con IA
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Vera es una secretaria virtual impulsada por inteligencia artificial que gestiona la agenda de profesionales y empresas de forma autónoma. Lee emails entrantes, detecta solicitudes de reunión, consulta disponibilidad en Google Calendar y responde al cliente confirmando la cita — sin intervención humana.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Stack tecnológico
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Backend (Laravel)
+- **Laravel 12** — framework principal
+- **PHP 8.3** — lenguaje
+- **MySQL 8.0** — base de datos principal
+- **Redis** — cola de jobs (queue)
+- **Laravel Horizon** — gestión de workers (local)
+- **Laravel Cashier + Stripe** — facturación y planes
+- **Laravel Socialite** — OAuth con Google
+- **Spatie Permission** — roles y permisos
+- **Resend** — emails transaccionales
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### AI Service (Python)
+- **FastAPI + Uvicorn** — servidor del microservicio
+- **Groq LLaMA 3.3 70B** — LLM principal (respuestas rápidas y económicas)
+- **Google Gemini** — LLM de fallback
+- **ChromaDB** — base de datos vectorial (memoria RAG de Vera)
+- **Sentence Transformers** — embeddings
 
-## Learning Laravel
+### Frontend
+- **Blade + Alpine.js** — vistas y reactividad
+- **Tailwind CSS** — estilos
+- **Vite** — bundler
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Integraciones
+- **Gmail API** — lectura y respuesta de emails
+- **Google Calendar API** — consulta y creación de eventos
+- **Stripe** — pagos y suscripciones
+- **Resend** — emails transaccionales
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### Infraestructura
+- **Laravel Forge** — deploy y gestión del servidor
+- **Hetzner** — servidor VPS
+- **Cloudflare** — DNS y proxy
+- **Docker + Laravel Sail** — entorno de desarrollo local
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Arquitectura
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```
+Cliente (email/WhatsApp)
+        ↓
+    Gmail API
+        ↓
+  Laravel (vera:process-emails)
+        ↓
+  ProcessIncomingMessage [Job → Redis Queue]
+        ↓
+    ai-service (FastAPI :8001)
+    ├── Groq LLaMA 3.3 70B
+    ├── ChromaDB (memoria RAG)
+    └── Gemini (fallback)
+        ↓
+  Google Calendar (disponibilidad)
+        ↓
+  Gmail API (respuesta al cliente)
+```
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Estructura del proyecto
 
-## Contributing
+```
+vera-virtual-secretary/
+├── app/
+│   ├── Console/Commands/     # Comandos artisan (vera:process-emails, etc.)
+│   ├── Http/Controllers/     # Controladores Laravel
+│   ├── Jobs/                 # Jobs de cola (ProcessIncomingMessage)
+│   ├── Models/               # Modelos Eloquent
+│   └── Services/             # GmailService, GoogleCalendarService, etc.
+├── ai-service/               # Microservicio Python (territorio de Antonio)
+│   ├── llm/                  # Cliente Groq/Gemini
+│   ├── modes/                # Detector de modo (agenda, escalation, etc.)
+│   ├── rag/                  # ChromaDB embeddings y búsqueda
+│   ├── main.py               # Entrypoint FastAPI
+│   ├── requirements.txt      # Dependencias Python
+│   └── start.sh              # Script de arranque
+├── resources/
+│   └── views/                # Vistas Blade
+├── docker-compose.yml        # Entorno local completo
+└── .env.example              # Variables de entorno de referencia
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+---
 
-## Code of Conduct
+## Entorno local — primeros pasos
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Requisitos
+- Docker Desktop
+- PHP 8.3 + Composer
+- Node.js 20+
 
-## Security Vulnerabilities
+### Instalación
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+# 1. Clonar el repositorio
+git clone git@github.com:juruxrevolutionexperience/vera-virtual-secretary.git
+cd vera-virtual-secretary
 
-## License
+# 2. Copiar variables de entorno
+cp .env.example .env
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# 3. Rellenar las claves en .env:
+#    - GROQ_API_KEY
+#    - GOOGLE_API_KEY (Gemini)
+#    - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+#    - AI_SERVICE_SECRET
+#    - STRIPE_KEY / STRIPE_SECRET (opcional en local)
+
+# 4. Instalar dependencias PHP
+composer install
+
+# 5. Instalar dependencias JS
+npm install
+
+# 6. Levantar todos los servicios
+docker compose up -d
+
+# 7. Migraciones y seeders
+docker compose exec laravel.test php artisan migrate --seed
+
+# 8. Generar clave de app
+docker compose exec laravel.test php artisan key:generate
+```
+
+### Servicios disponibles en local
+
+| Servicio | URL |
+|---|---|
+| App Laravel | http://localhost |
+| AI Service | http://localhost:8001 |
+| phpMyAdmin | http://localhost:8080 |
+| Mailpit (emails) | http://localhost:8025 |
+
+---
+
+## Variables de entorno clave
+
+```env
+# App
+APP_ENV=local
+APP_URL=http://localhost
+
+# Base de datos
+DB_CONNECTION=mysql
+DB_DATABASE=vera
+
+# Queue
+QUEUE_CONNECTION=database   # local: database / producción: redis
+
+# AI Service
+AI_SERVICE_URL=http://ai-service:8001   # local (Docker)
+AI_SERVICE_SECRET=tu_secret_aqui
+
+# LLMs
+GROQ_API_KEY=
+GOOGLE_API_KEY=    # para embeddings y Gemini
+
+# Google OAuth
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Stripe
+STRIPE_KEY=
+STRIPE_SECRET=
+
+# Resend (emails transaccionales)
+RESEND_API_KEY=
+```
+
+---
+
+## Git workflow
+
+```
+main               → producción (solo merges desde develop)
+develop            → integración (trabajo diario de Jurux)
+feature/ai-service → Antonio (microservicio Python)
+```
+
+### Jurux — trabajo diario
+
+```bash
+git checkout develop
+git pull origin develop
+
+# ... hacer cambios en Laravel ...
+
+git add .
+git commit -m "feat: descripción"
+git push origin develop
+
+# Para deployar a producción:
+git checkout main
+git merge develop
+git push origin main
+git checkout develop
+```
+
+### Antonio — trabajo en ai-service
+
+```bash
+git checkout feature/ai-service
+git pull origin develop   # sincronizar con lo último de Jurux
+
+# ... hacer cambios en ai-service/ ...
+
+git add ai-service/
+git commit -m "feat: descripción"
+git push origin feature/ai-service
+
+# Cuando termina → abrir PR de feature/ai-service → develop en GitHub
+# Jurux revisa y hace merge
+```
+
+**Regla:** nadie pushea directo a `main`.
+
+---
+
+## Producción
+
+- **URL:** https://app.jurux.app
+- **Servidor:** Hetzner (gestionado con Laravel Forge)
+- **Deploy:** automático al hacer push a `main`
+- **AI Service:** daemon supervisor con venv persistente en `shared/ai-service-venv/`
+- **ChromaDB:** persistente en `shared/chroma_db/`
+- **Queue worker:** Redis, gestionado por supervisor
+
+### Deploy a producción
+
+```bash
+git checkout main
+git merge develop
+git push origin main
+git checkout develop
+```
+
+---
+
+## Comandos útiles
+
+```bash
+# Procesar emails entrantes manualmente
+php artisan vera:process-emails
+
+# Ver qué emails encontraría sin procesarlos
+php artisan vera:process-emails --dry-run
+
+# Ver jobs fallidos
+php artisan queue:failed
+
+# Limpiar cola
+php artisan queue:clear
+
+# Salud del ai-service
+curl http://127.0.0.1:8001/health
+```
+
+---
+
+## Equipo
+
+| Persona | Rol | Área |
+|---|---|---|
+| Jurux | Full-stack Lead | Laravel, frontend, infraestructura |
+| Antonio | AI Engineer | ai-service (Python), ChromaDB, LLMs |
