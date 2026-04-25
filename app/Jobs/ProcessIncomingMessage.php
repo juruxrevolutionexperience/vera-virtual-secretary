@@ -394,6 +394,46 @@ class ProcessIncomingMessage implements ShouldQueue
             }
         }
 
+        // Fechas concretas: "28 de abril", "el 28 de abril", "28 de abril de 2026"
+        $months = [
+            'enero' => 1, 'febrero' => 2, 'marzo' => 3, 'abril' => 4,
+            'mayo' => 5, 'junio' => 6, 'julio' => 7, 'agosto' => 8,
+            'septiembre' => 9, 'octubre' => 10, 'noviembre' => 11, 'diciembre' => 12,
+        ];
+
+        foreach ($months as $monthName => $monthNum) {
+            if (preg_match('/(?:el\s+)?(\d{1,2})\s+de\s+' . $monthName . '(?:\s+de\s+(\d{4}))?/i', $message, $m)) {
+                $day  = (int) $m[1];
+                $year = isset($m[2]) && $m[2] ? (int) $m[2] : now()->year;
+                try {
+                    $date = Carbon::create($year, $monthNum, $day)->startOfDay();
+                    // Si la fecha ya pasó este año y no se especificó año, usar el siguiente
+                    if ($date->isPast() && !isset($m[2])) {
+                        $date->addYear();
+                    }
+                    return $date->toDateString();
+                } catch (\Exception) {
+                    // Fecha inválida (ej. 31 de febrero) — ignorar
+                }
+            }
+        }
+
+        // Fechas numéricas: "28/04", "28-04", "28/04/2026"
+        if (preg_match('/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{4}))?/', $message, $m)) {
+            $day   = (int) $m[1];
+            $month = (int) $m[2];
+            $year  = isset($m[3]) && $m[3] ? (int) $m[3] : now()->year;
+            try {
+                $date = Carbon::create($year, $month, $day)->startOfDay();
+                if ($date->isPast() && !isset($m[3])) {
+                    $date->addYear();
+                }
+                return $date->toDateString();
+            } catch (\Exception) {
+                // Fecha inválida — ignorar
+            }
+        }
+
         return null;
     }
 
