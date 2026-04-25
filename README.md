@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/images/logo.png" width="80" alt="Jurux Logo">
+</p>
+
 # Vera — Secretaria Virtual con IA
 
 Vera es una secretaria virtual impulsada por inteligencia artificial que gestiona la agenda de profesionales y empresas de forma autónoma. Lee emails entrantes, detecta solicitudes de reunión, consulta disponibilidad en Google Calendar y responde al cliente confirmando la cita — sin intervención humana.
