@@ -370,8 +370,13 @@ class ProcessIncomingMessage implements ShouldQueue
         if (str_contains($message, 'pasado mañana') || str_contains($message, 'pasado manana')) {
             return now()->addDays(2)->toDateString();
         }
+        // "mañana" solo es "tomorrow" si NO va precedido de "de la" o "por la"
+        // ("de la mañana" / "por la mañana" significa morning, no tomorrow)
         if (str_contains($message, 'mañana') || str_contains($message, 'manana')) {
-            return now()->addDay()->toDateString();
+            $isMorning = (bool) preg_match('/(?:de|por)\s+la\s+ma[ñn]ana/i', $message);
+            if (!$isMorning) {
+                return now()->addDay()->toDateString();
+            }
         }
 
         $days = [
