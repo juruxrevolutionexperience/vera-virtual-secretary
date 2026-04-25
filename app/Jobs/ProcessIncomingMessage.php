@@ -373,7 +373,10 @@ class ProcessIncomingMessage implements ShouldQueue
         // "mañana" solo es "tomorrow" si NO va precedido de "de la" o "por la"
         // ("de la mañana" / "por la mañana" significa morning, no tomorrow)
         if (str_contains($message, 'mañana') || str_contains($message, 'manana')) {
-            $isMorning = (bool) preg_match('/(?:de|por)\s+la\s+ma[ñn]ana/i', $message);
+            $isMorning = str_contains($message, 'de la mañana')
+                || str_contains($message, 'de la manana')
+                || str_contains($message, 'por la mañana')
+                || str_contains($message, 'por la manana');
             if (!$isMorning) {
                 return now()->addDay()->toDateString();
             }
@@ -422,6 +425,8 @@ class ProcessIncomingMessage implements ShouldQueue
                 }
             }
         }
+
+        Log::debug('extractPreferredDate', ['message_snippet' => mb_substr($message, 0, 100)]);
 
         // Fechas numéricas: "28/04", "28-04", "28/04/2026"
         if (preg_match('/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{4}))?/', $message, $m)) {
