@@ -73,9 +73,15 @@
                 <span class="flex-1">Calendar</span>
                 @php
                     try {
-                        $todayCount = isset($todayCount) ? $todayCount : (auth()->check()
-                            ? (new \App\Services\GoogleCalendarService())->getTodayEventCount(auth()->user())
-                            : 0);
+                        if (!isset($todayCount) && auth()->check()) {
+                            $cacheKey = 'calendar_today_count_' . auth()->id();
+                            $todayCount = \Illuminate\Support\Facades\Cache::remember(
+                                $cacheKey, 300,
+                                fn() => (new \App\Services\GoogleCalendarService())->getTodayEventCount(auth()->user())
+                            );
+                        } else {
+                            $todayCount = $todayCount ?? 0;
+                        }
                     } catch (\Exception) { $todayCount = 0; }
                 @endphp
                 @if($todayCount > 0)
