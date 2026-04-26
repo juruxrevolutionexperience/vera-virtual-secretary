@@ -85,15 +85,33 @@ $weekEventsGrid = $grouped->flatten(1)->map(fn($e) => [
                     </button>
                 </div>
 
+                {{-- Navegación prev / hoy / next --}}
+                <div class="flex items-center rounded-lg border border-gray-200 overflow-hidden bg-white text-sm">
+                    <a href="{{ route('vera.calendar.index', ['filter' => $filter, 'date' => $prevDate]) }}"
+                       class="px-3 py-2 text-gray-500 hover:bg-gray-50 transition-colors" title="Período anterior">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </a>
+                    @if(!$isCurrentPeriod)
+                    <a href="{{ route('vera.calendar.index', ['filter' => $filter]) }}"
+                       class="px-3 py-2 text-purple-600 font-medium border-l border-gray-200 hover:bg-purple-50 transition-colors text-xs">
+                        Hoy
+                    </a>
+                    @endif
+                    <a href="{{ route('vera.calendar.index', ['filter' => $filter, 'date' => $nextDate]) }}"
+                       class="px-3 py-2 text-gray-500 border-l border-gray-200 hover:bg-gray-50 transition-colors" title="Período siguiente">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+
                 {{-- Filtro semana / mes --}}
                 <div class="flex rounded-lg border border-gray-200 overflow-hidden bg-white text-sm">
                     <a href="{{ route('vera.calendar.index', ['filter' => 'week']) }}"
                        class="px-4 py-2 {{ $filter === 'week' ? 'bg-purple-600 text-white font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
-                        Esta semana
+                        Semana
                     </a>
                     <a href="{{ route('vera.calendar.index', ['filter' => 'month']) }}"
                        class="px-4 py-2 {{ $filter === 'month' ? 'bg-purple-600 text-white font-medium' : 'text-gray-600 hover:bg-gray-50' }} border-l border-gray-200">
-                        Este mes
+                        Mes
                     </a>
                 </div>
 
@@ -142,7 +160,8 @@ $weekEventsGrid = $grouped->flatten(1)->map(fn($e) => [
                     {{-- Eventos del día --}}
                     <div class="divide-y divide-gray-50">
                         @foreach($events as $event)
-                        <div class="px-5 py-4 flex items-center gap-4">
+                        @php $isPast = $event['start']->isPast(); @endphp
+                        <div class="px-5 py-4 flex items-center gap-4 {{ $isPast ? 'opacity-60' : '' }}">
                             {{-- Hora --}}
                             <div class="w-16 flex-shrink-0 text-center">
                                 <p class="text-sm font-semibold text-gray-900">{{ $event['start']->format('H:i') }}</p>
@@ -176,8 +195,8 @@ $weekEventsGrid = $grouped->flatten(1)->map(fn($e) => [
                             </a>
                             @endif
 
-                            {{-- Acciones (solo si tiene meeting en BD) --}}
-                            @if($event['meeting_id'])
+                            {{-- Acciones (solo si tiene meeting en BD y no es pasado) --}}
+                            @if($event['meeting_id'] && !$isPast)
                             <div class="flex items-center gap-2 flex-shrink-0">
                                 <button @click="openEdit({{ $event['meeting_id'] }}, '{{ $event['start']->format('Y-m-d\TH:i') }}', '{{ addslashes($event['title']) }}')"
                                         class="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Editar">

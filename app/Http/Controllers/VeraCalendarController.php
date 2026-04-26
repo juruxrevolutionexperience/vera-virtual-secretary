@@ -34,13 +34,27 @@ class VeraCalendarController extends Controller
 
         $filter = $request->get('filter', 'week');
 
+        $cursor = $request->get('date') ? Carbon::parse($request->get('date')) : now();
+
         $from = $filter === 'month'
-            ? now()->startOfMonth()
-            : now()->startOfWeek(Carbon::MONDAY);
+            ? $cursor->copy()->startOfMonth()
+            : $cursor->copy()->startOfWeek(Carbon::MONDAY);
 
         $to = $filter === 'month'
-            ? now()->endOfMonth()
-            : now()->endOfWeek(Carbon::SUNDAY);
+            ? $cursor->copy()->endOfMonth()
+            : $cursor->copy()->endOfWeek(Carbon::SUNDAY);
+
+        $prevDate = $filter === 'month'
+            ? $from->copy()->subMonth()->startOfMonth()->toDateString()
+            : $from->copy()->subWeek()->toDateString();
+
+        $nextDate = $filter === 'month'
+            ? $from->copy()->addMonth()->startOfMonth()->toDateString()
+            : $from->copy()->addWeek()->toDateString();
+
+        $isCurrentPeriod = $filter === 'month'
+            ? now()->isSameMonth($cursor)
+            : now()->between($from, $to);
 
         try {
             $events = $this->calendar->getUpcomingEvents($user, $from, $to);
@@ -54,7 +68,7 @@ class VeraCalendarController extends Controller
 
         $todayCount = $this->calendar->getTodayEventCount($user);
 
-        return view('vera.calendar.index', compact('grouped', 'filter', 'from', 'to', 'todayCount', 'config'));
+        return view('vera.calendar.index', compact('grouped', 'filter', 'from', 'to', 'prevDate', 'nextDate', 'isCurrentPeriod', 'todayCount', 'config'));
     }
 
     // ─── Crear reunión manual ─────────────────────────────────────────────────
