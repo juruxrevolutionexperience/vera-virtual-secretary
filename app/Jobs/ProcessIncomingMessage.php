@@ -382,27 +382,8 @@ class ProcessIncomingMessage implements ShouldQueue
             }
         }
 
-        $days = [
-            'lunes'     => Carbon::MONDAY,
-            'martes'    => Carbon::TUESDAY,
-            'miércoles' => Carbon::WEDNESDAY,
-            'miercoles' => Carbon::WEDNESDAY,
-            'jueves'    => Carbon::THURSDAY,
-            'viernes'   => Carbon::FRIDAY,
-        ];
-
-        foreach ($days as $word => $dayOfWeek) {
-            if (str_contains($message, $word)) {
-                $date = now()->next($dayOfWeek);
-                // Si hoy ya es ese día, usar la próxima semana
-                if (now()->dayOfWeek === $dayOfWeek) {
-                    $date = now()->addWeek()->startOfDay();
-                }
-                return $date->toDateString();
-            }
-        }
-
-        // Fechas concretas: "28 de abril", "el 28 de abril", "28 de abril de 2026"
+        // Fechas concretas PRIMERO — tienen prioridad sobre días de la semana
+        // "viernes 8 de mayo" debe devolver el 8 de mayo, no el próximo viernes
         $months = [
             'enero' => 1, 'febrero' => 2, 'marzo' => 3, 'abril' => 4,
             'mayo' => 5, 'junio' => 6, 'julio' => 7, 'agosto' => 8,
@@ -426,6 +407,26 @@ class ProcessIncomingMessage implements ShouldQueue
             }
         }
 
+
+        // Días de la semana — solo si no se encontró fecha concreta arriba
+        $days = [
+            'lunes'     => Carbon::MONDAY,
+            'martes'    => Carbon::TUESDAY,
+            'miércoles' => Carbon::WEDNESDAY,
+            'miercoles' => Carbon::WEDNESDAY,
+            'jueves'    => Carbon::THURSDAY,
+            'viernes'   => Carbon::FRIDAY,
+        ];
+
+        foreach ($days as $word => $dayOfWeek) {
+            if (str_contains($message, $word)) {
+                $date = now()->next($dayOfWeek);
+                if (now()->dayOfWeek === $dayOfWeek) {
+                    $date = now()->addWeek()->startOfDay();
+                }
+                return $date->toDateString();
+            }
+        }
 
         // Fechas numéricas: "28/04", "28-04", "28/04/2026"
         if (preg_match('/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{4}))?/', $message, $m)) {
