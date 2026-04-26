@@ -10,8 +10,13 @@ def build_prompt(brain, message, history, user_id, mode="agenda", requested_time
     working_hours_missing = not brain.get("working_hours")
 
     # Buscar chunks relevantes del cerebro del cliente en ChromaDB
-    chunks = find_relevant(user_id, message)
-    rag_context = "\n".join([f"- {c['text']}" for c in chunks]) if chunks else ""  # formatea los chunks para el prompt o vacío si no hay resultados
+    chunks = find_relevant(user_id, message, history=history[-3:] if history else [])
+    _type_labels = {
+        "business_info": "NEGOCIO", "faq": "FAQ", "communication_style": "ESTILO",
+        "past_response": "EJEMPLO", "product_info": "PRODUCTO",
+    }
+    rag_lines = [f"[{_type_labels.get(c.get('type', ''), 'INFO')}] {c['text']}" for c in chunks]
+    rag_context = "\n".join(rag_lines) if rag_lines else ""
 
     # Formatear el historial — últimos 10 mensajes para no disparar el coste de tokens
     history_text = "\n".join([f"{m['role']}: {m['content']}" for m in history[-10:]])
