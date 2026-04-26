@@ -365,7 +365,9 @@ class ProcessIncomingMessage implements ShouldQueue
     {
         // Limpiar texto citado para no detectar fechas de emails anteriores
         $message = strtolower($this->stripQuotedEmailText($message));
-        Log::info('extractPreferredDate body', ['msg' => mb_substr($message, 0, 300)]);
+        // Normalizar saltos de línea y espacios múltiples — los emails parten líneas
+        // en medio de frases ("de la\nmañana") y rompen los str_contains
+        $message = preg_replace('/\s+/', ' ', $message);
 
         // Fechas relativas — antes que los días de la semana para evitar falsos positivos
         if (str_contains($message, 'pasado mañana') || str_contains($message, 'pasado manana')) {
@@ -479,7 +481,7 @@ class ProcessIncomingMessage implements ShouldQueue
      */
     private function extractRequestedTime(string $message): ?string
     {
-        $message = $this->stripQuotedEmailText($message);
+        $message = preg_replace('/\s+/', ' ', $this->stripQuotedEmailText($message));
 
         // "a las 12:00", "las 12:30" (con minutos)
         if (preg_match('/(?:a\s+)?las?\s+(\d{1,2}:\d{2})/i', $message, $m)) {
@@ -507,7 +509,7 @@ class ProcessIncomingMessage implements ShouldQueue
         $minute = isset($m[2]) ? (int) $m[2] : 0;
 
         // Detectar AM/PM desde el mensaje original
-        $msg  = strtolower($this->stripQuotedEmailText($this->message));
+        $msg  = strtolower(preg_replace('/\s+/', ' ', $this->stripQuotedEmailText($this->message)));
         $isPm = (bool) preg_match('/de la tarde|de la noche|por la tarde|por la noche|\bpm\b/i', $msg);
         $isAm = (bool) preg_match('/de la ma[ñn]ana|por la ma[ñn]ana|\bam\b/i', $msg);
 
