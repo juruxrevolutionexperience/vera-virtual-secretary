@@ -365,6 +365,7 @@ class ProcessIncomingMessage implements ShouldQueue
     {
         // Limpiar texto citado para no detectar fechas de emails anteriores
         $message = strtolower($this->stripQuotedEmailText($message));
+        Log::info('extractPreferredDate body', ['msg' => mb_substr($message, 0, 300)]);
 
         // Fechas relativas — antes que los días de la semana para evitar falsos positivos
         if (str_contains($message, 'pasado mañana') || str_contains($message, 'pasado manana')) {
