@@ -365,9 +365,9 @@ class ProcessIncomingMessage implements ShouldQueue
     {
         // Limpiar texto citado para no detectar fechas de emails anteriores
         $message = strtolower($this->stripQuotedEmailText($message));
-        // Normalizar saltos de línea y espacios múltiples — los emails parten líneas
-        // en medio de frases ("de la\nmañana") y rompen los str_contains
-        $message = preg_replace('/\s+/', ' ', $message);
+        // Normalizar saltos de línea — los emails parten líneas en medio de frases
+        // ("de la\nmañana") y rompen str_contains y los regex
+        $message = preg_replace('/\s+/', ' ', trim($message));
 
         // Fechas relativas — antes que los días de la semana para evitar falsos positivos
         if (str_contains($message, 'pasado mañana') || str_contains($message, 'pasado manana')) {
