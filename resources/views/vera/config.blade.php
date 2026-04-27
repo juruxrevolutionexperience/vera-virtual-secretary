@@ -16,14 +16,14 @@
 </head>
 <body class="antialiased bg-[#fafafa] text-gray-900">
 
-<div class="flex min-h-screen" x-data="veraConfig()" x-init="init()">
+<div class="flex min-h-screen overflow-x-hidden" x-data="veraConfig()" x-init="init()">
     @include('components.dashboard-sidebar')
 
-    <main class="flex-1 lg:ml-56 p-8">
+    <main class="flex-1 min-w-0 lg:ml-56 p-4 lg:p-8">
         <div class="max-w-3xl mx-auto">
 
         <!-- Header -->
-        <div class="flex items-center justify-between mb-8">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Configuración de Vera</h1>
                 <p class="text-sm text-gray-500 mt-0.5">Ajusta cómo Vera gestiona tu agenda</p>
@@ -45,7 +45,7 @@
                 <h2 class="text-base font-bold text-gray-900 mb-1">Identidad de Vera</h2>
                 <p class="text-sm text-gray-500 mb-5">Cómo se presenta Vera ante tus contactos.</p>
 
-                <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">Nombre del negocio</label>
                         <input type="text" name="business_name"
@@ -60,7 +60,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-3 gap-4 mb-4">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">Tono</label>
                         <select name="tone"

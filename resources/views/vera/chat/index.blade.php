@@ -76,10 +76,10 @@
     </style>
 </head>
 <body class="antialiased bg-[#fafafa] font-['Inter']">
-    <div class="flex h-screen">
+    <div class="flex h-screen overflow-x-hidden">
         @include('components.dashboard-sidebar')
 
-        <main class="flex-1 lg:ml-56 flex flex-col">
+        <main class="flex-1 min-w-0 lg:ml-56 flex flex-col overflow-x-hidden">
             <!-- Header Mejorado -->
             <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6">
                 <div class="flex items-center gap-3">

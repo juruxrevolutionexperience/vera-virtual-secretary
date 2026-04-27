@@ -17,10 +17,10 @@
 </head>
 <body class="antialiased bg-[#fafafa] text-gray-900">
 
-<div class="flex min-h-screen">
+<div class="flex min-h-screen overflow-x-hidden">
     @include('components.dashboard-sidebar')
 
-    <main class="flex-1 lg:ml-56 p-8 max-w-3xl">
+    <main class="flex-1 min-w-0 lg:ml-56 p-4 lg:p-8">
 
         {{-- Breadcrumb --}}
         <div class="flex items-center gap-2 text-sm text-gray-400 mb-6">

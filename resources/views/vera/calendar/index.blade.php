@@ -40,10 +40,10 @@ $weekEventsGrid = $grouped->flatten(1)->map(fn($e) => [
 </head>
 <body class="antialiased bg-[#fafafa] text-gray-900">
 
-<div class="flex min-h-screen" x-data="calendarPage()">
+<div class="flex min-h-screen overflow-x-hidden" x-data="calendarPage()">
     @include('components.dashboard-sidebar')
 
-    <main class="flex-1 lg:ml-56 p-8">
+    <main class="flex-1 min-w-0 lg:ml-56 p-4 lg:p-8">
 
         {{-- Flash messages --}}
         @if(session('success'))
@@ -58,14 +58,14 @@ $weekEventsGrid = $grouped->flatten(1)->map(fn($e) => [
         @endif
 
         {{-- Header --}}
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Calendar</h1>
                 <p class="text-sm text-gray-500 mt-0.5">
                     {{ $from->locale('es')->isoFormat('D MMM') }} — {{ $to->locale('es')->isoFormat('D MMM YYYY') }}
                 </p>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 flex-wrap">
 
                 {{-- Toggle lista / grid --}}
                 <div class="flex items-center rounded-lg border border-gray-200 overflow-hidden bg-white">
