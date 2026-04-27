@@ -20,10 +20,20 @@
     @include('components.dashboard-sidebar')
 
     <!-- Main content -->
-    <main class="flex-1 min-w-0 lg:ml-56 p-4 lg:p-8">
+    <main class="flex-1 min-w-0 lg:ml-56">
 
-        <!-- Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <!-- Header móvil sticky (solo < lg) -->
+        <header class="h-14 bg-white border-b border-gray-200 sticky top-0 z-40 flex items-center px-4 lg:hidden">
+            <button onclick="toggleSidebar()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100 mr-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <span class="text-sm font-semibold text-gray-900">Panel de Vera</span>
+        </header>
+
+        <div class="p-4 lg:p-8">
+
+        <!-- Header escritorio -->
+        <div class="hidden lg:flex items-center justify-between mb-6">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Panel de Vera</h1>
                 <p class="text-sm text-gray-500 mt-0.5">Tu secretaria de agenda inteligente</p>
@@ -281,6 +291,7 @@
             </div>
         </div>
 
+        </div>{{-- /p-4 lg:p-8 --}}
     </main>
 </div>
 
