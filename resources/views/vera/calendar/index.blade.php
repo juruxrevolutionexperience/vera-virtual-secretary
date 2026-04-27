@@ -43,7 +43,17 @@ $weekEventsGrid = $grouped->flatten(1)->map(fn($e) => [
 <div class="flex min-h-screen overflow-x-hidden" x-data="calendarPage()">
     @include('components.dashboard-sidebar')
 
-    <main class="flex-1 min-w-0 lg:ml-56 p-4 lg:p-8">
+    <main class="flex-1 min-w-0 lg:ml-56">
+
+        {{-- Header móvil sticky --}}
+        <header class="h-14 bg-white border-b border-gray-200 sticky top-0 z-40 flex items-center px-4 lg:hidden">
+            <button onclick="toggleSidebar()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100 mr-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <span class="text-sm font-semibold text-gray-900">Calendar</span>
+        </header>
+
+        <div class="p-4 lg:p-8">
 
         {{-- Flash messages --}}
         @if(session('success'))
@@ -284,6 +294,7 @@ $weekEventsGrid = $grouped->flatten(1)->map(fn($e) => [
             </div>
         </div>
 
+        </div>{{-- /p-4 lg:p-8 --}}
     </main>
 
     {{-- ═══ MODAL CREAR REUNIÓN ═══════════════════════════════════════════════ --}}
@@ -431,7 +442,7 @@ $weekEventsGrid = $grouped->flatten(1)->map(fn($e) => [
 function calendarPage() {
     return {
         // ── Vista activa ──────────────────────────────────────────────────────
-        viewMode: '{{ $filter === "week" ? "grid" : "list" }}',
+        viewMode: window.innerWidth < 1024 ? 'list' : '{{ $filter === "week" ? "grid" : "list" }}',
 
         // ── Datos del grid semanal ────────────────────────────────────────────
         weekDays:   @json($weekDaysGrid),
