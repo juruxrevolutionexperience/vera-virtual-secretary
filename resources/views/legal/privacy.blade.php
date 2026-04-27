@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>Política de Privacidad - JURUX</title>
     <meta name="description" content="Política de privacidad de JURUX y Vera, tu secretaria virtual">
     <link rel="preconnect" href="https://fonts.googleapis.com">

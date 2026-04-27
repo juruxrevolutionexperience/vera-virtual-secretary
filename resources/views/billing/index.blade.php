@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>Facturación - Virtual Employee</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,7 +56,7 @@
             <div class="absolute bottom-1/4 -right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-[128px] gradient-animate" style="animation-delay: -5s;"></div>
         </div>
 
-        <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-32">
+        <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-32">
             <div class="text-center mb-12">
                 <h1 class="text-5xl md:text-6xl font-bold mb-6">
                     <span class="gradient-text-violet">Gestiona tu</span>
@@ -89,7 +89,7 @@
             @endif
 
             <!-- Subscription Status -->
-            <div class="card-dark rounded-2xl p-8 mb-8">
+            <div class="card-dark rounded-2xl p-4 sm:p-8 mb-8">
                 <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
                     <svg class="w-8 h-8 text-violet-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
@@ -167,7 +167,7 @@
             <!-- Payment Methods (if subscribed) -->
             @auth
                 @if(auth()->user()->subscribed('default'))
-                    <div class="card-dark rounded-2xl p-8">
+                    <div class="card-dark rounded-2xl p-4 sm:p-8">
                         <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
                             <svg class="w-8 h-8 text-violet-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>

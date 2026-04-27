@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>JURUX - Vera, tu secretaria virtual que nunca descansa</title>
     <meta name="description" content="Vera es tu secretaria virtual impulsada por IA de JURUX. Gestiona emails, organiza reuniones, atiende llamadas y trabaja 24/7. El empleado perfecto que nunca descansa.">
     <meta name="keywords" content="secretaria virtual, asistente virtual IA, automatización emails, gestión calendario, virtual employee, asistente IA, productividad, vera">

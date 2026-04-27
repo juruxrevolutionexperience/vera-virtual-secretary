@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="py-12" x-data="passwordPolicyApp()">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-6 lg:py-12" x-data="passwordPolicyApp()">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 
             <!-- Header -->
             <div class="mb-6 flex items-center justify-between">
