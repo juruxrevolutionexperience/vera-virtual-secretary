@@ -251,7 +251,7 @@ $weekEventsGrid = $grouped->flatten(1)->map(fn($e) => [
 
             {{-- Cuerpo del grid: franja horaria 8h–20h --}}
             <div class="overflow-y-auto" style="max-height: 580px;">
-                <div class="flex">
+                <div class="flex pt-3">
 
                     {{-- Columna de horas --}}
                     <div class="flex-shrink-0 border-r border-gray-100" style="width: 56px;">
