@@ -1,4 +1,4 @@
-<aside id="sidebar" class="sidebar w-56 bg-white border-r border-gray-200 fixed h-full z-50 flex-col hidden lg:flex">
+<aside id="sidebar" class="sidebar w-56 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-50 flex-col hidden lg:flex">
     <!-- Logo -->
     <div class="h-14 flex items-center justify-between px-4 border-b border-gray-200">
         <a href="{{ route('dashboard') }}" class="flex items-center gap-2 group">
