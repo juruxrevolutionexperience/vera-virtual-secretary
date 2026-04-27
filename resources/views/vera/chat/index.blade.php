@@ -81,8 +81,11 @@
 
         <main class="flex-1 min-w-0 lg:ml-56 flex flex-col overflow-x-hidden">
             <!-- Header Mejorado -->
-            <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6">
+            <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4">
                 <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="lg:hidden text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
                     <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
                         <span class="text-white font-bold text-sm">V</span>
                     </div>
