@@ -16,11 +16,11 @@
 </head>
 <body class="antialiased bg-[#fafafa] text-gray-900">
 
-<div class="flex min-h-screen">
+<div class="flex min-h-screen overflow-x-hidden">
     @include('components.dashboard-sidebar')
 
     <!-- Main content -->
-    <main class="flex-1 lg:ml-56 p-4 lg:p-8">
+    <main class="flex-1 min-w-0 lg:ml-56 p-4 lg:p-8">
 
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
@@ -57,23 +57,23 @@
 
         <!-- Modo actual de Vera -->
         @if($config)
-        <div class="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-xl flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+        <div class="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-xl flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
                     <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                     </svg>
                 </div>
-                <div>
+                <div class="min-w-0">
                     <p class="text-sm font-medium text-purple-900">
-                        Vera está en modo <strong>{{ $config->mode === 'autonomous' ? 'Autónomo' : 'Supervisado' }}</strong>
+                        Vera: modo <strong>{{ $config->mode === 'autonomous' ? 'Autónomo' : 'Supervisado' }}</strong>
                     </p>
-                    <p class="text-xs text-purple-600">
-                        {{ $config->mode === 'autonomous' ? 'Agenda reuniones automáticamente sin tu aprobación' : 'Propone horarios y espera tu confirmación antes de confirmar' }}
+                    <p class="text-xs text-purple-600 truncate">
+                        {{ $config->mode === 'autonomous' ? 'Agenda automáticamente' : 'Propone y espera confirmación' }}
                     </p>
                 </div>
             </div>
-            <a href="{{ route('vera.config') }}" class="text-xs text-purple-700 font-medium hover:text-purple-900">Cambiar →</a>
+            <a href="{{ route('vera.config') }}" class="text-xs text-purple-700 font-medium hover:text-purple-900 flex-shrink-0">Cambiar →</a>
         </div>
         @endif
 
