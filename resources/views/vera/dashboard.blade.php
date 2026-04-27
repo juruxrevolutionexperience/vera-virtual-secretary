@@ -20,15 +20,15 @@
     @include('components.dashboard-sidebar')
 
     <!-- Main content -->
-    <main class="flex-1 lg:ml-56 p-8">
+    <main class="flex-1 lg:ml-56 p-4 lg:p-8">
 
         <!-- Header -->
-        <div class="flex items-center justify-between mb-8">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Panel de Vera</h1>
                 <p class="text-sm text-gray-500 mt-0.5">Tu secretaria de agenda inteligente</p>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 flex-wrap">
                 @if($config && $config->hasCalendarConnected())
                     <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 text-xs font-medium rounded-full border border-green-200">
                         <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
@@ -78,7 +78,7 @@
         @endif
 
         <!-- Stats Cards -->
-        <div class="grid grid-cols-5 gap-4 mb-8">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
             <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 text-center">
                 <p class="text-xs text-gray-500 mb-2">Hoy</p>
                 <p class="text-3xl font-bold text-gray-900">{{ $stats['today'] }}</p>
@@ -106,7 +106,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             <!-- Próximas reuniones -->
             <div class="bg-white rounded-xl border border-gray-200">
@@ -233,7 +233,7 @@
         <!-- Canales activos -->
         <div class="mt-6 bg-white rounded-xl border border-gray-200 p-5">
             <h2 class="text-sm font-semibold text-gray-900 mb-4">Canales de entrada</h2>
-            <div class="grid grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <!-- WhatsApp -->
                 <div class="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50">
                     <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
