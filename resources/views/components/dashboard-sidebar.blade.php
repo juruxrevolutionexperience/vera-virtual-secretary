@@ -1,4 +1,4 @@
-<aside id="sidebar" class="sidebar w-56 bg-white border-r border-gray-200 fixed top-0 left-0 h-screen z-50 flex-col hidden lg:flex" style="height: 100dvh">
+<aside id="sidebar" class="sidebar w-56 bg-white border-r border-gray-200 fixed top-0 bottom-0 left-0 z-50 flex-col hidden lg:flex">
     <!-- Logo -->
     <div class="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-gray-200">
         <a href="{{ route('dashboard') }}" class="flex items-center gap-2 group">
@@ -297,19 +297,11 @@ function toggleSidebar() {
         sidebar.classList.remove('flex');
         overlay.classList.add('hidden');
     } else {
-        sidebar.style.height = window.innerHeight + 'px';
         sidebar.classList.remove('hidden');
         sidebar.classList.add('flex');
         overlay.classList.remove('hidden');
     }
 }
-
-window.addEventListener('resize', function () {
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar && !sidebar.classList.contains('hidden')) {
-        sidebar.style.height = window.innerHeight + 'px';
-    }
-});
 </script>
 
 {{-- Dev Toolbar flotante (solo visible para usuarios is_dev) --}}
