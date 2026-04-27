@@ -20,10 +20,20 @@
 <div class="flex min-h-screen overflow-x-hidden">
     @include('components.dashboard-sidebar')
 
-    <main class="flex-1 min-w-0 lg:ml-56 p-4 lg:p-8">
+    <main class="flex-1 min-w-0 lg:ml-56">
+
+        {{-- Header móvil sticky --}}
+        <header class="h-14 bg-white border-b border-gray-200 sticky top-0 z-40 flex items-center px-4 lg:hidden">
+            <button onclick="toggleSidebar()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100 mr-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <span class="text-sm font-semibold text-gray-900">Conectar Telegram</span>
+        </header>
+
+        <div class="p-4 lg:p-8">
 
         {{-- Breadcrumb --}}
-        <div class="flex items-center gap-2 text-sm text-gray-400 mb-6">
+        <div class="hidden lg:flex items-center gap-2 text-sm text-gray-400 mb-6">
             <a href="{{ route('vera.dashboard') }}" class="hover:text-gray-600">Panel Vera</a>
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -321,7 +331,7 @@
                             </div>
                         </div>
 
-                        <div class="border-l-2 border-gray-100 ml-3.5 pl-7 space-y-4">
+                        <div class="border-l-2 border-gray-100 ml-2 pl-3 sm:ml-3.5 sm:pl-7 space-y-4">
 
                             {{-- Instrucción 2 --}}
                             <div class="flex gap-4">
@@ -372,7 +382,7 @@
                                     <p class="text-sm font-medium text-gray-900">Copia el <strong>token</strong> que te da BotFather</p>
                                     <p class="text-xs text-gray-500 mt-1">BotFather te enviará un mensaje con el token. Tiene este formato:</p>
                                     <div class="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-                                        <p class="text-xs code-block text-amber-800">7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p>
+                                        <p class="text-xs code-block text-amber-800 break-all">7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p>
                                     </div>
                                     <div class="mt-2 flex items-start gap-1.5 bg-blue-50 rounded-lg px-3 py-2">
                                         <svg class="w-3.5 h-3.5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -543,6 +553,7 @@
         </div>
         @endif
 
+        </div>{{-- /p-4 lg:p-8 --}}
     </main>
 </div>
 
