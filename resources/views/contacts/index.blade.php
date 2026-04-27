@@ -6,14 +6,14 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="contactsApp()">
     <!-- Header -->
     <div class="mb-8">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">Contactos</h1>
                 <p class="mt-2 text-sm text-gray-600">
                     Gestiona tus contactos y ve el historial de comunicación
                 </p>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-shrink-0">
                 <button @click="syncFromEmails()"
                         :disabled="syncing"
                         class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors gap-2">
