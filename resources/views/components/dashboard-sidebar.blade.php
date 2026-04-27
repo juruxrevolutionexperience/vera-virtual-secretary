@@ -17,7 +17,7 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="flex-1 min-h-0 overflow-y-auto px-3 py-4 text-sm">
+    <nav class="flex-1 min-h-0 overflow-y-auto px-3 py-4 pb-20 text-sm">
         <!-- Dashboard Section -->
         <a href="{{ route('dashboard') }}"
             class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('dashboard') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1">
@@ -145,7 +145,7 @@
     </nav>
 
     <!-- Footer - User Menu -->
-    <div class="flex-shrink-0 px-3 py-3 border-t border-gray-200 relative" x-data="{ userMenuOpen: false }">
+    <div class="absolute bottom-0 left-0 right-0 px-3 py-3 border-t border-gray-200 bg-white relative" x-data="{ userMenuOpen: false }">
         <!-- User Dropdown Menu (appears above button) -->
         <div x-show="userMenuOpen" x-transition:enter="transition ease-out duration-200"
             x-transition:enter-start="opacity-0 transform translate-y-2"
