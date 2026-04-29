@@ -197,6 +197,19 @@ class ProcessGmailEmails extends Command
             }
         }
 
+        // Notificaciones automáticas de Google Calendar — aceptaciones, rechazos, cancelaciones
+        // El email viene del asistente real (no de google.com) pero el asunto tiene un prefijo fijo
+        $calendarPrefixes = [
+            'Aceptado:', 'Rechazado:', 'Tentativo:', 'Cancelado:', 'Actualizado:',
+            'Accepted:', 'Declined:', 'Tentative:', 'Cancelled:', 'Updated:',
+        ];
+        $subject = $email['subject'] ?? '';
+        foreach ($calendarPrefixes as $prefix) {
+            if (str_starts_with($subject, $prefix)) {
+                return true;
+            }
+        }
+
         return false;
     }
 }
