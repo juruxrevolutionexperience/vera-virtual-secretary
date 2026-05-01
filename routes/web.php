@@ -9,10 +9,14 @@ use Laravel\Cashier\Http\Controllers\WebhookController;
 use App\Http\Controllers\VeraController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Auth\SocialAuthController;
+use App\Http\Controllers\InvitationController;
 
 // Google OAuth login
 Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])->name('auth.google');
 Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+
+// Invitaciones beta
+Route::get('/invite/{token}', [InvitationController::class, 'accept'])->name('invite.accept');
 
 // Beta cerrada: redirige la raíz a login. Descomentar Route::view cuando abramos al público.
 // Route::view('/', 'landing-new')->name('landing-new');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -34,11 +35,21 @@ class SocialAuthController extends Controller
             ->first();
 
         if ($user) {
+            // Usuario existente — actualiza datos de Google y permite login
             $user->update([
                 'google_id' => $googleUser->getId(),
                 'avatar'    => $googleUser->getAvatar(),
             ]);
         } else {
+            // Usuario nuevo — requiere invitación válida
+            $token = session('invitation_token');
+            $invitation = $token ? Invitation::findValid($token) : null;
+
+            if (!$invitation) {
+                return redirect()->route('login')
+                    ->withErrors(['email' => 'Necesitas una invitación para registrarte. Solicita acceso en jurux.app/beta.html']);
+            }
+
             $user = User::create([
                 'name'              => $googleUser->getName(),
                 'email'             => $googleUser->getEmail(),
@@ -47,6 +58,9 @@ class SocialAuthController extends Controller
                 'email_verified_at' => now(),
                 'password'          => bcrypt(Str::random(32)),
             ]);
+
+            $invitation->markUsed();
+            session()->forget(['invitation_token', 'invitation_email']);
         }
 
         Auth::login($user, true);
