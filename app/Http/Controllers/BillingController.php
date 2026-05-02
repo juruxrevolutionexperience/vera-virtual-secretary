@@ -10,15 +10,14 @@ class BillingController extends Controller
     {
         $user = $request->user();
 
-        // Map plan names to Stripe price IDs
         $plans = [
-            'basic' => env('STRIPE_PRICE_BASIC', 'price_basic'),
-            'pro' => env('STRIPE_PRICE_PRO', 'price_pro'),
-            'enterprise' => env('STRIPE_PRICE_ENTERPRISE', 'price_enterprise'),
+            'essentials'   => env('STRIPE_PRICE_ESSENTIALS'),
+            'professional' => env('STRIPE_PRICE_PROFESSIONAL'),
+            'business'     => env('STRIPE_PRICE_BUSINESS'),
         ];
 
-        $plan = $request->input('plan', 'pro');
-        $priceId = $plans[$plan] ?? $plans['pro'];
+        $plan = $request->input('plan', 'essentials');
+        $priceId = $plans[$plan] ?? $plans['essentials'];
 
         return $user->newSubscription('default', $priceId)->checkout([
             'success_url' => route('billing').'?success=1',
