@@ -6,7 +6,7 @@
     <title>Facturación - Virtual Employee</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    @vite(['resources/css/app.css', 'resources/js/app.jsx'])
+    @vite(['resources/css/app.css'])
 </head>
 <body class="antialiased overflow-x-hidden">
 
