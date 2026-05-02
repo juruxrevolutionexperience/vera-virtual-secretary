@@ -101,9 +101,9 @@
                             {val:'profesional', label:'Profesional', desc:'Cercano pero serio'},
                             {val:'cercano', label:'Cercano', desc:'Amigable y cálido'}
                         ]">
-                            <label class="cursor-pointer">
+                            <label class="cursor-pointer h-full">
                                 <input type="radio" name="tone" :value="tone.val" x-model="form.tone" class="sr-only">
-                                <div class="p-3 rounded-xl border-2 transition-all"
+                                <div class="p-3 rounded-xl border-2 transition-all h-full"
                                      :class="form.tone === tone.val ? 'border-purple-600 bg-purple-50' : 'border-gray-200 hover:border-gray-300'">
                                     <p class="text-sm font-semibold text-gray-900" x-text="tone.label"></p>
                                     <p class="text-xs text-gray-500 mt-0.5" x-text="tone.desc"></p>
