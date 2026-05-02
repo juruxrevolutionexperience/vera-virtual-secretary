@@ -95,18 +95,18 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Tono de Vera *</label>
-                    <div class="grid grid-cols-3 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <template x-for="tone in [
                             {val:'formal', label:'Formal', desc:'Profesional y distante'},
                             {val:'profesional', label:'Profesional', desc:'Cercano pero serio'},
                             {val:'cercano', label:'Cercano', desc:'Amigable y cálido'}
                         ]">
-                            <label class="cursor-pointer h-full">
+                            <label class="cursor-pointer">
                                 <input type="radio" name="tone" :value="tone.val" x-model="form.tone" class="sr-only">
-                                <div class="p-3 rounded-xl border-2 transition-all h-full"
+                                <div class="flex items-center gap-3 sm:block p-3 rounded-xl border-2 transition-all"
                                      :class="form.tone === tone.val ? 'border-purple-600 bg-purple-50' : 'border-gray-200 hover:border-gray-300'">
                                     <p class="text-sm font-semibold text-gray-900" x-text="tone.label"></p>
-                                    <p class="text-xs text-gray-500 mt-0.5" x-text="tone.desc"></p>
+                                    <p class="text-xs text-gray-500 sm:mt-0.5" x-text="tone.desc"></p>
                                 </div>
                             </label>
                         </template>
