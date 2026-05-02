@@ -56,7 +56,7 @@
                           x-text="label"></span>
                 </div>
                 <div x-show="idx < steps.length - 1"
-                     class="w-16 h-0.5 mb-5 mx-1"
+                     class="w-6 sm:w-16 h-0.5 mb-5 mx-1"
                      :class="currentStep > idx + 1 ? 'bg-purple-600' : 'bg-gray-200'"></div>
             </div>
         </template>
@@ -80,7 +80,7 @@
             </div>
             <div class="px-8 py-6 space-y-5">
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">Nombre del negocio *</label>
                         <input type="text" x-model="form.business_name" placeholder="Ej: Clínica Martínez"
@@ -113,7 +113,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">Idioma de Vera *</label>
                         <select x-model="form.language"
@@ -161,7 +161,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">Hora de inicio</label>
                         <input type="time" x-model="workingHoursStart"
@@ -174,7 +174,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">Duración de reunión</label>
                         <select x-model.number="form.meeting_duration"
