@@ -153,12 +153,23 @@
                             </div>
                             <p class="text-gray-400 text-lg mb-6">No tienes una suscripción activa</p>
                             <p class="text-gray-500 mb-8">Elige un plan para comenzar a usar Virtual Employee</p>
-                            <a href="{{ route('landing-new') }}#pricing" class="button-primary px-8 py-4 rounded-xl font-semibold text-white inline-block">
-                                Ver Planes Disponibles
-                                <svg class="inline-block w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                                </svg>
-                            </a>
+                            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                                <form method="POST" action="{{ route('billing.checkout') }}">
+                                    @csrf
+                                    <input type="hidden" name="plan" value="essentials">
+                                    <button type="submit" class="button-secondary px-6 py-3 rounded-xl font-semibold w-full">Essentials — 29€/mes</button>
+                                </form>
+                                <form method="POST" action="{{ route('billing.checkout') }}">
+                                    @csrf
+                                    <input type="hidden" name="plan" value="professional">
+                                    <button type="submit" class="button-primary px-6 py-3 rounded-xl font-semibold w-full">Professional — 59€/mes</button>
+                                </form>
+                                <form method="POST" action="{{ route('billing.checkout') }}">
+                                    @csrf
+                                    <input type="hidden" name="plan" value="business">
+                                    <button type="submit" class="button-secondary px-6 py-3 rounded-xl font-semibold w-full">Business — 149€/mes</button>
+                                </form>
+                            </div>
                         </div>
                     @endif
                 @endauth
