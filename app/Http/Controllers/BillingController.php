@@ -6,6 +6,23 @@ use Illuminate\Http\Request;
 
 class BillingController extends Controller
 {
+    public function index(Request $request)
+    {
+        $user = $request->user();
+
+        // Si ya tiene suscripción activa → al dashboard de Vera
+        if ($user->subscribed('default')) {
+            return redirect()->route('vera.dashboard');
+        }
+
+        return view('billing.plans');
+    }
+
+    public function manage(Request $request)
+    {
+        return view('billing.manage');
+    }
+
     public function checkout(Request $request)
     {
         $user = $request->user();
@@ -20,30 +37,27 @@ class BillingController extends Controller
         $priceId = $plans[$plan] ?? $plans['essentials'];
 
         return $user->newSubscription('default', $priceId)->checkout([
-            'success_url' => route('billing').'?success=1',
-            'cancel_url'  => route('billing').'?canceled=1',
+            'success_url' => route('vera.dashboard') . '?welcome=1',
+            'cancel_url'  => route('billing'),
         ]);
     }
 
     public function cancel(Request $request)
     {
-        $user = $request->user();
-        $user->subscription('default')->cancel();
+        $request->user()->subscription('default')->cancel();
 
-        return redirect()->route('billing')->with('status', 'Suscripción cancelada. Tendrás acceso hasta el final del período de facturación.');
+        return redirect()->route('billing.manage')->with('status', 'Suscripción cancelada. Tendrás acceso hasta el final del período.');
     }
 
     public function resume(Request $request)
     {
-        $user = $request->user();
-        $user->subscription('default')->resume();
+        $request->user()->subscription('default')->resume();
 
-        return redirect()->route('billing')->with('status', 'Suscripción reanudada exitosamente.');
+        return redirect()->route('billing.manage')->with('status', 'Suscripción reanudada.');
     }
 
     public function portal(Request $request)
     {
-        return $request->user()->redirectToBillingPortal(route('billing'));
+        return $request->user()->redirectToBillingPortal(route('billing.manage'));
     }
 }
-

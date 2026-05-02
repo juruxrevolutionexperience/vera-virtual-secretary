@@ -36,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'enterprise.access' => \App\Http\Middleware\EnsureHasOrganizationAccess::class,
             'tokens.check' => \App\Http\Middleware\CheckUserTokens::class,
             'dev'          => \App\Http\Middleware\EnsureDevMode::class,
+            'subscribed'   => \App\Http\Middleware\EnsureSubscribed::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

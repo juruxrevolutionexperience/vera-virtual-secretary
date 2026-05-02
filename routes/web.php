@@ -46,7 +46,7 @@ Route::get('/dashboard', function () {
     $upcomingMeetings = \App\Models\Meeting::forUser($user->id)
         ->upcoming()->confirmed()->limit(4)->get();
     return view('dashboard', compact('meetingsThisMonth', 'meetingsThisWeek', 'recentActivity', 'upcomingMeetings'));
-})->middleware(['auth', 'verified'])->name('dashboard');
+})->middleware(['auth', 'verified', 'subscribed'])->name('dashboard');
 
 // Rutas de Perfil (requiere autenticación)
 Route::middleware('auth')->group(function () {
@@ -55,13 +55,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// Rutas de Facturación/Billing (requiere autenticación)
+// Rutas de Facturación/Billing (auth sin 'subscribed' — necesario para poder pagar)
 Route::middleware(['auth'])->group(function () {
-    Route::view('/billing', 'billing.index')->name('billing');
+    Route::get('/billing', [BillingController::class, 'index'])->name('billing');
     Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
     Route::post('/billing/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');
     Route::post('/billing/resume', [BillingController::class, 'resume'])->name('billing.resume');
     Route::get('/billing/portal', [BillingController::class, 'portal'])->name('billing.portal');
+    Route::get('/billing/manage', [BillingController::class, 'manage'])->name('billing.manage');
 });
 
 // Webhook de Stripe (no requiere autenticación)
@@ -121,7 +122,7 @@ Route::middleware(['auth'])->prefix('google')->name('google.')->group(function (
 // RUTAS DE VERA (AI ASSISTANT)
 // ========================================
 
-Route::middleware(['auth'])->prefix('vera')->name('vera.')->group(function () {
+Route::middleware(['auth', 'subscribed'])->prefix('vera')->name('vera.')->group(function () {
     // Dashboard de Vera
     Route::get('/dashboard', [VeraController::class, 'dashboard'])->name('dashboard');
 
