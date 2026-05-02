@@ -104,10 +104,10 @@
                         <label class="cursor-pointer">
                             <input type="radio" name="tone_radio" value="{{ $tone['val'] }}"
                                    @click="form.tone = '{{ $tone['val'] }}'" class="sr-only">
-                            <div class="p-3 rounded-xl border-2 transition-all"
+                            <div class="p-2 sm:p-3 rounded-xl border-2 transition-all"
                                  :class="form.tone === '{{ $tone['val'] }}' ? 'border-purple-600 bg-purple-50' : 'border-gray-200 hover:border-gray-300'">
-                                <p class="text-sm font-semibold text-gray-900">{{ $tone['label'] }}</p>
-                                <p class="text-xs text-gray-500 mt-0.5">{{ $tone['desc'] }}</p>
+                                <p class="text-xs sm:text-sm font-semibold text-gray-900 leading-tight">{{ $tone['label'] }}</p>
+                                <p class="text-xs text-gray-500 mt-0.5 leading-tight">{{ $tone['desc'] }}</p>
                             </div>
                         </label>
                         @endforeach
