@@ -103,7 +103,15 @@
                             <div class="flex items-center justify-between pb-4 border-b border-white/10">
                                 <span class="text-gray-400">Plan actual:</span>
                                 <span class="text-white font-semibold text-lg">
-                                    {{ ucfirst(auth()->user()->subscription('default')->stripe_price ?? 'Pro') }}
+                                    @php
+                                        $priceMap = [
+                                            env('STRIPE_PRICE_ESSENTIALS')   => 'Vera Essentials',
+                                            env('STRIPE_PRICE_PROFESSIONAL') => 'Vera Professional',
+                                            env('STRIPE_PRICE_BUSINESS')     => 'Vera Business',
+                                        ];
+                                        $stripePrice = auth()->user()->subscription('default')->stripe_price;
+                                        echo $priceMap[$stripePrice] ?? 'Plan activo';
+                                    @endphp
                                 </span>
                             </div>
                             <div class="flex items-center justify-between pb-4 border-b border-white/10">
