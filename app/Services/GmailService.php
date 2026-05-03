@@ -152,6 +152,19 @@ class GmailService
     }
 
     /**
+     * Marca un email como no leído (añade la etiqueta UNREAD).
+     * Se usa cuando Vera decide no procesar un mensaje — el dueño lo verá en bandeja.
+     */
+    public function markAsUnread(VeraConfig $config, string $messageId): void
+    {
+        $gmail = $this->getGmailService($config);
+
+        $mods = new ModifyMessageRequest();
+        $mods->setAddLabelIds(['UNREAD']);
+        $gmail->users_messages->modify('me', $messageId, $mods);
+    }
+
+    /**
      * Responde a un email con el texto dado.
      * Construye el hilo de respuesta correcto (In-Reply-To + References).
      */

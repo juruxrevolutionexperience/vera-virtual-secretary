@@ -104,7 +104,14 @@ Ejemplo con agenda: "Ey, lo siento mucho, eso no debería haber pasado.
 {brain['owner_name']} se va a poner en contacto contigo personalmente.
 Aquí tienes los huecos disponibles:" """
     elif mode == "respuesta":
-        mode_instructions = f"""MODO RESPUESTA — el cliente tiene una pregunta informativa:
+        unknown_msg = brain.get('unknown_response') or 'Déjame consultarlo y te respondo en breve.'
+        if not rag_context:
+            mode_instructions = f"""MODO RESPUESTA — no tienes información del negocio disponible todavía.
+INSTRUCCIÓN ABSOLUTA: responde ÚNICAMENTE con este mensaje exacto, sin cambiar ni una sola palabra:
+"{unknown_msg}"
+No añadas nada antes ni después. No improvises. No expliques por qué no tienes info."""
+        else:
+            mode_instructions = f"""MODO RESPUESTA — el cliente tiene una pregunta informativa:
 - Responde la pregunta usando la información del negocio que tienes arriba
 - Si no tienes la respuesta, tu mensaje tiene EXACTAMENTE estas dos frases — ni una más:
   1. Una frase diciendo que no tienes ese dato y que lo confirmarás — sin explicar por qué ni mencionar limitaciones

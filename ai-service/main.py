@@ -95,6 +95,19 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
 
     # 2. Detectar modo de conversación
     mode = "escalation" if escalate else detect_mode(request.message, history)
+
+    # Cortocircuito — mensaje irrelevante: no gastar tokens del LLM principal
+    if mode == "irrelevante":
+        return ProcessResponse(
+            response=None,
+            mode="irrelevante",
+            escalate=False,
+            confidence=1.0,
+            suggested_slots=[],
+            tokens_used=0,
+            escalation_reason=None,
+        )
+
     # 3. Construir prompt con brain + RAG (ChromaDB) + historial
     try:
         system_prompt, user_prompt = build_prompt(brain, request.message, history, request.user_id, mode, request.requested_time, request.requested_slot_available, request.booking_confirmed, request.confirmed_slot_label)

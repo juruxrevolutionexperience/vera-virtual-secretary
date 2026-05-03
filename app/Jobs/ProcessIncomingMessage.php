@@ -126,6 +126,38 @@ class ProcessIncomingMessage implements ShouldQueue
         $escalate  = $aiResponse['escalate']  ?? false;
         $slots     = $aiResponse['suggested_slots'] ?? [];
 
+        // ── 5.1 Modo irrelevante — no responder, marcar no leído y salir ──────
+        if ($mode === 'irrelevante') {
+            Log::info('📭 Mensaje irrelevante — Vera no responde', [
+                'user_id' => $user->id,
+                'contact' => $this->contactIdentifier,
+                'channel' => $this->channel,
+            ]);
+
+            if ($this->channel === 'email' && $config->hasGmailConnected()) {
+                $gmailMessageId = $this->metadata['gmail_message_id'] ?? null;
+                if ($gmailMessageId) {
+                    try {
+                        (new GmailService())->markAsUnread($config, $gmailMessageId);
+                    } catch (\Exception $e) {
+                        Log::warning('No se pudo marcar email como no leído', ['error' => $e->getMessage()]);
+                    }
+                }
+            }
+
+            VeraActivityLog::record([
+                'user_id'              => $user->id,
+                'activity_type'        => 'message_skipped',
+                'title'                => 'Mensaje no procesado — ' . ($this->contactName ?? $this->contactIdentifier),
+                'description'          => 'Vera detectó que el mensaje no requería respuesta y lo dejó sin leer.',
+                'metadata'             => ['channel' => $this->channel, 'contact' => $this->contactIdentifier],
+                'counts_towards_limit' => false,
+                'status'               => 'skipped',
+            ]);
+
+            return;
+        }
+
         // ── 6. Actuar según el modo ───────────────────────────────────────────
 
         if ($escalate) {
