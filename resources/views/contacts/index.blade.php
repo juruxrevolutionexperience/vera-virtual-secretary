@@ -1,9 +1,30 @@
-@extends('layouts.app')
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Contactos — Vera</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    @vite(['resources/css/app.css'])
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="antialiased bg-[#fafafa] font-['Inter'] text-[#1f2937]">
 
-@section('title', 'Contactos')
+<div class="flex min-h-screen overflow-x-hidden">
+    @include('components.dashboard-sidebar')
 
-@section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="contactsApp()">
+    <main class="flex-1 min-w-0 lg:ml-56">
+
+        <!-- Header móvil -->
+        <header class="h-14 bg-white border-b border-gray-200 sticky top-0 z-40 flex items-center px-4 lg:hidden">
+            <button onclick="toggleSidebar()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100 mr-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <span class="text-sm font-semibold text-gray-900">Contactos</span>
+        </header>
+
+        <div class="max-w-7xl mx-auto px-4 lg:px-8 py-6" x-data="contactsApp()">
     <!-- Header -->
     <div class="mb-8">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -665,4 +686,10 @@ function showNotification(message, type = 'success') {
     }, 3000);
 }
 </script>
-@endsection
+
+@include('components.settings-modal')
+
+</main>
+</div>
+</body>
+</html>
