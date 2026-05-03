@@ -18,23 +18,21 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
-        .sidebar { transition: transform 0.2s ease; }
-        @media (max-width: 768px) { .sidebar.hidden { transform: translateX(-100%); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.3s ease-out; }
     </style>
 </head>
 
 <body class="antialiased bg-[#fafafa] font-['Inter'] text-[#1f2937]">
 
-<div class="flex min-h-screen">
+<div class="flex min-h-screen overflow-x-hidden">
     @include('components.dashboard-sidebar')
 
-    <main class="flex-1 lg:ml-56">
+    <main class="flex-1 min-w-0 lg:ml-56">
         <!-- Top Bar -->
         <header class="h-14 bg-white border-b border-gray-200 sticky top-0 z-40 flex items-center justify-between px-6 backdrop-blur-sm bg-white/80">
             <div class="flex items-center gap-3">
-                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100">
+                <button onclick="toggleSidebar()" class="lg:hidden text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                     </svg>
@@ -344,17 +342,6 @@
 
 @include('components.settings-modal')
 
-<script>
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('hidden');
-    }
-    document.addEventListener('click', function(event) {
-        const sidebar = document.getElementById('sidebar');
-        if (window.innerWidth < 768 && !sidebar.contains(event.target) && !event.target.closest('[onclick="toggleSidebar()"]')) {
-            sidebar.classList.add('hidden');
-        }
-    });
-</script>
 
 </body>
 </html>

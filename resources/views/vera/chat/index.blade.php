@@ -658,9 +658,6 @@
             }
         }
 
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('hidden');
-        }
     </script>
 </body>
 </html>
