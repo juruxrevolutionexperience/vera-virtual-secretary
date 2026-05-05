@@ -700,10 +700,7 @@ class ProcessIncomingMessage implements ShouldQueue
                 'status'        => 'completed',
             ]);
 
-            // Sin prefijo "Tengo disponibilidad en:" — el LLM ya introduce los huecos
-            // con su propia frase ("Aquí tienes los huecos disponibles:") que Laravel limpia.
-            // Devolver directamente la lista para evitar duplicar la introducción.
-            return ["{$slotList}\n\n¿Cuál te viene mejor?", $slots];
+            return ["{$slotList}\n\n{$this->slotClosingPhrase($config)}", $slots];
 
         } catch (\Exception $e) {
             Log::warning('No se pudo consultar disponibilidad en Calendar', ['error' => $e->getMessage()]);
@@ -713,7 +710,8 @@ class ProcessIncomingMessage implements ShouldQueue
 
     /**
      * Detecta si el mensaje del usuario confirma uno de los slots propuestos.
-     * Compara la hora del mensaje contra los slots guardados en el contexto de la reunión.
+     * Dos pasadas: primero busca hora exacta (11:00), luego día+número (lunes 18).
+     * Sin dos pasadas, "lunes 18 a las 11:00" matchea el primer slot del lunes en vez del de las 11h.
      */
     private function detectConfirmedSlot(MeetingRequest $request): ?array
     {
@@ -724,23 +722,25 @@ class ProcessIncomingMessage implements ShouldQueue
 
         $message = strtolower(strip_tags($this->message));
 
+        // Pasada 1 — hora exacta: el más específico, tiene prioridad
         foreach ($calendarSlots as $slot) {
-            $time  = Carbon::parse($slot['start'])->format('H:i');      // "12:30"
-            $label = strtolower($slot['label'] ?? '');
-
+            $time = Carbon::parse($slot['start'])->format('H:i');
             if (str_contains($message, $time)) {
-                return $slot;
-            }
-
-            // Comparar primeras palabras del label (día + número): "lunes 07"
-            $labelShort = implode(' ', array_slice(explode(' ', $label), 0, 2));
-            if (strlen($labelShort) > 3 && str_contains($message, $labelShort)) {
                 return $slot;
             }
         }
 
-        // Si solo hay un slot propuesto y el usuario confirma con positivo, asumimos que es ese
-        if (count($calendarSlots) === 1 && preg_match('/perfecto|confirm|vale|sí|si\b|ok\b|acepto|genial|bien|adelante|listo/i', $message)) {
+        // Pasada 2 — día + número como fallback (cuando el cliente no mencionó hora)
+        foreach ($calendarSlots as $slot) {
+            $label      = strtolower($slot['label'] ?? '');
+            $labelShort = implode(' ', \array_slice(explode(' ', $label), 0, 2));
+            if (\strlen($labelShort) > 3 && str_contains($message, $labelShort)) {
+                return $slot;
+            }
+        }
+
+        // Un solo slot propuesto + respuesta positiva → confirmar ese
+        if (\count($calendarSlots) === 1 && preg_match('/perfecto|confirm|vale|sí|si\b|ok\b|acepto|genial|bien|adelante|listo/i', $message)) {
             return $calendarSlots[0];
         }
 
@@ -783,9 +783,7 @@ class ProcessIncomingMessage implements ShouldQueue
                 'status'        => 'completed',
             ]);
 
-            $firma = $config->vera_signature ?? ($config->owner_name ? "Vera · Asistente de {$config->owner_name}" : 'Vera');
-
-            $confirmationText = "¡Perfecto! He agendado la reunión para el {$slot['label']}. Recibirás una invitación de Google Calendar. ¡Hasta entonces!\n\n-- {$firma}";
+            $confirmationText = $this->generateConfirmationText($config, $slot['label'] ?? $start->format('d/m/Y H:i'));
 
             // Guardar respuesta exitosa como past_response para que Vera aprenda el patrón
             try {
@@ -803,6 +801,41 @@ class ProcessIncomingMessage implements ShouldQueue
             Log::error('Error al agendar reunión confirmada', ['error' => $e->getMessage(), 'slot' => $slot]);
             return $config->unknown_response ?? 'Ha habido un problema al confirmar la reunión. Por favor, inténtalo de nuevo.';
         }
+    }
+
+    /**
+     * Genera el texto de confirmación de cita adaptado al tono configurado.
+     */
+    private function generateConfirmationText(VeraConfig $config, string $slotLabel): string
+    {
+        $tone  = strtolower($config->tone ?? '');
+        $firma = $config->vera_signature ?? ($config->owner_name ? "Vera · Asistente de {$config->owner_name}" : 'Vera');
+
+        if (str_contains($tone, 'profesional') || str_contains($tone, 'sofisticado') || str_contains($tone, 'serio') || str_contains($tone, 'institucional')) {
+            $text = "Estimado/a cliente, queda confirmada su cita para el {$slotLabel}.\nRecibirá la invitación de Google Calendar en breve.";
+        } elseif (str_contains($tone, 'cercano') || str_contains($tone, 'amigable') || str_contains($tone, 'informal') || str_contains($tone, 'natural') || str_contains($tone, 'coloquial')) {
+            $text = "¡Perfecto, quedamos el {$slotLabel}!\nTe llega la invitación de Google Calendar ahora mismo.";
+        } else {
+            $text = "Queda confirmada su cita para el {$slotLabel}.\nRecibirá la invitación de Google Calendar en breve.";
+        }
+
+        return "{$text}\n\n-- {$firma}";
+    }
+
+    /**
+     * Devuelve la frase de cierre de la lista de slots según el tono configurado.
+     */
+    private function slotClosingPhrase(VeraConfig $config): string
+    {
+        $tone = strtolower($config->tone ?? '');
+
+        if (str_contains($tone, 'profesional') || str_contains($tone, 'sofisticado') || str_contains($tone, 'serio') || str_contains($tone, 'institucional')) {
+            return '¿Cuál preferiría, estimado/a cliente?';
+        }
+        if (str_contains($tone, 'cercano') || str_contains($tone, 'amigable') || str_contains($tone, 'informal') || str_contains($tone, 'natural') || str_contains($tone, 'coloquial')) {
+            return '¿Cuál te va mejor?';
+        }
+        return '¿Cuál le viene mejor?';
     }
 
     private function handleEscalation(User $user, MeetingRequest $request, array $aiResponse): void

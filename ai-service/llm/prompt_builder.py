@@ -30,9 +30,25 @@ def build_prompt(brain, message, history, user_id, mode="agenda", requested_time
     tone_lower = brain['tone'].lower()
     # Ejemplo de tono adaptado al modo — en agenda el ejemplo muestra cómo ofrecer huecos, no cómo decir "no tengo info"
     if mode == "agenda":
-        tone_example_cercano = '✅ "¡Hola! Aquí tienes los huecos disponibles:"\n✅ "¡Claro! Mira, estos son los huecos libres:"\n✅ "¡Por supuesto! Te muestro cuándo hay hueco:"\n❌ NO: "¡Perfecto! Estaré encantada de ayudarte a gestionar tu cita. Aquí tienes los huecos disponibles:"'
-        tone_example_profesional = '✅ "Estimado/a cliente, aquí tiene los huecos disponibles:"\n✅ "Por supuesto, estimado/a cliente. A continuación las opciones disponibles:"\n✅ "Estimado/a cliente, le presento los huecos disponibles:"\n❌ NO: "Estimado/a cliente, con sumo placer procedemos a mostrarle los huecos disponibles:"'
-        tone_example_formal = '✅ "Buenos días, aquí tienes los huecos disponibles:"\n✅ "Claro que sí. Estos son los huecos disponibles:"\n✅ "Con mucho gusto. Le muestro las opciones disponibles:"\n❌ NO: "Buenos días, podemos proceder a buscar un hueco adecuado para su cita:"'
+        tone_example_cercano = (
+            '✅ "Mira, estos son los huecos que tengo libres:"\n'
+            '✅ "Las 21h están fuera de nuestro horario, pero tienes estos:"\n'
+            '✅ "Ese hueco ya está ocupado. ¿Qué tal alguno de estos?"\n'
+            '✅ "¡Claro! Te muestro cuándo hay sitio:"\n'
+            '❌ NO: "¡Perfecto! Estaré encantada de ayudarte a gestionar tu cita. Aquí tienes los huecos disponibles:"'
+        )
+        tone_example_profesional = (
+            '✅ "Estimado/a cliente, ese horario no se encuentra disponible. Le presento las opciones:"\n'
+            '✅ "Estimado/a cliente, las 21:00 quedan fuera de nuestro horario laboral. A continuación las opciones:"\n'
+            '✅ "Estimado/a cliente, permítame mostrarle los huecos disponibles:"\n'
+            '❌ NO: "Estimado/a cliente, con sumo placer procedemos a mostrarle los huecos disponibles:"'
+        )
+        tone_example_formal = (
+            '✅ "Ese horario no está disponible. Aquí tiene las opciones libres:"\n'
+            '✅ "Las 21:00 quedan fuera de nuestro horario laboral. Le muestro los huecos disponibles:"\n'
+            '✅ "Ese hueco está ocupado. Estas son las opciones disponibles:"\n'
+            '❌ NO: "Buenos días, podemos proceder a buscar un hueco adecuado para su cita:"'
+        )
     else:
         tone_example_cercano = '❌ Bot: "No tengo la información que necesitas. Te responderé lo antes posible."\n✅ Tú: "¡Hola! Ahora mismo no tengo ese dato, pero te confirmo pronto."'
         tone_example_profesional = f'❌ Incorrecto: "Buenas tardes, me alegra que esté interesado. Podemos discutir los detalles en una reunión."\n✅ Tú: "Estimado/a cliente, en este momento no dispongo de esa información, pero se lo confirmaré a la brevedad.\nSi lo desea, podemos concertar una reunión con {brain["owner_name"]} para tratar el asunto en detalle."'
