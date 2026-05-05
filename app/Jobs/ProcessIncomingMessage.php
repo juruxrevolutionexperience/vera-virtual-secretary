@@ -567,13 +567,18 @@ class ProcessIncomingMessage implements ShouldQueue
 
     /**
      * Comprueba en Google Calendar si el slot pedido por el usuario está libre.
-     * Devuelve true si está libre, false si está ocupado o no se puede determinar.
+     * Devuelve true si está libre Y dentro del horario laboral.
      */
     private function checkRequestedSlotAvailable(User $user, VeraConfig $config, string $requestedTime): bool
     {
         try {
             $slotStart = $this->resolveRequestedSlotStart($requestedTime);
             if (!$slotStart) {
+                return false;
+            }
+
+            if (!$this->isSlotWithinWorkingHours($slotStart, $config)) {
+                Log::info('Slot pedido fuera del horario laboral', ['slot' => $slotStart->toDateTimeString()]);
                 return false;
             }
 
@@ -586,6 +591,25 @@ class ProcessIncomingMessage implements ShouldQueue
             Log::warning('No se pudo verificar disponibilidad del slot solicitado', ['error' => $e->getMessage()]);
             return false;
         }
+    }
+
+    /**
+     * Devuelve true si el slot está dentro del horario laboral configurado para ese día.
+     */
+    private function isSlotWithinWorkingHours(Carbon $slotStart, VeraConfig $config): bool
+    {
+        $dayMap = [0 => 'sunday', 1 => 'monday', 2 => 'tuesday', 3 => 'wednesday', 4 => 'thursday', 5 => 'friday', 6 => 'saturday'];
+        $dayKey    = $dayMap[$slotStart->dayOfWeek];
+        $dayConfig = ($config->working_hours ?? [])[$dayKey] ?? null;
+
+        if (empty($dayConfig) || !($dayConfig['enabled'] ?? false)) {
+            return false;
+        }
+
+        $dayStart = $slotStart->copy()->setTimeFromTimeString(($dayConfig['start'] ?? '09:00') . ':00');
+        $dayEnd   = $slotStart->copy()->setTimeFromTimeString(($dayConfig['end']   ?? '18:00') . ':00');
+
+        return $slotStart->greaterThanOrEqualTo($dayStart) && $slotStart->lessThan($dayEnd);
     }
 
     /**

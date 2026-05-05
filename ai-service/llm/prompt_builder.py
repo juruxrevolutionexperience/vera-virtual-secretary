@@ -167,13 +167,14 @@ Escribe SOLO la confirmación, con tu tono, en una frase. Ejemplos:
             if requested_time:
                 # Normalizar formato — quitar "a las " si Laravel lo manda así
                 clean_time = requested_time.strip().lower().replace("a las ", "").replace("a las", "").strip()
-                requested_time_context = f'- El cliente pidió las {clean_time} pero ese hueco NO está disponible.'
+                requested_time_context = f'- El cliente pidió las {clean_time} pero ese hueco NO está disponible (puede estar ocupado o fuera del horario laboral).'
+            working_hours_ctx = f"\nHORARIO LABORAL: {working_hours}" if working_hours and requested_time_context else ""
             mode_instructions = f"""MODO AGENDA — el cliente quiere una cita.
 Actúa como una secretaria profesional que gestiona la agenda.
 
 Contexto disponible:
 {requested_time_context if requested_time_context else "- El cliente no especificó una hora concreta."}
-- Los huecos disponibles reales se añaden automáticamente después de tu mensaje.
+- Los huecos disponibles reales se añaden automáticamente después de tu mensaje.{working_hours_ctx}
 
 Instrucciones:
 - Si el hueco pedido no está libre, díselo con tu tono y termina con EXACTAMENTE esta frase sin cambiarla: "Aquí tienes los huecos disponibles:"
