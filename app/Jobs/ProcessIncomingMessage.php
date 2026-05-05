@@ -166,20 +166,26 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
-        // Si el LLM acaba de confirmar un slot concreto que estaba libre → reservarlo ahora
-        // y salir sin listar más huecos (evita el "confirmado + lista de disponibilidad" confuso).
+        // Si el slot pedido está libre → reservarlo y confirmar con fecha real (no confiar en el LLM para la fecha).
         if ($requestedSlotAvailable && $requestedTime) {
-            if ($config->hasCalendarConnected()) {
+            $confirmationResponse = null;
+            $slotStart = $this->resolveRequestedSlotStart($requestedTime);
+            Log::info('🗓 Slot resuelto para booking directo', [
+                'requested_time' => $requestedTime,
+                'slot_start'     => $slotStart?->toDateTimeString(),
+                'message_preview'=> substr($this->message, 0, 100),
+            ]);
+            if ($config->hasCalendarConnected() && $slotStart) {
                 $this->bookConfirmedRequestedSlot($user, $config, $meetingRequest, $requestedTime);
+                $label = $slotStart->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i');
+                $confirmationResponse = $this->generateConfirmationText($config, $label);
             }
             $this->updateMeetingRequestState($meetingRequest, $mode, $aiResponse);
-            $this->saveToHistory($meetingRequest, $response);
-            if ($response) {
-                $this->sendResponse($user, $response, $config);
-            }
-            Log::info('✅ Slot confirmado por LLM y reservado', [
-                'user_id'        => $user->id,
-                'requested_time' => $requestedTime,
+            $this->saveToHistory($meetingRequest, $confirmationResponse ?? $response);
+            $this->sendResponse($user, $confirmationResponse ?? $response, $config);
+            Log::info('✅ Slot directo reservado', [
+                'user_id'    => $user->id,
+                'slot_start' => $slotStart?->toDateTimeString(),
             ]);
             return;
         }
