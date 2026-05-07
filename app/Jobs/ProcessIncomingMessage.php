@@ -118,7 +118,7 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         // ── 4. Llamar a ai-service ────────────────────────────────────────────
-        $aiResponse = $this->callAiService($user, $config, $history, $requestedTime, $requestedSlotAvailable);
+        $aiResponse = $this->callAiService($user, $config, $history, $meetingRequest, $requestedTime, $requestedSlotAvailable);
 
         // ── 5. Interpretar respuesta ──────────────────────────────────────────
         $mode      = $aiResponse['mode']      ?? 'respuesta';
@@ -300,7 +300,7 @@ class ProcessIncomingMessage implements ShouldQueue
      * Llama al microservicio Python de IA (ai-service de Roque).
      * Mientras no esté disponible, devuelve respuesta placeholder.
      */
-    private function callAiService(User $user, VeraConfig $config, array $history, ?string $requestedTime = null, bool $requestedSlotAvailable = false): array
+    private function callAiService(User $user, VeraConfig $config, array $history, MeetingRequest $meetingRequest, ?string $requestedTime = null, bool $requestedSlotAvailable = false): array
     {
         $aiServiceUrl = config('services.ai_service.url');
 
@@ -317,6 +317,8 @@ class ProcessIncomingMessage implements ShouldQueue
                 'history'                  => $history,
                 'requested_time'           => $requestedTime,
                 'requested_slot_available' => $requestedSlotAvailable,
+                'meeting_state'            => $meetingRequest->state,
+                'shown_slots'              => array_column($meetingRequest->context['calendar_slots'] ?? [], 'label'),
                 'brain'                    => [
                     'business_name'       => $config->business_name,
                     'owner_name'          => $config->owner_name,

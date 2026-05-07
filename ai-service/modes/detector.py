@@ -1,3 +1,7 @@
+"""DEPRECATED — la detección de modo ahora se hace en una sola llamada con tool calling
+en llm.client.call_llm_with_tools(). Este módulo se mantiene por compatibilidad pero
+no se usa en el flujo principal. Eliminar cuando se confirme que nada externo lo invoca."""
+
 from llm.client import call_llm         # para detectar el modo en mensajes ambiguos donde las palabras clave no son suficientes
 
 

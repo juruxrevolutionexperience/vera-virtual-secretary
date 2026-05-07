@@ -5,9 +5,8 @@ from pydantic import BaseModel
 from typing import Optional
 from dotenv import load_dotenv
 from modes.escalation import should_escalate
-from modes.detector import detect_mode
 from llm.prompt_builder import build_prompt
-from llm.client import call_llm
+from llm.client import call_llm_with_tools
 from rag.embeddings import store_chunk, deactivate_chunk, delete_user_collection
 
 load_dotenv()
@@ -51,6 +50,8 @@ class ProcessRequest(BaseModel):
     requested_slot_available: bool = False      # True si ese hueco está libre en Google Calendar
     booking_confirmed: bool = False             # True cuando el cliente eligió un hueco y ya está reservado
     confirmed_slot_label: Optional[str] = None  # ej: "jueves 17 de abril a las 09:00"
+    meeting_state: Optional[str] = None         # estado actual: new | negotiating | confirmed | escalated
+    shown_slots: list[str] = []                 # etiquetas de los slots propuestos en el mensaje anterior
 
 class ProcessResponse(BaseModel):
     response: Optional[str]
@@ -89,14 +90,29 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
     history = [m.model_dump() for m in request.history]
 
 
-    # 1. Escalado — avisa a Carlos pero sigue generando respuesta para el cliente
+    # 1. Escalado — keyword check rápido, sin LLM
     triggers = brain["escalation_triggers"] or ["vergüenza", "inaceptable", "queja", "reclamación", "llevo esperando", "llevo semanas", "llevo días", "nadie me contacta", "nadie me ha contactado", "indignado", "indignante", "pésimo", "no me han llamado", "sigo sin respuesta"]
     escalate = should_escalate(request.message, triggers)
 
-    # 2. Detectar modo de conversación
-    mode = "escalation" if escalate else detect_mode(request.message, history)
+    # 2. Construir prompt unificado
+    try:
+        system_prompt, user_prompt = build_prompt(
+            brain, request.message, history, request.user_id,
+            mode="escalation" if escalate else "auto",
+            requested_time=request.requested_time,
+            requested_slot_available=request.requested_slot_available,
+            booking_confirmed=request.booking_confirmed,
+            confirmed_slot_label=request.confirmed_slot_label,
+            meeting_state=request.meeting_state,
+            shown_slots=request.shown_slots,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    # Cortocircuito — mensaje irrelevante: no gastar tokens del LLM principal
+    # 3. Una sola llamada LLM — devuelve modo + respuesta juntos
+    mode, response_text = call_llm_with_tools(user_prompt, system_prompt)
+
+    # Cortocircuito — mensaje irrelevante detectado por el LLM
     if mode == "irrelevante":
         return ProcessResponse(
             response=None,
@@ -108,19 +124,14 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
             escalation_reason=None,
         )
 
-    # 3. Construir prompt con brain + RAG (ChromaDB) + historial
-    try:
-        system_prompt, user_prompt = build_prompt(brain, request.message, history, request.user_id, mode, request.requested_time, request.requested_slot_available, request.booking_confirmed, request.confirmed_slot_label)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    # Respetar escalado por keyword aunque el LLM clasifique diferente
+    if escalate:
+        mode = "escalation"
 
-    # 4. LLM — Groq con fallback a Gemini
-    response_text = call_llm(user_prompt, system_prompt)
-
-    # Eliminar líneas en blanco entre frases — el LLM las mete aunque se le diga que no
+    # Limpiar dobles saltos de línea
     response_text = re.sub(r'\n{2,}', '\n', response_text.strip())
 
-    # En escalation sin intención de agenda — eliminar "Aquí tienes los huecos disponibles:" si el LLM la cuela igual
+    # En escalation sin intención de agenda — limpiar huecos colados
     if mode == "escalation":
         agenda_keywords = ["cita", "reunión", "reunion", "quedar", "agendar", "reservar"]
         if not any(kw in request.message.lower() for kw in agenda_keywords):

@@ -2,8 +2,12 @@ from groq import Groq
 from google import genai
 import os
 import json
+import logging
+import re
 import time
 from dotenv import load_dotenv
+
+logger = logging.getLogger("vera.llm")
 
 load_dotenv()  # carga ai-service/.env
 
@@ -52,6 +56,116 @@ def _record_failure():
 
 def _record_success():
     _write_circuit({"failures": 0, "opened_at": None})
+
+
+_TOOLS = [{
+    "type": "function",
+    "function": {
+        "name": "enviar_respuesta",
+        "description": "Envía la respuesta al cliente",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "modo": {
+                    "type": "string",
+                    "enum": ["respuesta", "agenda", "transicion", "escalation", "irrelevante"],
+                    "description": "respuesta=pregunta info, agenda=quiere cita, transicion=info+cita, escalation=queja/urgencia, irrelevante=notificación automática sin acción"
+                },
+                "texto": {
+                    "type": "string",
+                    "description": "Texto exacto de la respuesta para el cliente. Vacío solo si es irrelevante."
+                }
+            },
+            "required": ["modo", "texto"]
+        }
+    }
+}]
+
+
+_VALID_MODES = {"respuesta", "agenda", "transicion", "escalation", "irrelevante"}
+
+
+def _parse_groq_tool_call(response):
+    """Extrae (modo, texto) de la respuesta de Groq con tool calling. Lanza excepción si la estructura no es válida."""
+    choices = getattr(response, "choices", None)
+    if not choices:
+        raise ValueError("Groq devolvió respuesta sin 'choices'")
+
+    message = choices[0].message
+    tool_calls = getattr(message, "tool_calls", None)
+    if not tool_calls:
+        # LLaMA a veces devuelve content normal en vez de llamar a la tool — lo tratamos como fallo recuperable
+        raw_content = getattr(message, "content", "") or ""
+        raise ValueError(f"Groq no usó la tool. Content recibido: {raw_content[:200]}")
+
+    raw_args = tool_calls[0].function.arguments
+    try:
+        args = json.loads(raw_args)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Argumentos de tool no son JSON válido: {raw_args[:200]}") from e
+
+    modo = args.get("modo", "respuesta")
+    if modo not in _VALID_MODES:
+        logger.warning("Groq devolvió modo inválido '%s', cayendo a 'respuesta'", modo)
+        modo = "respuesta"
+
+    return modo, args.get("texto", "") or ""
+
+
+def _parse_gemini_json(text):
+    """Extrae el primer objeto JSON {modo, texto} del texto. Devuelve None si no encuentra uno válido."""
+    json_match = re.search(r'\{[^{}]*"modo"[^{}]*"texto"[^{}]*\}', text, re.DOTALL)
+    if not json_match:
+        json_match = re.search(r'\{.*\}', text, re.DOTALL)
+    if not json_match:
+        return None
+    try:
+        parsed = json.loads(json_match.group())
+        modo = parsed.get("modo", "respuesta")
+        if modo not in _VALID_MODES:
+            modo = "respuesta"
+        return modo, parsed.get("texto", "") or ""
+    except (json.JSONDecodeError, AttributeError):
+        return None
+
+
+def call_llm_with_tools(prompt, system, temperature=0.7):
+    """Una sola llamada LLM que devuelve (modo, texto). Elimina la llamada extra de detección de modo."""
+    if not _is_circuit_open():
+        try:
+            response = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                temperature=temperature,
+                tools=_TOOLS,
+                tool_choice={"type": "function", "function": {"name": "enviar_respuesta"}},
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            modo, texto = _parse_groq_tool_call(response)
+            _record_success()
+            return modo, texto
+        except Exception as e:
+            logger.warning("Groq tool calling falló, cayendo a Gemini: %s", e)
+            _record_failure()
+
+    # Gemini fallback — sin tool calling nativo, le pedimos JSON en el prompt
+    fb_prompt = (
+        system + "\n\n" + prompt +
+        '\n\nResponde EXCLUSIVAMENTE con un JSON válido en este formato exacto, sin texto antes ni después:\n'
+        '{"modo": "respuesta|agenda|transicion|escalation|irrelevante", "texto": "tu respuesta aquí"}'
+    )
+    try:
+        response = gemini_client.models.generate_content(model="gemini-2.5-flash-lite", contents=fb_prompt)
+        parsed = _parse_gemini_json(response.text or "")
+        if parsed:
+            return parsed
+        logger.warning("Gemini no devolvió JSON parseable. Texto crudo: %s", (response.text or "")[:200])
+        return "respuesta", response.text or ""
+    except Exception as e:
+        logger.error("Gemini fallback también falló: %s", e)
+        return "respuesta", "Déjame consultarlo y te respondo en breve."
 
 
 def call_llm(prompt, system, temperature=0.7, model="llama-3.3-70b-versatile"):   # llama a Groq con fallback a Gemini si falla — nunca deja a Vera sin respuesta
