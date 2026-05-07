@@ -1,0 +1,31 @@
+# Dependencias — nunca necesitan leerse
+vendor/
+node_modules/
+ai-service/venv/
+ai-service/__pycache__/
+ai-service/chroma_db/
+
+# Build y assets compilados
+public/build/
+public/hot
+storage/app/
+storage/logs/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+
+# Git
+.git/
+
+# Archivos sensibles y de entorno
+.env
+.env.*
+*.pem
+*.key
+
+# Locks y binarios
+composer.lock
+package-lock.json
+yarn.lock
+*.min.js
+*.min.css
