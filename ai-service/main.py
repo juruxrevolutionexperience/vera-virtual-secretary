@@ -39,6 +39,11 @@ class Brain(BaseModel):
     escalation_triggers: list[str] = []
     mode: str = "supervised"
     vera_signature: Optional[str] = None
+    # Personalidad rica (Fase A) — opcionales, null si no están configurados
+    personality_traits: Optional[dict] = None   # {expressions, signature_phrases, taboos, vibe}
+    years_at_business: Optional[int] = None
+    pov_about_business: Optional[str] = None
+    refers_to_owner_as: Optional[str] = None
 
 class ProcessRequest(BaseModel):
     user_id: str

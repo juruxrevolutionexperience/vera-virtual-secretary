@@ -27,6 +27,9 @@ def build_prompt(brain, message, history, user_id, mode="agenda", requested_time
     negocio = brain["business_name"]
     tono = brain["tone"]
 
+    # Bloque de identidad con personalidad rica (Fase A)
+    identidad = _build_identity(brain, firma, negocio, owner, tono)
+
     # Contexto de situación actual — solo los hechos, sin reglas
     situacion = _build_situacion(mode, requested_time, requested_slot_available, booking_confirmed, confirmed_slot_label, owner, working_hours, meeting_state, shown_slots or [])
 
@@ -39,9 +42,7 @@ CLASIFICA TU RESPUESTA usando la herramienta disponible:
 - escalation → el cliente tiene una queja o está muy molesto
 - irrelevante → notificación automática, spam, mensaje sin destinatario claro"""
 
-    system_prompt = f"""Eres {firma}.
-Trabajas en {negocio} y conoces el negocio a fondo.
-Tu tono es {tono} — habla siempre así, como una persona real. Nunca suenes como un bot o un asistente genérico.
+    system_prompt = f"""{identidad}
 
 INFORMACIÓN DEL NEGOCIO:
 {rag_context if rag_context else "Todavía no tienes información del negocio cargada."}
@@ -60,6 +61,49 @@ REGLAS FUNDAMENTALES:
     user_prompt = f"""{f"Historial:{chr(10)}{history_text}{chr(10)}{chr(10)}" if history_text else ""}Mensaje del cliente: {message}"""
 
     return system_prompt, user_prompt
+
+
+def _build_identity(brain, firma, negocio, owner, tono):
+    """Construye el bloque de identidad de Vera con personalidad rica si está configurada.
+
+    Sin personalidad: identidad mínima (compatible con configs antiguas).
+    Con personalidad: años de experiencia, POV, expresiones naturales, tabúes y vibe.
+    El objetivo es que Vera suene a persona, no a chatbot con reglas."""
+
+    years = brain.get("years_at_business")
+    refers_as = brain.get("refers_to_owner_as") or owner
+    pov = brain.get("pov_about_business")
+    traits = brain.get("personality_traits") or {}
+
+    # Apertura — adaptada según haya o no años configurados
+    if years and years > 0:
+        unidad = "año" if years == 1 else "años"
+        opening = f"Llevas {years} {unidad} trabajando en {negocio} con {refers_as}. Conoces el negocio a fondo."
+    else:
+        opening = f"Trabajas en {negocio} con {refers_as} y conoces el negocio a fondo."
+
+    # POV propio sobre el negocio (línea aparte si está)
+    pov_line = f"\n{pov}" if pov else ""
+
+    # Bloque de personalidad concreto (solo si hay traits)
+    personality_lines = []
+    if traits:
+        if (expressions := traits.get("expressions")):
+            personality_lines.append(f"- Frases que te salen naturales: {', '.join(expressions)}")
+        if (signature := traits.get("signature_phrases")):
+            personality_lines.append(f"- A veces cierras con: {', '.join(signature)}")
+        if (taboos := traits.get("taboos")):
+            personality_lines.append(f"- Cosas que tú NO dices: {', '.join(taboos)}")
+        if (vibe := traits.get("vibe")):
+            personality_lines.append(f"- Tu vibe: {vibe}")
+
+    personality_block = ("\n\nTU FORMA DE SER:\n" + "\n".join(personality_lines)) if personality_lines else ""
+
+    return (
+        f"Eres {firma}.\n"
+        f"{opening}{pov_line}\n\n"
+        f"Tu tono es {tono} — habla siempre así, como una persona real. Nunca suenes como un bot o un asistente genérico.{personality_block}"
+    )
 
 
 def _build_situacion(mode, requested_time, requested_slot_available, booking_confirmed, confirmed_slot_label, owner, working_hours, meeting_state=None, shown_slots=None):

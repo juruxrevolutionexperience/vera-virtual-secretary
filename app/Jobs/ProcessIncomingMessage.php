@@ -330,6 +330,11 @@ class ProcessIncomingMessage implements ShouldQueue
                     'escalation_triggers' => $config->escalation_triggers ?? [],
                     'mode'                => $config->mode,
                     'vera_signature'      => $config->vera_signature,
+                    // Personalidad rica (Fase A) — opcionales, null si no están configurados
+                    'personality_traits'  => $config->personality_traits,
+                    'years_at_business'   => $config->years_at_business,
+                    'pov_about_business'  => $config->pov_about_business,
+                    'refers_to_owner_as'  => $config->refers_to_owner_as,
                 ],
             ]);
 

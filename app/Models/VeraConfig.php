@@ -27,6 +27,12 @@ class VeraConfig extends Model
         'mode',
         'vera_signature',
 
+        // Personalidad rica (Fase A)
+        'personality_traits',
+        'years_at_business',
+        'pov_about_business',
+        'refers_to_owner_as',
+
         // Google Calendar (Sprint 3)
         'google_calendar_id',
         'google_access_token',
@@ -54,6 +60,8 @@ class VeraConfig extends Model
         'escalation_triggers' => 'array',
         'writing_style'       => 'array',
         'important_contacts'  => 'array',
+        'personality_traits'  => 'array',
+        'years_at_business'   => 'integer',
         'confidence_threshold'    => 'decimal:2',
         'onboarding_completed'    => 'boolean',
         'onboarding_completed_at' => 'datetime',
