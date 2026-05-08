@@ -39,9 +39,11 @@ class AppServiceProvider extends ServiceProvider
 
         // ── Scheduler de Vera ─────────────────────────────────────────────────
 
-        // Procesar emails entrantes de Gmail (cada minuto)
+        // Procesar emails entrantes de Gmail — cada 5 min para no saturar Gmail
+        // ni sobrecargar el server cuando haya muchos users
         Schedule::command('vera:process-emails')
-            ->everyMinute()
+            ->everyFiveMinutes()
+            ->name('vera-process-emails')
             ->withoutOverlapping()
             ->onFailure(function () {
                 \Log::error('❌ Error procesando emails de Vera');

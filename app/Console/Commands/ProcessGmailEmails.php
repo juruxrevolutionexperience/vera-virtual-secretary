@@ -50,8 +50,8 @@ class ProcessGmailEmails extends Command
         $configs = $query->get();
 
         if ($configs->isEmpty()) {
-            $this->warn('No hay usuarios con Gmail conectado y onboarding completado.');
-            return self::FAILURE;
+            $this->info('Sin usuarios con Gmail conectado — nada que procesar.');
+            return self::SUCCESS;
         }
 
         $this->info("Procesando {$configs->count()} usuario(s)...");

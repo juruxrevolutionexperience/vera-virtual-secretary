@@ -12,18 +12,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // ========================================
-        // VERA — EMAIL PROCESSING
-        // ========================================
-
-        // Procesar emails entrantes de Gmail cada 5 minutos
-        $schedule->command('vera:process-emails')
-            ->everyFiveMinutes()
-            ->name('vera-process-emails')
-            ->withoutOverlapping()
-            ->onFailure(function () {
-                \Log::error('❌ Error procesando emails de Vera');
-            });
+        // NOTA: el schedule activo en Laravel 11 está en AppServiceProvider::boot().
+        // Este Kernel.php se mantiene por compatibilidad pero su schedule() no se
+        // ejecuta en el bootstrap nuevo. No duplicar entradas aquí.
 
         // ========================================
         // SEGURIDAD
