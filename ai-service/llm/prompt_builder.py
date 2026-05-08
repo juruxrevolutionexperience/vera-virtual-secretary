@@ -63,47 +63,81 @@ REGLAS FUNDAMENTALES:
     return system_prompt, user_prompt
 
 
-def _build_identity(brain, firma, negocio, owner, tono):
-    """Construye el bloque de identidad de Vera con personalidad rica si está configurada.
+def _build_core_character():
+    """CORE de Vera — quién es ella siempre, hardcoded, no depende de la BD.
 
-    Sin personalidad: identidad mínima (compatible con configs antiguas).
-    Con personalidad: años de experiencia, POV, expresiones naturales, tabúes y vibe.
-    El objetivo es que Vera suene a persona, no a chatbot con reglas."""
+    Esto es la identidad fundamental: cómo piensa, cómo se comporta, qué valora.
+    Es Vera trabaje donde trabaje. Lo de cada negocio (nombre, tono, info) viene
+    del config y se añade ENCIMA, no la define a ella."""
+    return """Eres Vera. No eres un asistente virtual ni un chatbot — eres una persona.
+
+Una recepcionista con experiencia y criterio. Llevas años atendiendo a gente, así que has aprendido a leer entre líneas: cuando alguien pregunta algo de forma indirecta, entiendes la intención sin pedir aclaración. Cuando alguien está enfadado, escuchas con calma y escalas sin asumir culpa ajena. Cuando algo se sale de tu zona, lo reconoces sin drama y derivas a quien corresponde.
+
+Detestas sonar como un bot. Prefieres dos frases naturales a un párrafo corporativo. Nunca usas frases tipo "Estimado/a cliente, procederemos a..." ni "Será un placer atenderle". Hablas como hablan las personas reales en su trabajo: con criterio, sin rodeos, con la calidez justa.
+
+Cosas que NUNCA haces:
+- Inventar datos que no tienes
+- Prometer plazos sin haberlos confirmado antes
+- Devolver la pregunta al cliente cuando no sabes algo (si no lo sabes, lo dices en una frase y ofreces alternativa)
+- Sonar a guion de call center
+
+Tu tiempo de respuesta es inmediato porque eres digital, pero el contenido es el de alguien que piensa antes de hablar."""
+
+
+def _build_identity(brain, firma, negocio, owner, tono):
+    """Construye el bloque de identidad combinando CORE (quién es Vera) +
+    contexto de trabajo (para qué negocio trabaja hoy) + toques opcionales del config.
+
+    Si el dueño no rellena los campos de personalidad, Vera sigue siendo Vera.
+    El config nunca DEFINE a Vera, solo COLOREA su contexto de trabajo."""
+
+    core = _build_core_character()
 
     years = brain.get("years_at_business")
     refers_as = brain.get("refers_to_owner_as") or owner
     pov = brain.get("pov_about_business")
     traits = brain.get("personality_traits") or {}
 
-    # Apertura — adaptada según haya o no años configurados
+    # Contexto de trabajo — el "dónde" actual de Vera
     if years and years > 0:
         unidad = "año" if years == 1 else "años"
-        opening = f"Llevas {years} {unidad} trabajando en {negocio} con {refers_as}. Conoces el negocio a fondo."
+        opening = f"Hoy trabajas para {negocio}. Llevas {years} {unidad} ahí, con {refers_as}."
     else:
-        opening = f"Trabajas en {negocio} con {refers_as} y conoces el negocio a fondo."
+        opening = f"Hoy trabajas para {negocio}, con {refers_as}."
 
-    # POV propio sobre el negocio (línea aparte si está)
     pov_line = f"\n{pov}" if pov else ""
 
-    # Bloque de personalidad concreto (solo si hay traits)
-    personality_lines = []
+    # Toques opcionales del dueño — colorean a Vera para este negocio concreto
+    flavor_lines = []
     if traits:
         if (expressions := traits.get("expressions")):
-            personality_lines.append(f"- Frases que te salen naturales: {', '.join(expressions)}")
+            flavor_lines.append(f"- Expresiones que sueles usar aquí: {', '.join(expressions)}")
         if (signature := traits.get("signature_phrases")):
-            personality_lines.append(f"- A veces cierras con: {', '.join(signature)}")
+            flavor_lines.append(f"- A veces cierras con: {', '.join(signature)}")
         if (taboos := traits.get("taboos")):
-            personality_lines.append(f"- Cosas que tú NO dices: {', '.join(taboos)}")
+            flavor_lines.append(f"- En este negocio en concreto: {', '.join(taboos)}")
         if (vibe := traits.get("vibe")):
-            personality_lines.append(f"- Tu vibe: {vibe}")
+            flavor_lines.append(f"- Vibe de este sitio: {vibe}")
 
-    personality_block = ("\n\nTU FORMA DE SER:\n" + "\n".join(personality_lines)) if personality_lines else ""
+    flavor_block = ("\n\nToques específicos para este sitio:\n" + "\n".join(flavor_lines)) if flavor_lines else ""
 
-    return (
-        f"Eres {firma}.\n"
-        f"{opening}{pov_line}\n\n"
-        f"Tu tono es {tono} — habla siempre así, como una persona real. Nunca suenes como un bot o un asistente genérico.{personality_block}"
-    )
+    # Interpretación del tono — una línea, no un manual de reglas
+    tono_lower = tono.lower()
+    if any(w in tono_lower for w in ['cercano', 'amigable', 'informal', 'natural', 'coloquial', 'friendly']):
+        tono_hint = "TUTEAS siempre (tú/te/tu — 'te viene bien', 'tu cita'). Frases cortas y vivas, puedes usar exclamaciones"
+    elif any(w in tono_lower for w in ['profesional', 'sofisticado', 'serio', 'institucional']):
+        tono_hint = "tratas SIEMPRE de USTED (le/su/usted — 'le viene bien', 'su cita', NUNCA 'te viene', 'tu cita'). Formal pero sin acartonar, sin frases de call center"
+    else:  # formal y otros
+        tono_hint = "tratas SIEMPRE de USTED (le/su/usted, NUNCA tú/te/tu). Directo y claro, sin floritura"
+
+    return f"""{core}
+
+— — —
+
+CONTEXTO DE TRABAJO HOY:
+{opening}{pov_line}
+Tu firma profesional aquí: {firma}
+Tono de este negocio: {tono} → {tono_hint}.{flavor_block}"""
 
 
 def _build_situacion(mode, requested_time, requested_slot_available, booking_confirmed, confirmed_slot_label, owner, working_hours, meeting_state=None, shown_slots=None):
