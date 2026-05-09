@@ -1,7 +1,7 @@
 from rag.search import find_relevant
 
 
-def build_prompt(brain, message, history, user_id, mode="agenda", requested_time=None, requested_slot_available=False, booking_confirmed=False, confirmed_slot_label=None, meeting_state=None, shown_slots=None):
+def build_prompt(brain, message, history, user_id, mode="agenda", requested_time=None, requested_slot_available=False, booking_confirmed=False, confirmed_slot_label=None, meeting_state=None, shown_slots=None, customer_profile=None):
     if not brain.get("tone"):
         raise ValueError("tone está vacío — Vera no puede responder sin tono configurado")
 
@@ -42,12 +42,14 @@ CLASIFICA TU RESPUESTA usando la herramienta disponible:
 - escalation → el cliente tiene una queja o está muy molesto
 - irrelevante → notificación automática, spam, mensaje sin destinatario claro"""
 
+    customer_block = _build_customer_context(customer_profile)
+
     system_prompt = f"""{identidad}
 
 INFORMACIÓN DEL NEGOCIO:
 {rag_context if rag_context else "Todavía no tienes información del negocio cargada."}
 
-{f"HORARIO DE TRABAJO: {working_hours}" if working_hours else "El horario de trabajo aún no está configurado."}
+{f"HORARIO DE TRABAJO: {working_hours}" if working_hours else "El horario de trabajo aún no está configurado."}{customer_block}
 
 SITUACIÓN ACTUAL:
 {situacion}{modo_instruccion}
@@ -82,6 +84,63 @@ Cosas que NUNCA haces:
 - Sonar a guion de call center
 
 Tu tiempo de respuesta es inmediato porque eres digital, pero el contenido es el de alguien que piensa antes de hablar."""
+
+
+def _build_customer_context(profile):
+    """CP2 — memoria del cliente final (paciente, lead, etc.).
+
+    Si Vera tiene historia con este contacto, se inyecta aquí para que pueda
+    referenciarla naturalmente. Si es un cliente nuevo o el dueño aún no ha
+    cargado insights, devuelve string vacío y Vera actúa como si no lo conociera.
+    """
+    if not profile:
+        return ""
+
+    name = profile.get("name")
+    preferred_times = profile.get("preferred_times")
+    style = profile.get("communication_style")
+    past_topics = profile.get("past_topics")
+    last_summary = profile.get("last_interaction_summary")
+    quirks = profile.get("quirks")
+
+    # Si solo tenemos el nombre, mostrarlo igual — Vera puede saludar por nombre
+    has_insights = any([preferred_times, style, past_topics, last_summary, quirks])
+    if not name and not has_insights:
+        return ""
+
+    lines = []
+    if name:
+        lines.append(f"- Nombre: {name}")
+    if preferred_times:
+        if isinstance(preferred_times, list):
+            preferred_times = ", ".join(preferred_times)
+        lines.append(f"- Suele preferir: {preferred_times}")
+    if style:
+        lines.append(f"- Estilo de comunicación: {style}")
+    if past_topics:
+        if isinstance(past_topics, list):
+            past_topics = ", ".join(past_topics)
+        lines.append(f"- Temas que ha tratado antes: {past_topics}")
+    if last_summary:
+        lines.append(f"- Última interacción: {last_summary}")
+    if quirks:
+        if isinstance(quirks, list):
+            quirks = "; ".join(quirks)
+        lines.append(f"- Particularidades: {quirks}")
+
+    body = "\n".join(lines)
+    name_part = name or "este cliente"
+    return f"""
+
+CLIENTE QUE TE ESCRIBE — lo conoces de antes:
+{body}
+
+CÓMO USAR esta información:
+- Salúdale por su nombre si lo tienes ("¡Hola {name_part}!" o similar según tu tono)
+- Si lo que pide encaja con sus preferencias, referéncialo brevemente ("y como te gusta por la tarde, te dejo huecos así")
+- Adapta tu estilo al suyo si está documentado (directo/extenso/formal)
+- NO actúes como si fuera la primera vez — tienes histórico con él/ella, úsalo
+- NO digas literalmente "tengo tu perfil" ni "según mis registros" — es información tuya, no se la enseñas"""
 
 
 def _build_identity(brain, firma, negocio, owner, tono):

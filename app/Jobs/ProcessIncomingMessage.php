@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Contact;
 use App\Models\Meeting;
 use App\Models\MeetingRequest;
 use App\Models\User;
@@ -297,6 +298,47 @@ class ProcessIncomingMessage implements ShouldQueue
     }
 
     /**
+     * Carga el perfil del cliente final (paciente, lead, etc.) si existe en la tabla
+     * de contactos del dueño. Devuelve null si es un contacto nuevo o no hay insights.
+     *
+     * Lo que devuelve se inyecta en el system prompt para que Vera reconozca al
+     * cliente recurrente y adapte su respuesta. Esto es CP2 — memoria del cliente.
+     */
+    private function getCustomerProfile(User $user): ?array
+    {
+        // Solo email tiene email como contact_identifier directo. WhatsApp/Telegram
+        // usan teléfono y la tabla Contact aún no los indexa así — pendiente.
+        if ($this->channel !== 'email') {
+            return null;
+        }
+
+        $contact = Contact::where('user_id', $user->id)
+            ->where('email', $this->contactIdentifier)
+            ->first();
+
+        if (!$contact) {
+            return null;
+        }
+
+        $insights = $contact->metadata['vera_insights'] ?? null;
+
+        // Si no hay insights aún, igual devolvemos el nombre — Vera puede personalizar
+        // aunque no tenga historia previa todavía.
+        if (!$insights && !$contact->name) {
+            return null;
+        }
+
+        return [
+            'name'                       => $contact->name,
+            'preferred_times'            => $insights['preferred_times']            ?? null,
+            'communication_style'        => $insights['communication_style']        ?? null,
+            'past_topics'                => $insights['past_topics']                ?? null,
+            'last_interaction_summary'   => $insights['last_interaction_summary']   ?? null,
+            'quirks'                     => $insights['quirks']                     ?? null,
+        ];
+    }
+
+    /**
      * Llama al microservicio Python de IA (ai-service de Roque).
      * Mientras no esté disponible, devuelve respuesta placeholder.
      */
@@ -319,6 +361,7 @@ class ProcessIncomingMessage implements ShouldQueue
                 'requested_slot_available' => $requestedSlotAvailable,
                 'meeting_state'            => $meetingRequest->state,
                 'shown_slots'              => array_column($meetingRequest->context['calendar_slots'] ?? [], 'label'),
+                'customer_profile'         => $this->getCustomerProfile($user),
                 'brain'                    => [
                     'business_name'       => $config->business_name,
                     'owner_name'          => $config->owner_name,

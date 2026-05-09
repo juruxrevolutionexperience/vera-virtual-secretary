@@ -57,6 +57,7 @@ class ProcessRequest(BaseModel):
     confirmed_slot_label: Optional[str] = None  # ej: "jueves 17 de abril a las 09:00"
     meeting_state: Optional[str] = None         # estado actual: new | negotiating | confirmed | escalated
     shown_slots: list[str] = []                 # etiquetas de los slots propuestos en el mensaje anterior
+    customer_profile: Optional[dict] = None     # perfil del cliente final si existe en Contact (CP2 - memoria del cliente)
 
 class ProcessResponse(BaseModel):
     response: Optional[str]
@@ -110,6 +111,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
             confirmed_slot_label=request.confirmed_slot_label,
             meeting_state=request.meeting_state,
             shown_slots=request.shown_slots,
+            customer_profile=request.customer_profile,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
