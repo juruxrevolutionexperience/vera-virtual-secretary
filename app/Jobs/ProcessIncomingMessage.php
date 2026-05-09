@@ -735,6 +735,18 @@ class ProcessIncomingMessage implements ShouldQueue
 
         $message = strtolower(strip_tags($this->message));
 
+        // Normalizar referencias de hora sin minutos para que la pasada 1 las pille.
+        // "el de las 10 me viene bien" → enriquecemos con "10:00" buscable.
+        // El lookahead (?!\d|:\d) evita pisar "las 10:00" o "las 100".
+        if (preg_match_all('/(?:a\s+)?las?\s+(\d{1,2})(?!\d|:\d)/i', $message, $matches)) {
+            foreach ($matches[1] as $h) {
+                $hour = (int) $h;
+                if ($hour >= 0 && $hour <= 23) {
+                    $message .= ' ' . str_pad((string) $hour, 2, '0', STR_PAD_LEFT) . ':00';
+                }
+            }
+        }
+
         // Pasada 1 — hora exacta: el más específico, tiene prioridad
         foreach ($calendarSlots as $slot) {
             $time = Carbon::parse($slot['start'])->format('H:i');
@@ -818,21 +830,19 @@ class ProcessIncomingMessage implements ShouldQueue
 
     /**
      * Genera el texto de confirmación de cita adaptado al tono configurado.
+     * NO añade firma — GmailService::replyToEmail() ya la añade al final.
      */
     private function generateConfirmationText(VeraConfig $config, string $slotLabel): string
     {
-        $tone  = strtolower($config->tone ?? '');
-        $firma = $config->vera_signature ?? ($config->owner_name ? "Vera · Asistente de {$config->owner_name}" : 'Vera');
+        $tone = strtolower($config->tone ?? '');
 
         if (str_contains($tone, 'profesional') || str_contains($tone, 'sofisticado') || str_contains($tone, 'serio') || str_contains($tone, 'institucional')) {
-            $text = "Estimado/a cliente, queda confirmada su cita para el {$slotLabel}.\nRecibirá la invitación de Google Calendar en breve.";
-        } elseif (str_contains($tone, 'cercano') || str_contains($tone, 'amigable') || str_contains($tone, 'informal') || str_contains($tone, 'natural') || str_contains($tone, 'coloquial')) {
-            $text = "¡Perfecto, quedamos el {$slotLabel}!\nTe llega la invitación de Google Calendar ahora mismo.";
-        } else {
-            $text = "Queda confirmada su cita para el {$slotLabel}.\nRecibirá la invitación de Google Calendar en breve.";
+            return "Confirmado el {$slotLabel}.\nLe llega la invitación de Google Calendar enseguida.";
         }
-
-        return "{$text}\n\n-- {$firma}";
+        if (str_contains($tone, 'cercano') || str_contains($tone, 'amigable') || str_contains($tone, 'informal') || str_contains($tone, 'natural') || str_contains($tone, 'coloquial')) {
+            return "¡Perfecto, quedamos el {$slotLabel}!\nTe llega la invitación de Google Calendar ahora mismo.";
+        }
+        return "Confirmado el {$slotLabel}.\nRecibirá la invitación de Google Calendar en breve.";
     }
 
     /**
@@ -842,12 +852,10 @@ class ProcessIncomingMessage implements ShouldQueue
     {
         $tone = strtolower($config->tone ?? '');
 
-        if (str_contains($tone, 'profesional') || str_contains($tone, 'sofisticado') || str_contains($tone, 'serio') || str_contains($tone, 'institucional')) {
-            return '¿Cuál preferiría, estimado/a cliente?';
-        }
         if (str_contains($tone, 'cercano') || str_contains($tone, 'amigable') || str_contains($tone, 'informal') || str_contains($tone, 'natural') || str_contains($tone, 'coloquial')) {
             return '¿Cuál te va mejor?';
         }
+        // Profesional, formal y resto: trato de usted sin "estimado/a cliente"
         return '¿Cuál le viene mejor?';
     }
 

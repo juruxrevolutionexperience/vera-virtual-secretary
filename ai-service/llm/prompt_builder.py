@@ -144,8 +144,15 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
     if mode == "escalation":
         return (
             f"El cliente tiene una queja o está molesto.\n"
-            f"Tu tarea: muestra empatía genuina en una frase y confirma que {owner} le contactará personalmente.\n"
-            f"No ofrezcas soluciones, no hagas promesas, no inventes plazos."
+            f"Tu mensaje tiene EXACTAMENTE dos frases, nada más:\n"
+            f"  1. Una frase de empatía genuina reconociendo lo que pasó\n"
+            f"  2. Una frase confirmando que {owner} le contactará personalmente\n"
+            f"PROHIBIDO ABSOLUTO en escalation:\n"
+            f"- Pedir más detalles al cliente ('¿puede proporcionarme...?', '¿qué ocurrió exactamente?')\n"
+            f"- Hacer cualquier pregunta al cliente\n"
+            f"- Ofrecer soluciones tú misma ('voy a revisar', 'voy a mirar')\n"
+            f"- Hacer promesas o inventar plazos ('en breve', 'lo antes posible')\n"
+            f"- Cualquier frase de relleno antes o después de las dos frases obligatorias"
         )
 
     if booking_confirmed and confirmed_slot_label:
