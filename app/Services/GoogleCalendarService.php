@@ -105,6 +105,10 @@ class GoogleCalendarService
 
             $dayMap = [0 => 'sunday', 1 => 'monday', 2 => 'tuesday', 3 => 'wednesday', 4 => 'thursday', 5 => 'friday', 6 => 'saturday'];
 
+            // Si el cliente pidió un día concreto, mostrar varios huecos de ese día.
+            // Si no, distribuir entre días (2 por día) para que vea variedad real.
+            $maxSlotsPerDay = $preferredDate ? $maxSlots : 2;
+
             while ($current->lessThan($end) && count($slots) < $maxSlots) {
                 $dayKey    = $dayMap[$current->dayOfWeek];
                 $dayConfig = $workingHours[$dayKey] ?? null;
@@ -120,6 +124,8 @@ class GoogleCalendarService
                         $slotStart = now()->addMinutes(30)->roundMinutes(15);
                     }
 
+                    $slotsThisDay = 0;
+
                     while ($slotStart->copy()->addMinutes($duration)->lessThanOrEqualTo($dayEndTime)) {
                         $slotEnd = $slotStart->copy()->addMinutes($duration);
 
@@ -129,9 +135,13 @@ class GoogleCalendarService
                                 'end'   => $slotEnd->copy(),
                                 'label' => $slotStart->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i'),
                             ];
+                            $slotsThisDay++;
 
                             if (count($slots) >= $maxSlots) {
                                 break 2;
+                            }
+                            if ($slotsThisDay >= $maxSlotsPerDay) {
+                                break;  // pasar al siguiente día para dar variedad
                             }
                         }
 

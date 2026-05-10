@@ -618,6 +618,15 @@ class ProcessIncomingMessage implements ShouldQueue
             $slotStart->addDay();
         }
 
+        // Log de depuración para detectar bugs de día equivocado en producción
+        Log::info('🕒 resolveRequestedSlotStart', [
+            'requested_time'  => $requestedTime,
+            'preferred_date'  => $preferredDate,
+            'message_preview' => substr($this->message, 0, 200),
+            'slot_start'      => $slotStart->toDateTimeString(),
+            'slot_dayofweek'  => $slotStart->locale('es')->translatedFormat('l'),
+        ]);
+
         return $slotStart;
     }
 

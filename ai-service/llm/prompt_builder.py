@@ -202,16 +202,21 @@ Tono de este negocio: {tono} → {tono_hint}.{flavor_block}"""
 def _build_situacion(mode, requested_time, requested_slot_available, booking_confirmed, confirmed_slot_label, owner, working_hours, meeting_state=None, shown_slots=None):
     if mode == "escalation":
         return (
-            f"El cliente tiene una queja o está molesto.\n"
-            f"Tu mensaje tiene EXACTAMENTE dos frases, nada más:\n"
-            f"  1. Una frase de empatía genuina reconociendo lo que pasó\n"
-            f"  2. Una frase confirmando que {owner} le contactará personalmente\n"
-            f"PROHIBIDO ABSOLUTO en escalation:\n"
-            f"- Pedir más detalles al cliente ('¿puede proporcionarme...?', '¿qué ocurrió exactamente?')\n"
-            f"- Hacer cualquier pregunta al cliente\n"
-            f"- Ofrecer soluciones tú misma ('voy a revisar', 'voy a mirar')\n"
-            f"- Hacer promesas o inventar plazos ('en breve', 'lo antes posible')\n"
-            f"- Cualquier frase de relleno antes o después de las dos frases obligatorias"
+            f"El cliente tiene una queja. Tu mensaje son EXACTAMENTE 2 frases. Punto.\n"
+            f"Frase 1 → empatía con lo que pasó (sin asumir culpa).\n"
+            f"Frase 2 → afirmación de que {owner} le contactará personalmente. Afirmación, no pregunta.\n"
+            f"\n"
+            f"Después de la frase 2, paras. No añades nada. No tres frases. No despedidas extra.\n"
+            f"\n"
+            f"EJEMPLO CORRECTO:\n"
+            f"\"Lamento mucho lo ocurrido y entiendo su frustración. {owner} se pondrá en contacto con usted personalmente para resolverlo.\"\n"
+            f"\n"
+            f"EJEMPLOS INCORRECTOS — no escribas nada parecido a esto:\n"
+            f"❌ \"¿Puedo ofrecerle una cita con un representante?\" (es una pregunta + propones tú la solución)\n"
+            f"❌ \"Me aseguraré de que su caso sea revisado lo antes posible\" (promesa que no puedes garantizar)\n"
+            f"❌ \"Voy a revisar lo que ha pasado\" (no es tu rol, no actúes — escala)\n"
+            f"❌ \"¿Puede darme más detalles?\" (no pidas información, escala con lo que ya tienes)\n"
+            f"❌ \"Lamentamos las molestias ocasionadas\" (cliché de call center)"
         )
 
     if booking_confirmed and confirmed_slot_label:
