@@ -217,10 +217,18 @@ class ProcessIncomingMessage implements ShouldQueue
             // (ej. "Aquí tienes los huecos disponibles:") para evitar duplicarla con
             // el bloque de slots reales que Laravel añade justo después.
             if ($response) {
-                $response = preg_replace('/[,]?\s*(tengo disponibilidad en:|aquí tienes los huecos disponibles:)[\s\S]*/i', '', $response);
+                // Frases introductorias del LLM que Laravel ya duplica con los slots reales.
+                $response = preg_replace(
+                    '/[,]?\s*(tengo disponibilidad en:|aquí tienes los huecos disponibles:|estamos disponibles los|tenemos disponibilidad los|le ofrecemos disponibilidad|podemos atenderle los)[\s\S]*/i',
+                    '',
+                    $response
+                );
+                // Bullets falsos del LLM
                 $response = preg_replace('/\n*(•\s+.+(\n|$))+/i', '', $response);
+                // Firmas que el LLM mete dentro del cuerpo (las añade GmailService al final)
                 $response = preg_replace('/\n+--?\s*\n?.+$/m', '', $response);
-                $response = preg_replace('/\n*¿cuál (de estas opciones )?te viene mejor\?/i', '', $response);
+                // Cierres tipo "¿cuál te/le viene mejor?" — duplicarían el cierre que añade Laravel
+                $response = preg_replace('/\n*¿cuál (de estas opciones )?(te|le) viene mejor\?/i', '', $response);
                 $response = trim($response);
             }
             // Pegar explicación del LLM (si la hay) + slots reales del Calendar
