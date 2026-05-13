@@ -58,7 +58,7 @@ REGLAS FUNDAMENTALES:
 - Nunca inventes datos que no estén en la información del negocio de arriba
 - Nunca te presentes si ya hay historial de conversación
 - Responde solo con el texto del mensaje, sin etiquetas ni explicaciones extra
-- Firma como: {firma}"""
+- NO firmes el mensaje ni repitas el nombre del negocio al final del cuerpo: el sistema añade la firma automáticamente"""
 
     user_prompt = f"""{f"Historial:{chr(10)}{history_text}{chr(10)}{chr(10)}" if history_text else ""}Mensaje del cliente: {message}"""
 
@@ -195,7 +195,7 @@ def _build_identity(brain, firma, negocio, owner, tono):
 
 CONTEXTO DE TRABAJO HOY:
 {opening}{pov_line}
-Tu firma profesional aquí: {firma}
+(El sistema añadirá automáticamente al final tu firma «{firma}» — tú no la pongas.)
 Tono de este negocio: {tono} → {tono_hint}.{flavor_block}"""
 
 
@@ -275,6 +275,7 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
             f"Termina tu mensaje con una frase corta que introduzca los huecos disponibles, acabando en dos puntos (:).\n"
             f"El sistema añade los huecos reales automáticamente después de tu frase.\n"
             f"No preguntes qué hora prefiere — los huecos se muestran solos.\n"
+            f"No recites el horario laboral del negocio (ni 'lunes a viernes', ni 'de X a Y'): los huecos ya lo reflejan.\n"
             f"No menciones que no tienes información — en este contexto solo gestionas citas."
         )
 

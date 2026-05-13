@@ -202,7 +202,13 @@ class ProcessIncomingMessage implements ShouldQueue
             $preferredDate = $this->extractPreferredDate($this->message);
             // Máximo 5 slots: suficiente para el cliente sin abrumarlo.
             // Con día preferido buscamos 2 días; sin él, los próximos 5 días.
-            [$calendarText, $calendarSlots] = $this->buildAvailabilityResponse($user, $config, $preferredDate, $preferredDate ? 2 : 5, 5);
+            // Si el cliente dice "esta semana", limitamos hasta el domingo actual (incl.)
+            // para no colar slots de la semana siguiente.
+            $daysAhead = $preferredDate ? 2 : 5;
+            if (!$preferredDate && $this->messageMentionsThisWeek($this->message)) {
+                $daysAhead = max(1, now()->diffInDays(now()->endOfWeek(), false) + 1);
+            }
+            [$calendarText, $calendarSlots] = $this->buildAvailabilityResponse($user, $config, $preferredDate, $daysAhead, 5);
             // Limpiar respuesta del LLM: eliminar slots falsos, firma y frases de cierre
             // que el LLM añade aunque se le diga que no lo haga.
             // También eliminamos cualquier frase introductoria de huecos del LLM
@@ -451,6 +457,18 @@ class ProcessIncomingMessage implements ShouldQueue
      * Consulta Google Calendar y construye el mensaje con slots disponibles.
      * Devuelve [string $responseText, array $rawSlots] para poder guardar los slots en contexto.
      */
+    /**
+     * Detecta si el mensaje se refiere explícitamente a "esta semana" — usado
+     * para acotar la búsqueda de slots y no proponer fechas de la semana siguiente.
+     */
+    private function messageMentionsThisWeek(string $message): bool
+    {
+        $m = strtolower($this->stripQuotedEmailText($message));
+        return str_contains($m, 'esta semana')
+            || str_contains($m, 'esta misma semana')
+            || str_contains($m, 'para esta semana');
+    }
+
     /**
      * Extrae el día preferido del mensaje del usuario (lunes, martes, etc.)
      * Devuelve una fecha ISO o null si no se detecta nada.
