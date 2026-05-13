@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional
 from dotenv import load_dotenv
-from modes.escalation import should_escalate
+from modes.escalation import should_escalate, resolve_triggers
 from llm.prompt_builder import build_prompt
 from llm.client import call_llm_with_tools
 from rag.embeddings import store_chunk, deactivate_chunk, delete_user_collection
@@ -97,21 +97,10 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
 
 
     # 1. Escalado — keyword check rápido, sin LLM
-    triggers = brain["escalation_triggers"] or [
-        # Sustantivos/adjetivos típicos de queja
-        "vergüenza", "inaceptable", "queja", "reclamación", "reclamacion",
-        "indignado", "indignante", "indignada", "pésimo", "pesimo",
-        "harto", "harta", "hartos", "hartas",
-        # Tiempo esperando con contexto de queja (evita "llevo dos semanas siguiéndoos")
-        "re:llevo\\s+\\S+\\s+(d[ií]as?|semanas?|meses?|horas?)\\s+(esper|sin)",
-        "re:hace\\s+\\S+\\s+(d[ií]as?|semanas?|meses?|horas?)[^\\.]{0,40}(esper|sin\\s+respuesta|sin\\s+contestar|sin\\s+llamar)",
-        # Ausencia de respuesta del negocio
-        "re:nadie\\s+(me|nos)\\s+(contesta|contactan?|ha contactado|han contactado|llama|ha llamado|han llamado)",
-        "re:no\\s+(me|nos)\\s+(ha[n]?\\s+)?(contestad|contactad|llamad|respond)",
-        "sigo sin respuesta", "siguen sin contestar", "sigo sin noticias",
-        # Urgencia / petición explícita de hablar con humano
-        "re:exij[oa]", "exigir",
-    ]
+    # Combina los triggers CORE (universales, siempre activos) con los extras que
+    # configure el dueño en su VeraConfig. Una queja humana es universal — el dueño
+    # solo añade palabras específicas de su sector (p.ej. "infección" en clínicas).
+    triggers = resolve_triggers(brain.get("escalation_triggers"))
     escalate = should_escalate(request.message, triggers)
 
     # 2. Construir prompt unificado
