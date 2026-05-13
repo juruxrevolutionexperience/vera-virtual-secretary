@@ -312,8 +312,14 @@ class ProcessIncomingMessage implements ShouldQueue
             return null;
         }
 
+        // Gmail entrega el remitente como "Nombre <email@dominio>"; extraer solo el email
+        // para que el lookup matchee con lo guardado en BD.
+        $email = preg_match('/<(.+?)>/', $this->contactIdentifier, $m)
+            ? strtolower(trim($m[1]))
+            : strtolower(trim($this->contactIdentifier));
+
         $contact = Contact::where('user_id', $user->id)
-            ->where('email', $this->contactIdentifier)
+            ->where('email', $email)
             ->first();
 
         if (!$contact) {
