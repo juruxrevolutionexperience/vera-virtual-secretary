@@ -206,7 +206,9 @@ class ProcessIncomingMessage implements ShouldQueue
             // para no colar slots de la semana siguiente.
             $daysAhead = $preferredDate ? 2 : 5;
             if (!$preferredDate && $this->messageMentionsThisWeek($this->message)) {
-                $daysAhead = max(1, now()->diffInDays(now()->endOfWeek(), false) + 1);
+                // getAvailableSlots hace start + daysAhead, así que daysAhead = diffInDays
+                // exacto (sin +1) — con hoy miércoles llega justo hasta domingo.
+                $daysAhead = max(1, (int) now()->diffInDays(now()->endOfWeek(), false));
             }
             [$calendarText, $calendarSlots] = $this->buildAvailabilityResponse($user, $config, $preferredDate, $daysAhead, 5);
             // Limpiar respuesta del LLM: eliminar slots falsos, firma y frases de cierre
