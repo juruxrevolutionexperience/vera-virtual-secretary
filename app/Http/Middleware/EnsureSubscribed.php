@@ -11,7 +11,7 @@ class EnsureSubscribed
     {
         $user = $request->user();
 
-        if ($user && !$user->subscribed('default') && !$user->is_dev) {
+        if ($user && !$user->subscribed('default') && !$user->is_dev && $user->plan_type !== 'beta') {
             return redirect()->route('billing');
         }
 
