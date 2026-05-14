@@ -7,17 +7,18 @@ use Illuminate\Support\Str;
 
 class Invitation extends Model
 {
-    protected $fillable = ['email', 'token', 'used_at', 'expires_at'];
+    protected $fillable = ['email', 'plan_slug', 'token', 'used_at', 'expires_at'];
 
     protected $casts = [
         'used_at'    => 'datetime',
         'expires_at' => 'datetime',
     ];
 
-    public static function generate(string $email, int $daysValid = 30): self
+    public static function generate(string $email, int $daysValid = 30, ?string $planSlug = null): self
     {
         return self::create([
             'email'      => strtolower(trim($email)),
+            'plan_slug'  => $planSlug,
             'token'      => Str::random(48),
             'expires_at' => now()->addDays($daysValid),
         ]);

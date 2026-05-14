@@ -42,11 +42,17 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $user = User::create([
+        $userData = [
             'name'     => $request->name,
             'email'    => $request->email,
             'password' => Hash::make($request->password),
-        ]);
+        ];
+
+        if ($invitation->plan_slug) {
+            $userData['plan_type'] = $invitation->plan_slug;
+        }
+
+        $user = User::create($userData);
 
         $invitation->markUsed();
         session()->forget(['invitation_token', 'invitation_email']);

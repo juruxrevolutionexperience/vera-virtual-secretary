@@ -11,6 +11,15 @@ class PlanSeeder extends Seeder
     {
         $plans = [
             [
+                'slug'        => 'beta',
+                'name'        => 'Beta',
+                'email_limit' => 100,
+                'token_limit' => 200000,
+                'price_eur'   => 0,
+                'features'    => ['basic_analysis', 'sentiment', 'weekly_learning', 'suggested_replies'],
+                'is_active'   => true,
+            ],
+            [
                 'slug'        => 'free_trial',
                 'name'        => 'Free Trial',
                 'email_limit' => 30,
