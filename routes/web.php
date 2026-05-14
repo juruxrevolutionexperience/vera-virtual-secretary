@@ -338,3 +338,21 @@ Route::middleware(['auth'])->group(function () {
 // DESCARGA DE EXPORTACIÓN RGPD (sin auth, usa token)
 Route::get('/privacy/download/{token}', [\App\Http\Controllers\Security\GDPRController::class, 'downloadExport'])
     ->name('privacy.download');
+
+// ========================================
+// FEEDBACK (Beta — "Reportar a Vera")
+// ========================================
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/feedback', [\App\Http\Controllers\VeraFeedbackController::class, 'store'])
+        ->name('feedback.store');
+});
+
+Route::middleware(['auth', 'super.admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/feedbacks', [\App\Http\Controllers\Admin\VeraFeedbackController::class, 'index'])
+        ->name('feedbacks.index');
+    Route::get('/feedbacks/{feedback}', [\App\Http\Controllers\Admin\VeraFeedbackController::class, 'show'])
+        ->name('feedbacks.show');
+    Route::patch('/feedbacks/{feedback}', [\App\Http\Controllers\Admin\VeraFeedbackController::class, 'update'])
+        ->name('feedbacks.update');
+});

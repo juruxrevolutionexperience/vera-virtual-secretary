@@ -37,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tokens.check' => \App\Http\Middleware\CheckUserTokens::class,
             'dev'          => \App\Http\Middleware\EnsureDevMode::class,
             'subscribed'   => \App\Http\Middleware\EnsureSubscribed::class,
+            'super.admin'  => \App\Http\Middleware\EnsureSuperAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

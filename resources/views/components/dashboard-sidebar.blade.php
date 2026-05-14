@@ -306,3 +306,6 @@ function toggleSidebar() {
 
 {{-- Dev Toolbar flotante (solo visible para usuarios is_dev) --}}
 @include('components.dev-toolbar')
+
+{{-- Widget "Reportar a Vera" (botón flotante visible para todos los users auth) --}}
+@include('components.feedback-widget')
