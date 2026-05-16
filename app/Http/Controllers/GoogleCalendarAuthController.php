@@ -24,14 +24,17 @@ class GoogleCalendarAuthController extends Controller
 {
     /**
      * Scopes combinados: Calendar + Gmail + identificación.
+     * Todos SENSITIVE (sin scopes RESTRICTED) → evitamos CASA assessment en verification.
      * - calendar / calendar.events: leer disponibilidad, crear/editar eventos
      * - gmail.readonly: leer emails entrantes para detectar peticiones de reunión
+     * - gmail.send: enviar respuestas en el hilo del email original
      * - userinfo.email: identificar al usuario tras el OAuth
      */
     private const SCOPES = [
         'https://www.googleapis.com/auth/calendar',
         'https://www.googleapis.com/auth/calendar.events',
-        'https://www.googleapis.com/auth/gmail.modify',
+        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/gmail.send',
         'https://www.googleapis.com/auth/userinfo.email',
     ];
 

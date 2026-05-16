@@ -12,10 +12,10 @@ use Illuminate\Console\Command;
 /**
  * vera:process-emails
  *
- * Comando de prueba para disparar el flujo completo email → Vera:
- *   1. Lee emails no leídos del Gmail del usuario
- *   2. Para cada email, lanza el Job ProcessIncomingMessage (canal: email)
- *   3. Marca el email como leído
+ * Lee emails no leídos del Gmail del usuario y los procesa con Vera.
+ * Para no depender del scope gmail.modify (restricted, requiere CASA),
+ * llevamos un registro local en gmail_processed_messages — los emails procesados
+ * quedan como NO leídos en Gmail; el filtrado se hace contra la tabla local.
  *
  * Uso:
  *   ./vendor/bin/sail artisan vera:process-emails          (todos los usuarios con Gmail)
@@ -87,12 +87,8 @@ class ProcessGmailEmails extends Command
 
                 // ── Filtro spam / newsletters ──────────────────────────────────
                 if ($this->isSpam($email)) {
-                    $this->warn("  [SPAM] Ignorado — marcando como leído.");
-                    try {
-                        $gmail->markAsRead($config, $email['id']);
-                    } catch (\Exception $e) {
-                        $this->warn("  ⚠️  No se pudo marcar como leído: {$e->getMessage()}");
-                    }
+                    $this->warn("  [SPAM] Ignorado — marcando como procesado en tabla local.");
+                    $gmail->markProcessed($config, $email['id']);
                     VeraActivityLog::record([
                         'user_id'       => $user->id,
                         'activity_type' => 'message_received',
@@ -131,13 +127,9 @@ class ProcessGmailEmails extends Command
                     ],
                 );
 
-                // Marcar como leído
-                try {
-                    $gmail->markAsRead($config, $email['id']);
-                    $this->info("  ✅ Procesado y marcado como leído.");
-                } catch (\Exception $e) {
-                    $this->warn("  ⚠️  No se pudo marcar como leído: {$e->getMessage()}");
-                }
+                // Registrar como procesado en tabla local (sin tocar Gmail)
+                $gmail->markProcessed($config, $email['id']);
+                $this->info("  ✅ Procesado y registrado como completado.");
             }
 
             $this->newLine();

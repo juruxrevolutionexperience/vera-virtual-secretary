@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\GmailProcessedMessage;
 use App\Models\VeraConfig;
 use App\Traits\GoogleOAuthTrait;
 use Google\Client as GoogleClient;
 use Google\Service\Gmail;
-use Google\Service\Gmail\ModifyMessageRequest;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -53,28 +53,53 @@ class GmailService
     {
         $gmail = $this->getGmailService($config);
 
+        // Query Gmail con margen amplio: la dedupe real la hacemos contra nuestra tabla local
+        // gmail_processed_messages, evitando depender del scope restricted gmail.modify
+        // para marcar emails como leídos.
         $messages = $gmail->users_messages->listUsersMessages('me', [
             'q'          => 'is:unread in:inbox',
-            'maxResults' => $maxResults,
+            'maxResults' => max($maxResults * 3, 30),
         ]);
 
         if (empty($messages->getMessages())) {
             return [];
         }
 
+        $candidateIds = array_map(fn ($m) => $m->getId(), $messages->getMessages());
+
+        $alreadyProcessed = GmailProcessedMessage::where('user_id', $config->user_id)
+            ->whereIn('gmail_message_id', $candidateIds)
+            ->pluck('gmail_message_id')
+            ->all();
+
+        $pendingIds = array_values(array_diff($candidateIds, $alreadyProcessed));
+        $pendingIds = array_slice($pendingIds, 0, $maxResults);
+
         $emails = [];
-        foreach ($messages->getMessages() as $msg) {
+        foreach ($pendingIds as $id) {
             try {
-                $emails[] = $this->parseMessage($gmail, $msg->getId());
+                $emails[] = $this->parseMessage($gmail, $id);
             } catch (\Exception $e) {
                 Log::warning('Gmail: error al parsear mensaje', [
-                    'message_id' => $msg->getId(),
+                    'message_id' => $id,
                     'error'      => $e->getMessage(),
                 ]);
             }
         }
 
         return $emails;
+    }
+
+    /**
+     * Marca un email como procesado en nuestra tabla local — reemplaza el antiguo
+     * markAsRead() que requería gmail.modify (scope restricted).
+     */
+    public function markProcessed(VeraConfig $config, string $messageId): void
+    {
+        GmailProcessedMessage::firstOrCreate(
+            ['user_id' => $config->user_id, 'gmail_message_id' => $messageId],
+            ['processed_at' => now()]
+        );
     }
 
     /**
@@ -138,31 +163,6 @@ class GmailService
     }
 
     // ─── Acciones ─────────────────────────────────────────────────────────────
-
-    /**
-     * Marca un email como leído (quita la etiqueta UNREAD).
-     */
-    public function markAsRead(VeraConfig $config, string $messageId): void
-    {
-        $gmail = $this->getGmailService($config);
-
-        $mods = new ModifyMessageRequest();
-        $mods->setRemoveLabelIds(['UNREAD']);
-        $gmail->users_messages->modify('me', $messageId, $mods);
-    }
-
-    /**
-     * Marca un email como no leído (añade la etiqueta UNREAD).
-     * Se usa cuando Vera decide no procesar un mensaje — el dueño lo verá en bandeja.
-     */
-    public function markAsUnread(VeraConfig $config, string $messageId): void
-    {
-        $gmail = $this->getGmailService($config);
-
-        $mods = new ModifyMessageRequest();
-        $mods->setAddLabelIds(['UNREAD']);
-        $gmail->users_messages->modify('me', $messageId, $mods);
-    }
 
     /**
      * Responde a un email con el texto dado.
