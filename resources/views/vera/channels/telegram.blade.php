@@ -158,6 +158,19 @@
                 @endif
             </div>
 
+            {{-- Aviso importante: /start de Telegram --}}
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-6">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <div>
+                        <p class="text-sm font-semibold text-amber-900 mb-1">Importante: cada contacto debe pulsar /start primero</p>
+                        <p class="text-sm text-amber-800">Telegram no permite que un bot inicie la conversación con nadie. Tus clientes (y tú al probar) deben buscar el bot por su <code class="text-xs bg-amber-100 px-1 py-0.5 rounded">@username</code>, abrirlo y pulsar <strong>Start</strong> antes de poder recibir respuestas de Vera.</p>
+                    </div>
+                </div>
+            </div>
+
             {{-- URL del webhook (para referencia) --}}
             <div class="bg-white rounded-xl border border-gray-200 p-5">
                 <h3 class="text-sm font-semibold text-gray-900 mb-3">Tu URL de webhook</h3>
