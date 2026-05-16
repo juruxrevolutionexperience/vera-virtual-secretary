@@ -17,6 +17,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\VeraActivityLog;
 use App\Services\GmailService;
+use App\Services\TelegramService;
 use App\Services\VeraMemoryService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -1042,7 +1043,27 @@ class ProcessIncomingMessage implements ShouldQueue
             }
         }
 
-        // Otros canales (WhatsApp, Telegram): pendiente implementación
+        if ($this->channel === 'telegram' && $config?->telegram_bot_token) {
+            $chatId = $this->metadata['chat_id'] ?? null;
+
+            if (!$chatId) {
+                Log::warning('Telegram: respuesta sin chat_id en metadata', [
+                    'user_id' => $user->id,
+                ]);
+                return;
+            }
+
+            $telegram = new TelegramService();
+            $ok       = $telegram->sendMessage($config->telegram_bot_token, $chatId, $response);
+
+            Log::info($ok ? '✈️ Telegram enviado por Vera' : '⚠️ Telegram envío parcial/fallido', [
+                'user_id' => $user->id,
+                'chat_id' => $chatId,
+            ]);
+            return;
+        }
+
+        // Otros canales (WhatsApp): pendiente implementación
         Log::info('📤 Respuesta lista para enviar', [
             'user_id' => $user->id,
             'channel' => $this->channel,
