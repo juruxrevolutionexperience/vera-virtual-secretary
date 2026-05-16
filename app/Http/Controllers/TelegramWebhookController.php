@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessIncomingMessage;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -31,7 +32,19 @@ class TelegramWebhookController extends Controller
             return response('Unauthorized', 401);
         }
 
-        $update = $request->json()->all();
+        $update   = $request->json()->all();
+        $updateId = $update['update_id'] ?? null;
+
+        // Telegram reenvía updates si no recibe 200 OK rápido — deduplicamos por update_id
+        // para evitar procesar el mismo mensaje varias veces (cache 5 min, ventana suficiente).
+        if ($updateId !== null) {
+            $cacheKey = "telegram:update:{$updateId}";
+            if (Cache::has($cacheKey)) {
+                Log::info('🔁 Update Telegram duplicado ignorado', ['update_id' => $updateId]);
+                return response('OK', 200);
+            }
+            Cache::put($cacheKey, true, now()->addMinutes(5));
+        }
 
         try {
             $this->dispatchUpdate($update);
