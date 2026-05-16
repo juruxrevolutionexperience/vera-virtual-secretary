@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schedule;
-use Stripe\Stripe;
+use Illuminate\Support\ServiceProvider;
 use Stripe\ApiRequestor;
+use Stripe\Stripe;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -112,5 +114,16 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Auth\Events\Login::class,
             \App\Listeners\RecordUserSession::class,
         );
+
+        // Email de verificación personalizado — branding Jurux Revolution en español
+        VerifyEmail::toMailUsing(function ($notifiable, string $url) {
+            return (new MailMessage)
+                ->subject('Verifica tu dirección de correo')
+                ->greeting('¡Hola!')
+                ->line('Gracias por unirte a Vera. Pulsa el botón de abajo para verificar tu dirección de correo electrónico.')
+                ->action('Verificar correo', $url)
+                ->line('Si no creaste una cuenta en Vera, puedes ignorar este mensaje.')
+                ->salutation("Un saludo,\nEl equipo de Jurux Revolution");
+        });
     }
 }
