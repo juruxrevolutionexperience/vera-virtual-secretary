@@ -126,9 +126,15 @@ class VeraController extends Controller
         $validated = $request->validate([
             'unknown_response'    => 'nullable|string|max:500',
             'escalation_triggers' => 'nullable|array',
-            'escalation_triggers.*' => 'string|max:50',
+            'escalation_triggers.*' => 'string|max:80',
             'vera_signature'      => 'nullable|string|max:150',
             'business_description'=> 'nullable|string|max:1500',
+        ], [
+            'escalation_triggers.*.max'    => 'Cada palabra o frase clave no puede pasar de 80 caracteres.',
+            'escalation_triggers.*.string' => 'Las palabras clave deben ser texto.',
+            'unknown_response.max'         => 'La respuesta cuando Vera no sabe no puede pasar de 500 caracteres.',
+            'vera_signature.max'           => 'La firma de Vera no puede pasar de 150 caracteres.',
+            'business_description.max'     => 'La descripción del negocio no puede pasar de 1500 caracteres.',
         ]);
 
         VeraConfig::updateOrCreate(

@@ -231,10 +231,15 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Palabras clave que escalan al propietario</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Frases o palabras clave que escalan al propietario</label>
+                    <p class="text-xs text-gray-500 mb-2">
+                        Cuando un cliente escriba alguna de estas frases, Vera te avisa directamente en vez de responder ella.
+                        Puedes usar palabras sueltas (<em>urgente</em>) o frases cortas (<em>no me atienden</em>, <em>llevo esperando</em>).
+                        Máximo 80 caracteres por entrada.
+                    </p>
                     <div class="flex gap-2 mb-2">
-                        <input type="text" x-model="triggerInput" @keydown.enter.prevent="addTrigger()"
-                               placeholder="Ej: urgente, emergencia..."
+                        <input type="text" x-model="triggerInput" maxlength="80" @keydown.enter.prevent="addTrigger()"
+                               placeholder="Ej: urgente, llevo esperando, no me atienden..."
                                class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
                         <button type="button" @click="addTrigger()"
                                 class="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">
@@ -464,9 +469,16 @@ function veraOnboarding() {
 
         addTrigger() {
             const t = this.triggerInput.trim();
-            if (t && !this.form.escalation_triggers.includes(t)) {
-                this.form.escalation_triggers.push(t);
+            if (!t) return;
+            if (t.length > 80) {
+                this.showNotification('error', 'Cada palabra o frase clave no puede pasar de 80 caracteres. Usa frases cortas tipo "no me atienden" o "llevo esperando".');
+                return;
             }
+            if (this.form.escalation_triggers.includes(t)) {
+                this.triggerInput = '';
+                return;
+            }
+            this.form.escalation_triggers.push(t);
             this.triggerInput = '';
         },
 
@@ -520,6 +532,8 @@ function veraOnboarding() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
                     body: JSON.stringify(payload),
@@ -558,6 +572,8 @@ function veraOnboarding() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
                     body: JSON.stringify({ step: 4 }),
