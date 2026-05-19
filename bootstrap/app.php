@@ -26,6 +26,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'webhooks/whatsapp',
             'webhooks/telegram/*',
         ]);
+
+        // Auto-logout por inactividad: inyecta el modal+JS antes de </body>
+        // en respuestas HTML autenticadas. Cero cambios en vistas existentes.
+        $middleware->web(append: [
+            \App\Http\Middleware\InjectIdleLogout::class,
+        ]);
     })
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\IdleSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
@@ -56,4 +57,13 @@ Route::middleware('auth')->group(function () {
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
+
+    // Auto-logout por inactividad: invalida sesión sin tocar remember_token,
+    // así "recuérdame" sigue funcionando al volver.
+    Route::post('auth/idle-logout', [IdleSessionController::class, 'logout'])
+        ->name('auth.idle-logout');
+
+    // Heartbeat para que el botón "Sigo aquí" del modal refresque la sesión server-side.
+    Route::get('auth/heartbeat', [IdleSessionController::class, 'heartbeat'])
+        ->name('auth.heartbeat');
 });
