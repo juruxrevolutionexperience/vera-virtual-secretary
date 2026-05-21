@@ -17,6 +17,7 @@ class Contact extends Model
         'name',
         'company',
         'phone',
+        'telegram_id',
         'notes',
         'emails_received',
         'emails_sent',

@@ -307,28 +307,21 @@ class ProcessIncomingMessage implements ShouldQueue
 
     /**
      * Carga el perfil del cliente final (paciente, lead, etc.) si existe en la tabla
-     * de contactos del dueño. Devuelve null si es un contacto nuevo o no hay insights.
+     * de contactos del dueño. Devuelve null si no hay nombre ni insights.
      *
-     * Lo que devuelve se inyecta en el system prompt para que Vera reconozca al
-     * cliente recurrente y adapte su respuesta. Esto es CP2 — memoria del cliente.
+     * Para email: busca por email. Si no existe, devuelve null (el Contact de email
+     * se crea en GmailService al procesar el mensaje entrante).
+     *
+     * Para Telegram: find-or-create por telegram_id. Así Vera acumula memoria desde
+     * el primer mensaje, aunque el dueño no haya creado el contacto manualmente.
      */
     private function getCustomerProfile(User $user): ?array
     {
-        // Solo email tiene email como contact_identifier directo. WhatsApp/Telegram
-        // usan teléfono y la tabla Contact aún no los indexa así — pendiente.
-        if ($this->channel !== 'email') {
-            return null;
-        }
-
-        // Gmail entrega el remitente como "Nombre <email@dominio>"; extraer solo el email
-        // para que el lookup matchee con lo guardado en BD.
-        $email = preg_match('/<(.+?)>/', $this->contactIdentifier, $m)
-            ? strtolower(trim($m[1]))
-            : strtolower(trim($this->contactIdentifier));
-
-        $contact = Contact::where('user_id', $user->id)
-            ->where('email', $email)
-            ->first();
+        $contact = match ($this->channel) {
+            'email'    => $this->findContactByEmail($user),
+            'telegram' => $this->findOrCreateTelegramContact($user),
+            default    => null,
+        };
 
         if (!$contact) {
             return null;
@@ -336,20 +329,58 @@ class ProcessIncomingMessage implements ShouldQueue
 
         $insights = $contact->metadata['vera_insights'] ?? null;
 
-        // Si no hay insights aún, igual devolvemos el nombre — Vera puede personalizar
-        // aunque no tenga historia previa todavía.
         if (!$insights && !$contact->name) {
             return null;
         }
 
         return [
-            'name'                       => $contact->name,
-            'preferred_times'            => $insights['preferred_times']            ?? null,
-            'communication_style'        => $insights['communication_style']        ?? null,
-            'past_topics'                => $insights['past_topics']                ?? null,
-            'last_interaction_summary'   => $insights['last_interaction_summary']   ?? null,
-            'quirks'                     => $insights['quirks']                     ?? null,
+            'name'                     => $contact->name,
+            'preferred_times'          => $insights['preferred_times']          ?? null,
+            'communication_style'      => $insights['communication_style']      ?? null,
+            'past_topics'              => $insights['past_topics']              ?? null,
+            'last_interaction_summary' => $insights['last_interaction_summary'] ?? null,
+            'quirks'                   => $insights['quirks']                   ?? null,
         ];
+    }
+
+    private function findContactByEmail(User $user): ?Contact
+    {
+        // Gmail entrega el remitente como "Nombre <email@dominio>"; extraer solo el email.
+        $email = preg_match('/<(.+?)>/', $this->contactIdentifier, $m)
+            ? strtolower(trim($m[1]))
+            : strtolower(trim($this->contactIdentifier));
+
+        return Contact::where('user_id', $user->id)
+            ->where('email', $email)
+            ->first();
+    }
+
+    private function findOrCreateTelegramContact(User $user): ?Contact
+    {
+        $telegramId = $this->contactIdentifier; // "@username" o "chat_id" numérico
+
+        $contact = Contact::where('user_id', $user->id)
+            ->where('telegram_id', $telegramId)
+            ->first();
+
+        if (!$contact) {
+            $contact = Contact::create([
+                'user_id'          => $user->id,
+                'email'            => "telegram_{$telegramId}@vera.internal",
+                'telegram_id'      => $telegramId,
+                'name'             => $this->contactName,
+                'first_contact_at' => now(),
+                'last_contact_at'  => now(),
+            ]);
+        } else {
+            $contact->touch('last_contact_at');
+            // Actualizar nombre si Telegram nos lo da y aún no lo teníamos
+            if ($this->contactName && !$contact->name) {
+                $contact->update(['name' => $this->contactName]);
+            }
+        }
+
+        return $contact;
     }
 
     /**
