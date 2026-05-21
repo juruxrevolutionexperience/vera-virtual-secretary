@@ -1,3 +1,4 @@
+import json
 from rag.search import find_relevant
 
 
@@ -197,6 +198,43 @@ CONTEXTO DE TRABAJO HOY:
 {opening}{pov_line}
 (El sistema añadirá automáticamente al final tu firma «{firma}» — tú no la pongas.)
 Tono de este negocio: {tono} → {tono_hint}.{flavor_block}"""
+
+
+def build_synthesis_prompt(history: list, existing_insights: dict | None) -> tuple[str, str]:
+    """Genera el prompt para extraer vera_insights de una conversación.
+
+    El LLM devuelve un JSON con los 5 campos de insights. Se usa call_llm()
+    (sin tools) con temperature baja para máxima consistencia en el JSON."""
+    system_prompt = """Analiza la conversación entre una secretaria virtual y un cliente.
+Extrae información sobre el cliente y devuelve ÚNICAMENTE un objeto JSON válido.
+
+Formato exacto requerido:
+{
+  "preferred_times": ["tarde", "fin de semana"] o null si no hay evidencia,
+  "communication_style": "directo|extenso|formal|informal|breve" o null,
+  "past_topics": ["precio", "disponibilidad", "servicios"],
+  "last_interaction_summary": "resumen en una frase de esta conversación",
+  "quirks": ["siempre pregunta precio antes de pedir cita"] o null
+}
+
+Reglas:
+- Devuelve SOLO el JSON, sin explicaciones ni bloques de código
+- past_topics y last_interaction_summary: siempre rellénalos si hay conversación
+- preferred_times y quirks: solo si hay evidencia clara en los mensajes
+- communication_style: observa cómo escribe el cliente (frases cortas=directo, detallado=extenso, etc.)"""
+
+    existing_str = ""
+    if existing_insights:
+        existing_str = (
+            "\nInsights previos del cliente (añade o actualiza, no borres salvo contradicción):\n"
+            + json.dumps(existing_insights, ensure_ascii=False, indent=2)
+            + "\n"
+        )
+
+    history_text = "\n".join([f"{m['role']}: {m['content']}" for m in history])
+    user_prompt = f"{existing_str}\nConversación:\n{history_text}"
+
+    return system_prompt, user_prompt
 
 
 def _build_situacion(mode, requested_time, requested_slot_available, booking_confirmed, confirmed_slot_label, owner, working_hours, meeting_state=None, shown_slots=None):

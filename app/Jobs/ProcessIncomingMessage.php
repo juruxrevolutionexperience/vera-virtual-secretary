@@ -16,6 +16,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\VeraActivityLog;
+use App\Jobs\SynthesizeContactInsights;
 use App\Services\GmailService;
 use App\Services\TelegramService;
 use App\Services\VeraMemoryService;
@@ -102,6 +103,7 @@ class ProcessIncomingMessage implements ShouldQueue
                 if ($response) {
                     $this->sendResponse($user, $response, $config);
                 }
+                $this->dispatchSynthesis($meetingRequest);
                 return;
             }
         }
@@ -156,6 +158,7 @@ class ProcessIncomingMessage implements ShouldQueue
         if ($escalate) {
             $this->handleEscalation($user, $meetingRequest, $aiResponse);
             $this->sendResponse($user, $response ?? $config->unknown_response ?? 'Déjame consultarlo y te respondo en breve.', $config);
+            $this->dispatchSynthesis($meetingRequest);
             return;
         }
 
@@ -176,6 +179,7 @@ class ProcessIncomingMessage implements ShouldQueue
             $this->updateMeetingRequestState($meetingRequest, $mode, $aiResponse);
             $this->saveToHistory($meetingRequest, $confirmationResponse ?? $response);
             $this->sendResponse($user, $confirmationResponse ?? $response, $config);
+            $this->dispatchSynthesis($meetingRequest);
             Log::info('✅ Slot directo reservado', [
                 'user_id'    => $user->id,
                 'slot_start' => $slotStart?->toDateTimeString(),
@@ -246,6 +250,8 @@ class ProcessIncomingMessage implements ShouldQueue
         if ($response) {
             $this->sendResponse($user, $response, $config);
         }
+
+        $this->dispatchSynthesis($meetingRequest);
 
         Log::info('✅ Mensaje procesado', [
             'user_id' => $user->id,
@@ -1102,5 +1108,24 @@ class ProcessIncomingMessage implements ShouldQueue
             'contact' => $this->contactIdentifier,
             'error'   => $exception->getMessage(),
         ]);
+    }
+
+    /**
+     * Despacha SynthesizeContactInsights con 5s de delay para que el historial
+     * esté guardado antes de que el job de síntesis lo lea.
+     * Solo se despacha si la conversación tiene un ID válido.
+     */
+    private function dispatchSynthesis(MeetingRequest $meetingRequest): void
+    {
+        if (!$meetingRequest->conversation_id) {
+            return;
+        }
+
+        SynthesizeContactInsights::dispatch(
+            userId:            $this->userId,
+            channel:           $this->channel,
+            contactIdentifier: $this->contactIdentifier,
+            conversationId:    $meetingRequest->conversation_id,
+        )->delay(now()->addSeconds(5));
     }
 }

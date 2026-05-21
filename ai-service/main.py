@@ -1,12 +1,13 @@
 import re
+import json
 import os
 from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional
 from dotenv import load_dotenv
 from modes.escalation import should_escalate, resolve_triggers
-from llm.prompt_builder import build_prompt
-from llm.client import call_llm_with_tools
+from llm.prompt_builder import build_prompt, build_synthesis_prompt
+from llm.client import call_llm_with_tools, call_llm
 from rag.embeddings import store_chunk, deactivate_chunk, delete_user_collection
 
 load_dotenv()
@@ -200,6 +201,50 @@ async def delete_user_memory(user_id: str):
     """Elimina toda la memoria vectorial de un usuario (GDPR / baja de cuenta)."""
     delete_user_collection(user_id=user_id)
     return {"status": "deleted", "user_id": user_id}
+
+
+# ── Endpoint auto-síntesis de insights ───────────────────────────────────────
+
+class SynthesizeRequest(BaseModel):
+    user_id: str
+    history: list[HistoryMessage]
+    existing_insights: Optional[dict] = None
+
+class SynthesizeResponse(BaseModel):
+    vera_insights: dict
+
+@app.post("/synthesize", response_model=SynthesizeResponse, dependencies=[__import__('fastapi').Depends(verify_token)])
+async def synthesize_insights(request: SynthesizeRequest) -> SynthesizeResponse:
+    """Analiza la conversación y devuelve vera_insights actualizados.
+
+    Laravel llama aquí al final de cada mensaje procesado para mantener
+    el perfil del cliente actualizado sin intervención del dueño."""
+    if not request.history:
+        raise HTTPException(status_code=400, detail="history no puede estar vacío")
+
+    history = [m.model_dump() for m in request.history]
+    system_prompt, user_prompt = build_synthesis_prompt(history, request.existing_insights)
+
+    raw = call_llm(user_prompt, system_prompt, temperature=0.3)
+
+    # Extraer JSON — el LLM a veces añade texto antes/después
+    try:
+        insights = json.loads(raw.strip())
+    except json.JSONDecodeError:
+        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if match:
+            try:
+                insights = json.loads(match.group())
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=422, detail=f"JSON inválido del LLM: {raw[:300]}")
+        else:
+            raise HTTPException(status_code=422, detail=f"El LLM no devolvió JSON: {raw[:300]}")
+
+    # Garantizar campos mínimos
+    insights.setdefault("last_interaction_summary", "Conversación procesada")
+    insights.setdefault("past_topics", [])
+
+    return SynthesizeResponse(vera_insights=insights)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
