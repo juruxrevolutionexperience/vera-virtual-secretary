@@ -25,7 +25,7 @@ class RecordTokenUsage implements ShouldQueue
                 userId: $event->userId,
                 actionType: $event->actionType,
                 tokenData: $event->tokenData,
-                emailId: $event->emailId,
+                conversationId: $event->emailId,
                 metadata: $event->metadata
             );
 
