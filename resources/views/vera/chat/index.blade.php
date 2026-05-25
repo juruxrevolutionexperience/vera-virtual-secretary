@@ -301,7 +301,7 @@
                                 type="text"
                                 x-model="newMessage"
                                 placeholder="Escribe tu mensaje o usa / para comandos..."
-                                class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm text-gray-900 placeholder-gray-400"
                                 :disabled="isLoading"
                             >
                             <button

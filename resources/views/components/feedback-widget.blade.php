@@ -1,11 +1,11 @@
 {{-- Widget flotante "Reportar a Vera" — botón + modal con paste de imágenes --}}
 @auth
-<div x-data="feedbackWidget()" x-cloak>
-    {{-- Botón flotante --}}
+<div x-data="feedbackWidget()" x-cloak @open-feedback.window="open = true">
+    {{-- Botón flotante — solo desktop (lg+); en móvil/tablet se usa la opción "Reportar" del menú --}}
     <button
         type="button"
         @click="open = true"
-        class="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium pl-3 pr-4 py-2.5 shadow-lg ring-1 ring-black/10 transition"
+        class="fixed bottom-5 right-5 z-40 hidden lg:flex items-center gap-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium pl-3 pr-4 py-2.5 shadow-lg ring-1 ring-black/10 transition"
         title="Reportar un problema o sugerencia"
     >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
