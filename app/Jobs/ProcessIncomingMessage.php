@@ -249,7 +249,23 @@ class ProcessIncomingMessage implements ShouldQueue
         // ── 9. Enviar respuesta al cliente ────────────────────────────────────
         if ($response) {
             $this->sendResponse($user, $response, $config);
+
+            // Registrar como "respuesta enviada". En agenda/transicion no se
+            // registra aquí porque ya quedan como slot_proposed en
+            // buildAvailabilityResponse() — evita duplicar la actividad.
+            if (!\in_array($mode, ['agenda', 'transicion'], true)) {
+                VeraActivityLog::record([
+                    'user_id'              => $user->id,
+                    'activity_type'        => 'response_sent',
+                    'title'                => 'Respuesta enviada a ' . ($this->contactName ?? $this->contactIdentifier),
+                    'description'          => substr($response, 0, 200),
+                    'metadata'             => ['channel' => $this->channel, 'contact' => $this->contactIdentifier],
+                    'counts_towards_limit' => true,
+                    'status'               => 'completed',
+                ]);
+            }
         }
+
 
         $this->dispatchSynthesis($meetingRequest);
 
