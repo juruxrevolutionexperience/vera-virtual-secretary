@@ -16,6 +16,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\VeraActivityLog;
+use App\Events\VeraTokensConsumed;
 use App\Jobs\SynthesizeContactInsights;
 use App\Services\GmailService;
 use App\Services\TelegramService;
@@ -123,6 +124,25 @@ class ProcessIncomingMessage implements ShouldQueue
 
         // ── 4. Llamar a ai-service ────────────────────────────────────────────
         $aiResponse = $this->callAiService($user, $config, $history, $meetingRequest, $requestedTime, $requestedSlotAvailable);
+
+        // ── 4.1 Registrar consumo de tokens del procesamiento ─────────────────
+        // Cubre TODAS las ramas (irrelevante, respuesta, agenda, escalation) porque
+        // va antes de bifurcar. Fail-safe: si no hay dato (0), no dispara nada y el
+        // flujo sigue igual. El listener RecordTokenUsage está en cola y try/catch.
+        $tokensUsed = (int) ($aiResponse['tokens_used'] ?? 0);
+        if ($tokensUsed > 0) {
+            event(new VeraTokensConsumed(
+                userId: $user->id,
+                actionType: 'email_processing',
+                tokenData: [
+                    'prompt_tokens'     => 0,
+                    'completion_tokens' => 0,
+                    'total_tokens'      => $tokensUsed,
+                    'model'             => 'llama-3.3-70b-versatile',
+                ],
+                metadata: ['channel' => $this->channel, 'contact' => $this->contactIdentifier],
+            ));
+        }
 
         // ── 5. Interpretar respuesta ──────────────────────────────────────────
         $mode      = $aiResponse['mode']      ?? 'respuesta';

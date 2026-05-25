@@ -129,8 +129,26 @@ def _parse_gemini_json(text):
         return None
 
 
+def _extract_tokens(response) -> int:
+    """Total de tokens de la respuesta (Groq o Gemini). Devuelve 0 si no se puede — nunca lanza."""
+    try:
+        usage = getattr(response, "usage", None)            # Groq (OpenAI-compatible)
+        if usage is not None:
+            total = getattr(usage, "total_tokens", None)
+            if total is not None:
+                return int(total)
+        meta = getattr(response, "usage_metadata", None)    # Gemini (google-genai)
+        if meta is not None:
+            total = getattr(meta, "total_token_count", None)
+            if total is not None:
+                return int(total)
+    except Exception:
+        pass
+    return 0
+
+
 def call_llm_with_tools(prompt, system, temperature=0.7):
-    """Una sola llamada LLM que devuelve (modo, texto). Elimina la llamada extra de detección de modo."""
+    """Una sola llamada LLM que devuelve (modo, texto, tokens). Elimina la llamada extra de detección de modo."""
     if not _is_circuit_open():
         try:
             response = groq_client.chat.completions.create(
@@ -145,7 +163,7 @@ def call_llm_with_tools(prompt, system, temperature=0.7):
             )
             modo, texto = _parse_groq_tool_call(response)
             _record_success()
-            return modo, texto
+            return modo, texto, _extract_tokens(response)
         except Exception as e:
             logger.warning("Groq tool calling falló, cayendo a Gemini: %s", e)
             _record_failure()
@@ -158,14 +176,15 @@ def call_llm_with_tools(prompt, system, temperature=0.7):
     )
     try:
         response = gemini_client.models.generate_content(model="gemini-2.5-flash-lite", contents=fb_prompt)
+        tokens = _extract_tokens(response)
         parsed = _parse_gemini_json(response.text or "")
         if parsed:
-            return parsed
+            return parsed[0], parsed[1], tokens
         logger.warning("Gemini no devolvió JSON parseable. Texto crudo: %s", (response.text or "")[:200])
-        return "respuesta", response.text or ""
+        return "respuesta", response.text or "", tokens
     except Exception as e:
         logger.error("Gemini fallback también falló: %s", e)
-        return "respuesta", "Déjame consultarlo y te respondo en breve."
+        return "respuesta", "Déjame consultarlo y te respondo en breve.", 0
 
 
 def call_llm(prompt, system, temperature=0.7, model="llama-3.3-70b-versatile"):   # llama a Groq con fallback a Gemini si falla — nunca deja a Vera sin respuesta

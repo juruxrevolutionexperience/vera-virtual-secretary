@@ -120,8 +120,8 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # 3. Una sola llamada LLM — devuelve modo + respuesta juntos
-    mode, response_text = call_llm_with_tools(user_prompt, system_prompt)
+    # 3. Una sola llamada LLM — devuelve modo + respuesta + tokens consumidos
+    mode, response_text, tokens_used = call_llm_with_tools(user_prompt, system_prompt)
 
     # Cortocircuito — mensaje irrelevante detectado por el LLM
     if mode == "irrelevante":
@@ -131,7 +131,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
             escalate=False,
             confidence=1.0,
             suggested_slots=[],
-            tokens_used=0,
+            tokens_used=tokens_used,
             escalation_reason=None,
         )
 
@@ -155,7 +155,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
         escalate=escalate,
         confidence=0.9,
         suggested_slots=[],
-        tokens_used=0,
+        tokens_used=tokens_used,
         escalation_reason="trigger de escalado detectado en el mensaje" if escalate else None,
     )
 
