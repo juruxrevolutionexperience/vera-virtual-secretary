@@ -65,6 +65,17 @@ class VeraActivityLog extends Model
 
     public function scopeByType($query, string $type)
     {
+        // "Respuesta enviada" engloba TODO lo que Vera contesta al cliente:
+        // respuestas generales, propuestas de slots, confirmaciones y escalados.
+        if ($type === 'response_sent') {
+            return $query->whereIn('activity_type', [
+                'response_sent',
+                'slot_proposed',
+                'meeting_confirmed',
+                'escalation',
+            ]);
+        }
+
         return $query->where('activity_type', $type);
     }
 
@@ -210,7 +221,7 @@ class VeraActivityLog extends Model
             'by_feedback' => $activities->groupBy('user_feedback')->map->count()->toArray(),
             'by_status' => $activities->groupBy('status')->map->count()->toArray(),
             'meetings_confirmed' => $activities->where('activity_type', 'meeting_confirmed')->count(),
-            'responses_sent' => $activities->whereIn('activity_type', ['response_sent', 'meeting_confirmed'])->count(),
+            'responses_sent' => $activities->whereIn('activity_type', ['response_sent', 'slot_proposed', 'meeting_confirmed', 'escalation'])->count(),
             'approval_rate' => $activities->where('user_feedback', '!=', 'pending')->count() > 0
                 ? round(($activities->where('user_feedback', 'approved')->count() / $activities->where('user_feedback', '!=', 'pending')->count()) * 100, 1)
                 : 0,
