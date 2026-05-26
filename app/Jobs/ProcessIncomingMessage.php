@@ -133,7 +133,9 @@ class ProcessIncomingMessage implements ShouldQueue
         if ($tokensUsed > 0) {
             event(new VeraTokensConsumed(
                 userId: $user->id,
-                actionType: 'email_processing',
+                // 'response_generation' es un valor válido del enum action_type.
+                // El canal (email/whatsapp/telegram) queda en metadata para distinguir.
+                actionType: 'response_generation',
                 tokenData: [
                     'prompt_tokens'     => 0,
                     'completion_tokens' => 0,
