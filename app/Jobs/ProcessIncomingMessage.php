@@ -175,6 +175,39 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
+        // ── 5.2 Reserva por intención estructurada (fecha+hora EXACTAS del cliente) ──
+        // Si el LLM detectó que el cliente da o acepta una fecha+hora concretas,
+        // reservamos ESA hora exacta — nunca un slot por defecto. Arregla el
+        // "agenda cuando ella quiere". Fail-safe: si falta dato, la fecha no es
+        // válida o el hueco no está libre, NO reserva y sigue el flujo normal.
+        $intentAction = $aiResponse['intent_action'] ?? 'ninguna';
+        $intentDate   = $aiResponse['intent_date']   ?? null;
+        $intentTime   = $aiResponse['intent_time']   ?? null;
+
+        if ($intentAction === 'confirmar' && $intentDate && $intentTime && $config->hasCalendarConnected()) {
+            $exact = $this->resolveIntentSlot($user, $intentDate, $intentTime);
+            if ($exact && $this->isSlotFree($user, $config, $exact)) {
+                if ($this->bookSlotAtTime($user, $config, $meetingRequest, $exact)) {
+                    $label = $exact->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i');
+                    $confirmText = $this->generateConfirmationText($config, $label);
+                    $this->saveToHistory($meetingRequest, $confirmText);
+                    $this->sendResponse($user, $confirmText, $config);
+                    $this->dispatchSynthesis($meetingRequest);
+                    Log::info('✅ Reserva por intención estructurada del LLM', [
+                        'user_id' => $user->id,
+                        'slot'    => $exact->toDateTimeString(),
+                    ]);
+                    return;
+                }
+            } else {
+                Log::info('🗓 Intención confirmar pero slot no reservable — sigue flujo normal', [
+                    'intent_date' => $intentDate,
+                    'intent_time' => $intentTime,
+                    'resolved'    => $exact?->toDateTimeString(),
+                ]);
+            }
+        }
+
         // ── 6. Actuar según el modo ───────────────────────────────────────────
 
         if ($escalate) {
@@ -737,24 +770,26 @@ class ProcessIncomingMessage implements ShouldQueue
      */
     private function checkRequestedSlotAvailable(User $user, VeraConfig $config, string $requestedTime): bool
     {
+        $slotStart = $this->resolveRequestedSlotStart($requestedTime);
+        return $slotStart ? $this->isSlotFree($user, $config, $slotStart) : false;
+    }
+
+    /**
+     * Núcleo de disponibilidad sobre un Carbon ya resuelto: dentro del horario
+     * laboral Y sin conflictos en Calendar. Lo usan el flujo de regex y el de
+     * intención estructurada del LLM.
+     */
+    private function isSlotFree(User $user, VeraConfig $config, Carbon $slotStart): bool
+    {
         try {
-            $slotStart = $this->resolveRequestedSlotStart($requestedTime);
-            if (!$slotStart) {
-                return false;
-            }
-
             if (!$this->isSlotWithinWorkingHours($slotStart, $config)) {
-                Log::info('Slot pedido fuera del horario laboral', ['slot' => $slotStart->toDateTimeString()]);
+                Log::info('Slot fuera del horario laboral', ['slot' => $slotStart->toDateTimeString()]);
                 return false;
             }
-
             $slotEnd = $slotStart->copy()->addMinutes($config->meeting_duration ?? 45);
-
-            $calendarService = new GoogleCalendarService();
-            return $calendarService->checkConflicts($user, $slotStart, $slotEnd);
-
+            return (new GoogleCalendarService())->checkConflicts($user, $slotStart, $slotEnd);
         } catch (\Exception $e) {
-            Log::warning('No se pudo verificar disponibilidad del slot solicitado', ['error' => $e->getMessage()]);
+            Log::warning('No se pudo verificar disponibilidad del slot', ['error' => $e->getMessage()]);
             return false;
         }
     }
@@ -785,12 +820,34 @@ class ProcessIncomingMessage implements ShouldQueue
      */
     private function bookConfirmedRequestedSlot(User $user, VeraConfig $config, MeetingRequest $request, string $requestedTime): bool
     {
-        try {
-            $slotStart = $this->resolveRequestedSlotStart($requestedTime);
-            if (!$slotStart) {
-                return false;
-            }
+        $slotStart = $this->resolveRequestedSlotStart($requestedTime);
+        return $slotStart ? $this->bookSlotAtTime($user, $config, $request, $slotStart) : false;
+    }
 
+    /**
+     * Construye un Carbon desde la fecha+hora ESTRUCTURADAS que devolvió el LLM
+     * (YYYY-MM-DD + HH:MM) en la zona del negocio. Null si no parsea o ya pasó.
+     */
+    private function resolveIntentSlot(User $user, string $date, string $time): ?Carbon
+    {
+        try {
+            $tz   = ($user->timezone && $user->timezone !== 'UTC') ? $user->timezone : config('app.timezone', 'Europe/Madrid');
+            $slot = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$time}", $tz);
+            return ($slot && $slot->isFuture()) ? $slot : null;
+        } catch (\Throwable $e) {
+            Log::warning('resolveIntentSlot no pudo parsear', ['date' => $date, 'time' => $time, 'error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    /**
+     * Núcleo de reserva sobre un Carbon ya resuelto: crea el Meeting, el evento en
+     * Calendar, marca la solicitud como confirmada y registra la actividad.
+     * Lo usan el flujo de regex (bookConfirmedRequestedSlot) y el de intención del LLM.
+     */
+    private function bookSlotAtTime(User $user, VeraConfig $config, MeetingRequest $request, Carbon $slotStart): bool
+    {
+        try {
             $timezone = ($user->timezone && $user->timezone !== 'UTC') ? $user->timezone : config('app.timezone', 'Europe/Madrid');
 
             $meeting = Meeting::create([
@@ -805,8 +862,7 @@ class ProcessIncomingMessage implements ShouldQueue
                 'meeting_request_id' => $request->id,
             ]);
 
-            $calendarService = new GoogleCalendarService();
-            $calendarService->createEvent($user, $meeting);
+            (new GoogleCalendarService())->createEvent($user, $meeting);
 
             $request->update(['state' => 'confirmed', 'meeting_id' => $meeting->id]);
 
@@ -832,9 +888,9 @@ class ProcessIncomingMessage implements ShouldQueue
             return true;
 
         } catch (\Exception $e) {
-            Log::error('Error al reservar slot confirmado por LLM', [
-                'error'          => $e->getMessage(),
-                'requested_time' => $requestedTime,
+            Log::error('Error al reservar slot', [
+                'error' => $e->getMessage(),
+                'slot'  => $slotStart->toDateTimeString(),
             ]);
             return false;
         }

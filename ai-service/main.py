@@ -68,6 +68,10 @@ class ProcessResponse(BaseModel):
     suggested_slots: list[str] = []
     tokens_used: int
     escalation_reason: Optional[str] = None
+    # Intención de cita estructurada — Laravel reserva la hora EXACTA con esto
+    intent_action: str = "ninguna"      # confirmar | proponer | rechazar | ninguna
+    intent_date: Optional[str] = None   # fecha que pide el cliente (YYYY-MM-DD)
+    intent_time: Optional[str] = None   # hora que pide el cliente (HH:MM)
 
 
 # ── Modelos para sincronización de memoria (MySQL → ChromaDB) ─────────────────
@@ -120,8 +124,9 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # 3. Una sola llamada LLM — devuelve modo + respuesta + tokens consumidos
-    mode, response_text, tokens_used = call_llm_with_tools(user_prompt, system_prompt)
+    # 3. Una sola llamada LLM — devuelve modo + respuesta + tokens + intención de cita
+    mode, response_text, tokens_used, intent = call_llm_with_tools(user_prompt, system_prompt)
+    intent = intent or {"fecha": "", "hora": "", "intencion_cita": "ninguna"}
 
     # Cortocircuito — mensaje irrelevante detectado por el LLM
     if mode == "irrelevante":
@@ -157,6 +162,9 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
         suggested_slots=[],
         tokens_used=tokens_used,
         escalation_reason="trigger de escalado detectado en el mensaje" if escalate else None,
+        intent_action=intent.get("intencion_cita", "ninguna"),
+        intent_date=intent.get("fecha") or None,
+        intent_time=intent.get("hora") or None,
     )
 
 

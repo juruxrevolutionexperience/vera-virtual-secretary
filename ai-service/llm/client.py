@@ -74,6 +74,19 @@ _TOOLS = [{
                 "texto": {
                     "type": "string",
                     "description": "Texto exacto de la respuesta para el cliente. Vacío solo si es irrelevante."
+                },
+                "fecha": {
+                    "type": "string",
+                    "description": "Fecha concreta que el cliente pide o acepta, en formato YYYY-MM-DD. Resuélvela usando la fecha de HOY indicada en el contexto. Vacío si el cliente no menciona ningún día."
+                },
+                "hora": {
+                    "type": "string",
+                    "description": "Hora concreta que el cliente pide o acepta, en formato HH:MM (24h). Vacío si no menciona hora."
+                },
+                "intencion_cita": {
+                    "type": "string",
+                    "enum": ["confirmar", "proponer", "rechazar", "ninguna"],
+                    "description": "confirmar=el cliente da o acepta una fecha+hora concreta para reservar; proponer=quiere cita pero sin hora concreta o pide ver opciones; rechazar=no le encaja lo ofrecido y no propone alternativa; ninguna=el mensaje no trata de agendar"
                 }
             },
             "required": ["modo", "texto"]
@@ -83,10 +96,33 @@ _TOOLS = [{
 
 
 _VALID_MODES = {"respuesta", "agenda", "transicion", "escalation", "irrelevante"}
+_VALID_INTENTS = {"confirmar", "proponer", "rechazar", "ninguna"}
+
+
+def _extract_intent(args: dict) -> dict:
+    """Extrae la intención de cita estructurada (fecha/hora/intencion_cita) de los
+    args del LLM. Defensivo: valida formatos y NUNCA lanza — si algo no cuadra,
+    devuelve vacío para que Laravel caiga al comportamiento actual (fail-safe)."""
+    try:
+        fecha = (args.get("fecha") or "").strip()
+        hora = (args.get("hora") or "").strip()
+        intencion = (args.get("intencion_cita") or "ninguna").strip().lower()
+        if intencion not in _VALID_INTENTS:
+            intencion = "ninguna"
+        if not re.match(r'^\d{4}-\d{2}-\d{2}$', fecha):
+            fecha = ""
+        if re.match(r'^\d{1,2}:\d{2}$', hora):
+            h, mm = hora.split(":")
+            hora = f"{int(h):02d}:{mm}"   # normaliza "9:30" → "09:30"
+        else:
+            hora = ""
+        return {"fecha": fecha, "hora": hora, "intencion_cita": intencion}
+    except Exception:
+        return {"fecha": "", "hora": "", "intencion_cita": "ninguna"}
 
 
 def _parse_groq_tool_call(response):
-    """Extrae (modo, texto) de la respuesta de Groq con tool calling. Lanza excepción si la estructura no es válida."""
+    """Extrae (modo, texto, intent) de la respuesta de Groq con tool calling. Lanza excepción si la estructura no es válida."""
     choices = getattr(response, "choices", None)
     if not choices:
         raise ValueError("Groq devolvió respuesta sin 'choices'")
@@ -109,7 +145,7 @@ def _parse_groq_tool_call(response):
         logger.warning("Groq devolvió modo inválido '%s', cayendo a 'respuesta'", modo)
         modo = "respuesta"
 
-    return modo, args.get("texto", "") or ""
+    return modo, args.get("texto", "") or "", _extract_intent(args)
 
 
 def _parse_gemini_json(text):
@@ -124,7 +160,7 @@ def _parse_gemini_json(text):
         modo = parsed.get("modo", "respuesta")
         if modo not in _VALID_MODES:
             modo = "respuesta"
-        return modo, parsed.get("texto", "") or ""
+        return modo, parsed.get("texto", "") or "", _extract_intent(parsed)
     except (json.JSONDecodeError, AttributeError):
         return None
 
@@ -147,8 +183,12 @@ def _extract_tokens(response) -> int:
     return 0
 
 
+_EMPTY_INTENT = {"fecha": "", "hora": "", "intencion_cita": "ninguna"}
+
+
 def call_llm_with_tools(prompt, system, temperature=0.7):
-    """Una sola llamada LLM que devuelve (modo, texto, tokens). Elimina la llamada extra de detección de modo."""
+    """Una sola llamada LLM que devuelve (modo, texto, tokens, intent).
+    intent = {fecha, hora, intencion_cita} con la cita estructurada que pide el cliente."""
     if not _is_circuit_open():
         try:
             response = groq_client.chat.completions.create(
@@ -161,9 +201,9 @@ def call_llm_with_tools(prompt, system, temperature=0.7):
                     {"role": "user", "content": prompt}
                 ]
             )
-            modo, texto = _parse_groq_tool_call(response)
+            modo, texto, intent = _parse_groq_tool_call(response)
             _record_success()
-            return modo, texto, _extract_tokens(response)
+            return modo, texto, _extract_tokens(response), intent
         except Exception as e:
             logger.warning("Groq tool calling falló, cayendo a Gemini: %s", e)
             _record_failure()
@@ -172,19 +212,21 @@ def call_llm_with_tools(prompt, system, temperature=0.7):
     fb_prompt = (
         system + "\n\n" + prompt +
         '\n\nResponde EXCLUSIVAMENTE con un JSON válido en este formato exacto, sin texto antes ni después:\n'
-        '{"modo": "respuesta|agenda|transicion|escalation|irrelevante", "texto": "tu respuesta aquí"}'
+        '{"modo": "respuesta|agenda|transicion|escalation|irrelevante", "texto": "tu respuesta aquí", '
+        '"fecha": "YYYY-MM-DD o vacío", "hora": "HH:MM o vacío", '
+        '"intencion_cita": "confirmar|proponer|rechazar|ninguna"}'
     )
     try:
         response = gemini_client.models.generate_content(model="gemini-2.5-flash-lite", contents=fb_prompt)
         tokens = _extract_tokens(response)
         parsed = _parse_gemini_json(response.text or "")
         if parsed:
-            return parsed[0], parsed[1], tokens
+            return parsed[0], parsed[1], tokens, parsed[2]
         logger.warning("Gemini no devolvió JSON parseable. Texto crudo: %s", (response.text or "")[:200])
-        return "respuesta", response.text or "", tokens
+        return "respuesta", response.text or "", tokens, dict(_EMPTY_INTENT)
     except Exception as e:
         logger.error("Gemini fallback también falló: %s", e)
-        return "respuesta", "Déjame consultarlo y te respondo en breve.", 0
+        return "respuesta", "Déjame consultarlo y te respondo en breve.", 0, dict(_EMPTY_INTENT)
 
 
 def call_llm(prompt, system, temperature=0.7, model="llama-3.3-70b-versatile"):   # llama a Groq con fallback a Gemini si falla — nunca deja a Vera sin respuesta

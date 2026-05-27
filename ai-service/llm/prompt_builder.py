@@ -1,5 +1,19 @@
 import json
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from rag.search import find_relevant
+
+_DIAS_SEMANA = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+
+
+def _hoy_str(timezone: str | None) -> str:
+    """Fecha de hoy + día de semana en la zona del negocio, para que el LLM
+    resuelva fechas relativas ('el 29', 'el miércoles', 'esta semana')."""
+    try:
+        ahora = datetime.now(ZoneInfo(timezone or "Europe/Madrid"))
+    except Exception:
+        ahora = datetime.now()
+    return f"{_DIAS_SEMANA[ahora.weekday()]} {ahora.date().isoformat()}"
 
 
 def build_prompt(brain, message, history, user_id, mode="agenda", requested_time=None, requested_slot_available=False, booking_confirmed=False, confirmed_slot_label=None, meeting_state=None, shown_slots=None, customer_profile=None):
@@ -44,8 +58,11 @@ CLASIFICA TU RESPUESTA usando la herramienta disponible:
 - irrelevante → notificación automática, spam, mensaje sin destinatario claro"""
 
     customer_block = _build_customer_context(customer_profile)
+    hoy = _hoy_str(brain.get("timezone"))
 
     system_prompt = f"""{identidad}
+
+FECHA DE HOY: {hoy}
 
 INFORMACIÓN DEL NEGOCIO:
 {rag_context if rag_context else "Todavía no tienes información del negocio cargada."}
@@ -54,6 +71,12 @@ INFORMACIÓN DEL NEGOCIO:
 
 SITUACIÓN ACTUAL:
 {situacion}{modo_instruccion}
+
+DATOS DE CITA (rellénalos en la herramienta cuando apliquen):
+- Si el cliente menciona o acepta un día concreto, pon "fecha" en formato YYYY-MM-DD calculándola desde la FECHA DE HOY de arriba (ej: si hoy es jueves 2026-05-28 y dice "el 29", fecha="2026-05-29"; si dice "el miércoles", el próximo miércoles).
+- Si menciona o acepta una hora concreta, pon "hora" en formato HH:MM (24h).
+- "intencion_cita": "confirmar" si da o acepta una fecha+hora concreta para reservar; "proponer" si quiere cita pero sin hora concreta o pide ver opciones; "rechazar" si no le encaja lo ofrecido y no propone otra; "ninguna" si el mensaje no trata de agendar.
+- IMPORTANTE: respeta SIEMPRE el día y la hora que pide el cliente. Nunca pongas una fecha/hora distinta a la que él ha dicho.
 
 REGLAS FUNDAMENTALES:
 - Nunca inventes datos que no estén en la información del negocio de arriba
