@@ -4,11 +4,21 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Enlace de reserva</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>body{font-family:'Inter',sans-serif}</style>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+            background:linear-gradient(135deg,#f8fafc,#eef2ff);min-height:100vh;display:flex;
+            align-items:center;justify-content:center;padding:16px;color:#1e293b}
+        .card{max-width:420px;width:100%;background:#fff;border-radius:18px;padding:32px;text-align:center;
+            box-shadow:0 10px 40px rgba(2,6,23,.08);border:1px solid #e2e8f0}
+        .ico{width:56px;height:56px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;
+            justify-content:center;margin:0 auto 16px;font-size:26px;color:#94a3b8}
+        h1{font-size:20px;font-weight:700;color:#1e293b}
+        p{color:#64748b;font-size:14px;margin-top:8px}
+        .foot{font-size:12px;color:#94a3b8;margin-top:24px}
+    </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 flex items-center justify-center px-4">
+<body>
     @php
         $titulo = match($reason ?? '') {
             'used'    => 'Esta reserva ya está hecha',
@@ -21,13 +31,11 @@
             default   => 'Este enlace de reserva no existe o no es correcto.',
         };
     @endphp
-    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl ring-1 ring-slate-200 p-8 text-center">
-        <div class="mx-auto w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-            <svg class="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </div>
-        <h1 class="text-xl font-bold text-slate-800">{{ $titulo }}</h1>
-        <p class="text-slate-500 mt-2 text-sm">{{ $sub }}</p>
-        <p class="text-xs text-slate-400 mt-6">Gestionado por Vera · Jurux</p>
+    <div class="card">
+        <div class="ico">!</div>
+        <h1>{{ $titulo }}</h1>
+        <p>{{ $sub }}</p>
+        <p class="foot">Gestionado por Vera · Jurux</p>
     </div>
 </body>
 </html>

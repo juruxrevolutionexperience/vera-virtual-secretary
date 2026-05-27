@@ -1,157 +1,177 @@
 <!DOCTYPE html>
-<html lang="es" class="scroll-smooth">
+<html lang="es">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Reserva tu cita · {{ $businessName }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>body{font-family:'Inter',sans-serif}[x-cloak]{display:none}</style>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+            background:linear-gradient(135deg,#f8fafc,#eef2ff);color:#1e293b;min-height:100vh;
+            -webkit-font-smoothing:antialiased;line-height:1.5}
+        .wrap{max-width:540px;margin:0 auto;padding:32px 16px}
+        .card{background:#fff;border-radius:18px;box-shadow:0 10px 40px rgba(2,6,23,.08);
+            border:1px solid #e2e8f0;overflow:hidden}
+        .head{background:linear-gradient(90deg,#4f46e5,#7c3aed);padding:26px 24px;color:#fff}
+        .head .tag{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#c7d2fe}
+        .head h1{font-size:24px;font-weight:700;margin:4px 0 2px}
+        .head p{font-size:14px;color:#c7d2fe}
+        .body{padding:24px}
+        h2{font-size:14px;font-weight:600;color:#334155;margin-bottom:12px}
+        .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+        @media(min-width:480px){.grid{grid-template-columns:repeat(4,1fr)}}
+        .opt{border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:9px 4px;text-align:center;
+            cursor:pointer;transition:all .15s;font:inherit;color:#334155}
+        .opt:hover{border-color:#6366f1;background:#eef2ff}
+        .opt .dow{font-size:11px;color:#94a3b8}
+        .opt .dnum{font-size:14px;font-weight:600;color:#334155}
+        .slot{border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:10px 4px;text-align:center;
+            cursor:pointer;transition:all .15s;font:inherit;font-size:14px;font-weight:500;color:#334155}
+        .slot:hover{border-color:#4f46e5;background:#4f46e5;color:#fff}
+        .sect{margin-top:24px}
+        .hidden{display:none}
+        .pick{border-radius:12px;background:#eef2ff;border:1px solid #e0e7ff;padding:16px;margin-bottom:12px}
+        .pick .lbl{font-size:13px;color:#64748b}
+        .pick .val{font-size:18px;font-weight:600;color:#4338ca}
+        textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font:inherit;font-size:14px;
+            color:#0f172a;resize:vertical;margin-bottom:12px}
+        textarea:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+        .btn{width:100%;background:#4f46e5;color:#fff;font-weight:600;font-size:15px;padding:13px;border:none;
+            border-radius:12px;cursor:pointer;transition:background .15s}
+        .btn:hover{background:#4338ca}
+        .btn:disabled{opacity:.5;cursor:default}
+        .btn-link{width:100%;background:none;border:none;color:#64748b;font:inherit;font-size:13px;padding:8px;
+            cursor:pointer;margin-top:6px}
+        .muted{color:#64748b;font-size:14px;padding:16px 0}
+        .err{margin-top:16px;font-size:14px;color:#dc2626;background:#fef2f2;border-radius:10px;padding:12px}
+        .done{text-align:center;padding:24px 0}
+        .check{width:56px;height:56px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;
+            justify-content:center;margin:0 auto 16px;font-size:28px;color:#16a34a}
+        .done h2{font-size:20px;color:#1e293b;margin-bottom:8px}
+        .done p{color:#64748b;font-size:14px}
+        .foot{text-align:center;font-size:12px;color:#94a3b8;margin-top:20px}
+    </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 text-slate-800">
-    <div class="max-w-xl mx-auto px-4 py-8 sm:py-14">
-
-        <div class="bg-white rounded-2xl shadow-xl ring-1 ring-slate-200 overflow-hidden">
-            {{-- Cabecera --}}
-            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-6 text-white">
-                <p class="text-xs font-semibold uppercase tracking-wider text-indigo-100">Reserva de cita</p>
-                <h1 class="text-2xl font-bold mt-1">{{ $businessName }}</h1>
-                <p class="text-sm text-indigo-100 mt-1">Elige el día y la hora que mejor te venga · {{ $duration }} min</p>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <div class="head">
+                <p class="tag">Reserva de cita</p>
+                <h1>{{ $businessName }}</h1>
+                <p>Elige el día y la hora que mejor te venga · {{ $duration }} min</p>
             </div>
-
-            <div class="p-6">
-                {{-- Paso 1: día --}}
+            <div class="body">
                 <div id="step-day">
-                    <h2 class="text-sm font-semibold text-slate-700 mb-3">1. Elige un día</h2>
-                    <div id="days" class="grid grid-cols-3 sm:grid-cols-4 gap-2"></div>
+                    <h2>1. Elige un día</h2>
+                    <div id="days" class="grid"></div>
                 </div>
 
-                {{-- Paso 2: hora --}}
-                <div id="step-time" class="mt-6 hidden">
-                    <h2 class="text-sm font-semibold text-slate-700 mb-3">2. Elige la hora <span id="day-label" class="text-indigo-600"></span></h2>
-                    <div id="slots" class="grid grid-cols-3 sm:grid-cols-4 gap-2"></div>
-                    <p id="no-slots" class="hidden text-sm text-slate-500 py-4">No hay huecos libres ese día. Prueba con otro.</p>
-                    <div id="slots-loading" class="hidden text-sm text-slate-400 py-4">Cargando huecos…</div>
+                <div id="step-time" class="sect hidden">
+                    <h2>2. Elige la hora <span id="day-label" style="color:#4f46e5"></span></h2>
+                    <div id="slots" class="grid"></div>
+                    <p id="no-slots" class="muted hidden">No hay huecos libres ese día. Prueba con otro.</p>
+                    <p id="slots-loading" class="muted hidden">Cargando huecos…</p>
                 </div>
 
-                {{-- Paso 3: confirmar --}}
-                <div id="step-confirm" class="mt-6 hidden">
-                    <h2 class="text-sm font-semibold text-slate-700 mb-2">3. Confirma tu cita</h2>
-                    <div class="rounded-xl bg-indigo-50 ring-1 ring-indigo-100 p-4 mb-3">
-                        <p class="text-sm text-slate-500">Cita seleccionada</p>
-                        <p id="confirm-label" class="text-lg font-semibold text-indigo-700"></p>
+                <div id="step-confirm" class="sect hidden">
+                    <h2>3. Confirma tu cita</h2>
+                    <div class="pick">
+                        <p class="lbl">Cita seleccionada</p>
+                        <p id="confirm-label" class="val"></p>
                     </div>
-                    <textarea id="note" rows="2" maxlength="500" placeholder="¿Algo que quieras añadir? (opcional)"
-                        class="w-full rounded-lg border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-500 mb-3"></textarea>
-                    <button id="confirm-btn"
-                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50">
-                        Reservar cita
-                    </button>
-                    <button id="back-btn" class="w-full mt-2 text-sm text-slate-500 hover:text-slate-700 py-2">← Cambiar</button>
+                    <textarea id="note" rows="2" maxlength="500" placeholder="¿Algo que quieras añadir? (opcional)"></textarea>
+                    <button id="confirm-btn" class="btn">Reservar cita</button>
+                    <button id="back-btn" class="btn-link">← Cambiar</button>
                 </div>
 
-                {{-- Éxito --}}
-                <div id="step-done" class="hidden text-center py-6">
-                    <div class="mx-auto w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mb-4">
-                        <svg class="w-7 h-7 text-green-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    </div>
-                    <h2 id="done-title" class="text-xl font-bold text-slate-800"></h2>
-                    <p id="done-sub" class="text-slate-500 mt-2 text-sm"></p>
+                <div id="step-done" class="done hidden">
+                    <div class="check">✓</div>
+                    <h2 id="done-title"></h2>
+                    <p id="done-sub"></p>
                 </div>
 
-                <p id="error-msg" class="hidden mt-4 text-sm text-red-600 bg-red-50 rounded-lg p-3"></p>
+                <p id="error-msg" class="err hidden"></p>
             </div>
         </div>
-
-        <p class="text-center text-xs text-slate-400 mt-5">Gestionado por Vera · Jurux</p>
+        <p class="foot">Gestionado por Vera · Jurux</p>
     </div>
 
     <script>
     const TOKEN = @json($token);
     const CSRF  = document.querySelector('meta[name=csrf-token]').content;
-    const slotsUrl = `/reservar/${TOKEN}/slots`;
-    const storeUrl = `/reservar/${TOKEN}`;
     const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
     const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
     let selectedIso = null;
 
     const $ = id => document.getElementById(id);
     const show = (id, on=true) => $(id).classList.toggle('hidden', !on);
-    const showError = msg => { const e=$('error-msg'); e.textContent=msg; e.classList.remove('hidden'); };
+    const showError = m => { const e=$('error-msg'); e.textContent=m; e.classList.remove('hidden'); };
     const clearError = () => $('error-msg').classList.add('hidden');
 
-    // Pinta los próximos 14 días como botones
     function renderDays() {
-        const wrap = $('days');
         const today = new Date();
-        for (let i = 0; i < 14; i++) {
-            const d = new Date(today); d.setDate(today.getDate() + i);
-            const iso = d.toISOString().slice(0, 10);
-            const btn = document.createElement('button');
-            btn.className = 'rounded-lg border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 py-2 px-1 text-center transition';
-            btn.innerHTML = `<div class="text-[11px] text-slate-400">${DIAS[d.getDay()].slice(0,3)}</div>`
-                          + `<div class="text-sm font-semibold text-slate-700">${d.getDate()} ${MESES[d.getMonth()]}</div>`;
-            btn.onclick = () => pickDay(iso, d);
-            wrap.appendChild(btn);
+        for (let i=0;i<14;i++){
+            const d=new Date(today); d.setDate(today.getDate()+i);
+            const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+            const b=document.createElement('button');
+            b.className='opt';
+            b.innerHTML='<div class="dow">'+DIAS[d.getDay()].slice(0,3)+'</div><div class="dnum">'+d.getDate()+' '+MESES[d.getMonth()]+'</div>';
+            b.onclick=()=>pickDay(iso,d);
+            $('days').appendChild(b);
         }
     }
 
-    async function pickDay(iso, dateObj) {
+    async function pickDay(iso,dObj){
         clearError();
-        $('day-label').textContent = `· ${DIAS[dateObj.getDay()]} ${dateObj.getDate()} ${MESES[dateObj.getMonth()]}`;
-        show('step-time', true); show('step-confirm', false); show('step-done', false);
-        $('slots').innerHTML = ''; show('no-slots', false); show('slots-loading', true);
-        try {
-            const r = await fetch(`${slotsUrl}?date=${iso}`, { headers: { 'Accept': 'application/json' } });
-            const data = await r.json();
-            show('slots-loading', false);
-            const slots = data.slots || [];
-            if (!slots.length) { show('no-slots', true); return; }
-            slots.forEach(s => {
-                const b = document.createElement('button');
-                b.className = 'rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-600 hover:text-white py-2 text-sm font-medium text-slate-700 transition';
-                b.textContent = s.time;
-                b.onclick = () => pickSlot(s.iso, `${DIAS[dateObj.getDay()]} ${dateObj.getDate()} de ${MESES[dateObj.getMonth()]} a las ${s.time}`);
+        $('day-label').textContent='· '+DIAS[dObj.getDay()]+' '+dObj.getDate()+' '+MESES[dObj.getMonth()];
+        show('step-time',true); show('step-confirm',false); show('step-done',false);
+        $('slots').innerHTML=''; show('no-slots',false); show('slots-loading',true);
+        try{
+            const r=await fetch('/reservar/'+TOKEN+'/slots?date='+iso,{headers:{'Accept':'application/json'}});
+            const data=await r.json();
+            show('slots-loading',false);
+            const slots=data.slots||[];
+            if(!slots.length){show('no-slots',true);return;}
+            slots.forEach(s=>{
+                const b=document.createElement('button');
+                b.className='slot'; b.textContent=s.time;
+                b.onclick=()=>pickSlot(s.iso, DIAS[dObj.getDay()]+' '+dObj.getDate()+' de '+MESES[dObj.getMonth()]+' a las '+s.time);
                 $('slots').appendChild(b);
             });
-        } catch (e) {
-            show('slots-loading', false); showError('No se pudieron cargar los huecos. Recarga la página.');
-        }
+        }catch(e){ show('slots-loading',false); showError('No se pudieron cargar los huecos. Recarga la página.'); }
     }
 
-    function pickSlot(iso, label) {
-        selectedIso = iso;
-        $('confirm-label').textContent = label;
-        show('step-confirm', true);
-        $('step-confirm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    function pickSlot(iso,label){
+        selectedIso=iso; $('confirm-label').textContent=label;
+        show('step-confirm',true);
+        $('step-confirm').scrollIntoView({behavior:'smooth',block:'center'});
     }
 
-    $('back-btn').onclick = () => { show('step-confirm', false); selectedIso = null; };
+    $('back-btn').onclick=()=>{ show('step-confirm',false); selectedIso=null; };
 
-    $('confirm-btn').onclick = async () => {
-        if (!selectedIso) return;
+    $('confirm-btn').onclick=async()=>{
+        if(!selectedIso)return;
         clearError();
-        const btn = $('confirm-btn'); btn.disabled = true; btn.textContent = 'Reservando…';
-        try {
-            const r = await fetch(storeUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
-                body: JSON.stringify({ datetime: selectedIso, note: $('note').value }),
+        const btn=$('confirm-btn'); btn.disabled=true; btn.textContent='Reservando…';
+        try{
+            const r=await fetch('/reservar/'+TOKEN,{
+                method:'POST',
+                headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':CSRF},
+                body:JSON.stringify({datetime:selectedIso,note:$('note').value}),
             });
-            const data = await r.json();
-            if (!r.ok || !data.ok) { throw new Error(data.error || 'No se pudo reservar.'); }
-            ['step-day','step-time','step-confirm'].forEach(s => show(s, false));
-            const pending = data.status === 'pending';
-            $('done-title').textContent = pending ? 'Reserva solicitada' : '¡Cita confirmada!';
-            $('done-sub').textContent = pending
-                ? `Tu cita para ${data.label} está pendiente de confirmación. Te avisaremos en cuanto se confirme.`
-                : `Te esperamos el ${data.label}. Recibirás la invitación de calendario.`;
-            show('step-done', true);
-        } catch (e) {
-            btn.disabled = false; btn.textContent = 'Reservar cita';
-            showError(e.message || 'No se pudo reservar. Inténtalo de nuevo.');
+            const data=await r.json();
+            if(!r.ok||!data.ok){throw new Error(data.error||'No se pudo reservar.');}
+            ['step-day','step-time','step-confirm'].forEach(s=>show(s,false));
+            const pending=data.status==='pending';
+            $('done-title').textContent=pending?'Reserva solicitada':'¡Cita confirmada!';
+            $('done-sub').textContent=pending
+                ?'Tu cita para '+data.label+' está pendiente de confirmación. Te avisaremos en cuanto se confirme.'
+                :'Te esperamos el '+data.label+'. Recibirás la invitación de calendario.';
+            show('step-done',true);
+        }catch(e){
+            btn.disabled=false; btn.textContent='Reservar cita';
+            showError(e.message||'No se pudo reservar. Inténtalo de nuevo.');
         }
     };
 
