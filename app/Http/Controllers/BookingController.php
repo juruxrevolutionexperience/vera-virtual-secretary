@@ -57,14 +57,9 @@ class BookingController extends Controller
         }
 
         try {
-            $slots = (new GoogleCalendarService())->getAvailableSlots(
-                $req->user, daysAhead: 1, maxSlots: 40, preferredDate: $date
-            );
-            $out = array_map(fn ($s) => [
-                'time' => $s['start']->format('H:i'),
-                'iso'  => $s['start']->toIso8601String(),
-            ], $slots);
-            return response()->json(['slots' => $out]);
+            // Todos los huecos del día con su estado (libre/ocupado)
+            $slots = (new GoogleCalendarService())->getDayAvailability($req->user, $date);
+            return response()->json(['slots' => $slots]);
         } catch (\Throwable $e) {
             Log::warning('booking.slots error', ['error' => $e->getMessage()]);
             return response()->json(['slots' => []]);

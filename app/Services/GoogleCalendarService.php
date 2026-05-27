@@ -168,6 +168,80 @@ class GoogleCalendarService
     }
 
     /**
+     * Devuelve TODOS los huecos de un día dentro del horario laboral, cada uno
+     * con su estado (free=true libre, false ocupado). Para la web de reservas:
+     * los ocupados se muestran bloqueados y los libres seleccionables. Los huecos
+     * de hoy ya vencidos no se incluyen. Devuelve [] si el día no es laborable.
+     *
+     * @return array<int, array{time:string, iso:string, free:bool}>
+     */
+    public function getDayAvailability(User $user, string $date): array
+    {
+        $config = VeraConfig::where('user_id', $user->id)->first();
+        if (!$config || !$config->hasCalendarConnected()) {
+            return [];
+        }
+
+        $tz       = ($user->timezone && $user->timezone !== 'UTC') ? $user->timezone : config('app.timezone', 'Europe/Madrid');
+        $duration = $config->meeting_duration ?? 45;
+        $buffer   = $config->buffer_minutes ?? 15;
+        $wh       = $config->working_hours ?? [];
+
+        $day    = Carbon::parse($date, $tz)->startOfDay();
+        $dayMap = [0 => 'sunday', 1 => 'monday', 2 => 'tuesday', 3 => 'wednesday', 4 => 'thursday', 5 => 'friday', 6 => 'saturday'];
+        $cfg    = $wh[$dayMap[$day->dayOfWeek]] ?? null;
+
+        if (empty($cfg) || !($cfg['enabled'] ?? false)) {
+            return []; // día no laborable
+        }
+
+        try {
+            $service  = $this->getCalendarService($config);
+            $dayStart = $day->copy()->setTimeFromTimeString(($cfg['start'] ?? '09:00') . ':00');
+            $dayEnd   = $day->copy()->setTimeFromTimeString(($cfg['end'] ?? '18:00') . ':00');
+
+            $events = $service->events->listEvents('primary', [
+                'timeMin'      => $dayStart->toRfc3339String(),
+                'timeMax'      => $dayEnd->toRfc3339String(),
+                'singleEvents' => true,
+                'orderBy'      => 'startTime',
+            ]);
+
+            $busy = [];
+            foreach ($events->getItems() as $ev) {
+                $s = $ev->getStart()->getDateTime() ?? $ev->getStart()->getDate();
+                $e = $ev->getEnd()->getDateTime() ?? $ev->getEnd()->getDate();
+                if ($s && $e) {
+                    $busy[] = ['start' => Carbon::parse($s), 'end' => Carbon::parse($e)];
+                }
+            }
+
+            $slots  = [];
+            $now    = now();
+            $cursor = $dayStart->copy();
+
+            // Huecos consecutivos del tamaño de la cita (no solapados)
+            while ($cursor->copy()->addMinutes($duration)->lessThanOrEqualTo($dayEnd)) {
+                $slotEnd = $cursor->copy()->addMinutes($duration);
+
+                if ($cursor->greaterThan($now)) {  // no mostrar horas ya pasadas
+                    $slots[] = [
+                        'time' => $cursor->format('H:i'),
+                        'iso'  => $cursor->toIso8601String(),
+                        'free' => $this->isSlotFree($cursor, $slotEnd, $busy, $buffer),
+                    ];
+                }
+                $cursor->addMinutes($duration);
+            }
+
+            return $slots;
+        } catch (\Throwable $e) {
+            Log::warning('getDayAvailability error', ['user_id' => $user->id, 'date' => $date, 'error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
      * Verifica si un slot concreto está libre (sin conflictos).
      */
     public function checkConflicts(User $user, Carbon $start, Carbon $end): bool
