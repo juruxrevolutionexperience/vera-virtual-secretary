@@ -9,6 +9,7 @@ use App\Models\VeraConfig;
 use App\Services\GoogleCalendarService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -57,8 +58,13 @@ class BookingController extends Controller
         }
 
         try {
-            // Todos los huecos del día con su estado (libre/ocupado)
-            $slots = (new GoogleCalendarService())->getDayAvailability($req->user, $date);
+            // Caché 60s por (negocio, día): reduce drásticamente las llamadas a
+            // Google Calendar API cuando el cliente navega días → evita los 502
+            // por saturación de workers PHP-FPM.
+            $cacheKey = "booking-slots-{$req->user_id}-{$date}";
+            $slots = Cache::remember($cacheKey, 60, function () use ($req, $date) {
+                return (new GoogleCalendarService())->getDayAvailability($req->user, $date);
+            });
             return response()->json(['slots' => $slots]);
         } catch (\Throwable $e) {
             Log::warning('booking.slots error', ['error' => $e->getMessage()]);
@@ -133,6 +139,10 @@ class BookingController extends Controller
             'counts_towards_limit' => true,
             'status'               => 'completed',
         ]);
+
+        // Invalidar el caché del día para que cualquier siguiente consulta vea
+        // el hueco ya ocupado (en vez de esperar al TTL de 60s).
+        Cache::forget("booking-slots-{$user->id}-{$start->format('Y-m-d')}");
 
         return response()->json([
             'ok'     => true,

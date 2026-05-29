@@ -219,8 +219,10 @@ class GoogleCalendarService
             $slots  = [];
             $now    = now();
             $cursor = $dayStart->copy();
+            // Separación real entre huecos: duración + buffer entre reuniones
+            // (config del negocio). Si el buffer es 15 y la cita 45, paso = 60.
+            $step = $duration + $buffer;
 
-            // Huecos consecutivos del tamaño de la cita (no solapados)
             while ($cursor->copy()->addMinutes($duration)->lessThanOrEqualTo($dayEnd)) {
                 $slotEnd = $cursor->copy()->addMinutes($duration);
 
@@ -231,7 +233,7 @@ class GoogleCalendarService
                         'free' => $this->isSlotFree($cursor, $slotEnd, $busy, $buffer),
                     ];
                 }
-                $cursor->addMinutes($duration);
+                $cursor->addMinutes($step);
             }
 
             return $slots;
