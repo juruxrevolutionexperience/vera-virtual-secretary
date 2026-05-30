@@ -115,8 +115,15 @@ class BookingController extends Controller
         ]);
 
         // Bloquea el hueco en el Calendar del negocio (evita que otro lo coja).
+        // OJO: createEvent fuerza status='confirmed' (lo usa el flujo core de Vera).
+        // Si el negocio requiere confirmación manual, lo devolvemos a 'pending':
+        // el evento queda en Calendar reservando el hueco, pero la cita está
+        // pendiente de que el dueño la confirme o rechace desde el panel.
         try {
             $calendar->createEvent($user, $meeting);
+            if (!$autoConfirm) {
+                $meeting->update(['status' => 'pending']);
+            }
         } catch (\Throwable $e) {
             Log::warning('booking.store createEvent falló', ['error' => $e->getMessage()]);
         }

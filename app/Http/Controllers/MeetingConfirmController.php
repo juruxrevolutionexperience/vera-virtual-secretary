@@ -50,7 +50,14 @@ class MeetingConfirmController extends Controller
         abort_if($meeting->user_id !== auth()->id(), 403);
         abort_if($meeting->status !== 'pending', 422);
 
-        $meeting->update(['status' => 'cancelled']);
+        // Libera el hueco en Google Calendar (borra el evento) y marca cancelada.
+        // Si no hay evento o falla, cancelEvent igualmente deja la cita cancelada.
+        try {
+            (new \App\Services\GoogleCalendarService())->cancelEvent($meeting->user, $meeting);
+        } catch (\Throwable $e) {
+            Log::warning('meeting.reject: cancelEvent falló', ['error' => $e->getMessage()]);
+            $meeting->update(['status' => 'cancelled']);
+        }
 
         $req = $meeting->meetingRequest;
         if ($req) {
