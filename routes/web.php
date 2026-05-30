@@ -51,8 +51,16 @@ Route::get('/dashboard', function () {
         ->latest()->limit(5)->get();
     $upcomingMeetings = \App\Models\Meeting::forUser($user->id)
         ->upcoming()->confirmed()->limit(4)->get();
-    return view('dashboard', compact('meetingsThisMonth', 'meetingsThisWeek', 'recentActivity', 'upcomingMeetings'));
+    $pendingMeetings = \App\Models\Meeting::forUser($user->id)
+        ->where('status', 'pending')->upcoming()->get();
+    return view('dashboard', compact('meetingsThisMonth', 'meetingsThisWeek', 'recentActivity', 'upcomingMeetings', 'pendingMeetings'));
 })->middleware(['auth', 'verified', 'subscribed'])->name('dashboard');
+
+// Confirmación / rechazo de reservas pendientes
+Route::middleware(['auth', 'verified', 'subscribed'])->group(function () {
+    Route::post('/meetings/{meeting}/confirm', [\App\Http\Controllers\MeetingConfirmController::class, 'confirm'])->name('meetings.confirm');
+    Route::post('/meetings/{meeting}/reject',  [\App\Http\Controllers\MeetingConfirmController::class, 'reject'])->name('meetings.reject');
+});
 
 // Rutas de Perfil (requiere autenticación)
 Route::middleware('auth')->group(function () {
