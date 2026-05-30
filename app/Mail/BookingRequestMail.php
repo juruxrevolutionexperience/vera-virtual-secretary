@@ -39,7 +39,7 @@ class BookingRequestMail extends Mailable
                 'meeting'    => $this->meeting,
                 'req'        => $this->req,
                 'dateLabel'  => $this->dateLabel,
-                'panelUrl'   => config('app.url') . '/meetings',
+                'panelUrl'   => config('app.url') . '/dashboard',
             ],
         );
     }
