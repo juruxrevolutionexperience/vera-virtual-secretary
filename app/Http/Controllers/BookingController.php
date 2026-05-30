@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\BookingConfirmedMail;
+use App\Mail\BookingRequestMail;
 use App\Models\Meeting;
 use App\Models\MeetingRequest;
 use App\Models\VeraActivityLog;
@@ -11,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Página pública de reservas (tipo Calendly). El cliente abre un enlace
@@ -143,6 +146,25 @@ class BookingController extends Controller
         // Invalidar el caché del día para que cualquier siguiente consulta vea
         // el hueco ya ocupado (en vez de esperar al TTL de 60s).
         Cache::forget("booking-slots-{$user->id}-{$start->format('Y-m-d')}");
+
+        $dateLabel = $start->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i');
+
+        // Email al dueño del negocio
+        try {
+            Mail::to($user->email)->queue(new BookingRequestMail($user, $meeting, $req, $dateLabel));
+        } catch (\Throwable $e) {
+            Log::warning('booking: email al dueño falló', ['error' => $e->getMessage()]);
+        }
+
+        // Email al cliente (solo si tenemos su email)
+        $clientEmail = $req->channel === 'email' ? $req->contact_identifier : ($meeting->contact_email ?? null);
+        if ($clientEmail && filter_var($clientEmail, FILTER_VALIDATE_EMAIL)) {
+            try {
+                Mail::to($clientEmail)->queue(new BookingConfirmedMail($meeting, $req, $dateLabel, $autoConfirm));
+            } catch (\Throwable $e) {
+                Log::warning('booking: email al cliente falló', ['error' => $e->getMessage()]);
+            }
+        }
 
         return response()->json([
             'ok'     => true,
