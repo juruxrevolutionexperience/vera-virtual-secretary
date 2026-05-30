@@ -154,7 +154,10 @@
         $('slots').innerHTML=''; show('no-slots',false); show('legend',false); show('slots-loading',true);
         $('step-time').scrollIntoView({behavior:'smooth',block:'nearest'});
         try{
-            const r=await fetch('/reservar/'+TOKEN+'/slots?date='+isoDate,{headers:{'Accept':'application/json'}});
+            // Retry una vez si falla (los 502 transitorios de Cloudflare/nginx
+            // afectan a la app entera, no solo a este endpoint — pre-existente)
+            let r = await fetch('/reservar/'+TOKEN+'/slots?date='+isoDate,{headers:{'Accept':'application/json'}});
+            if(!r.ok){ await new Promise(rs=>setTimeout(rs,500)); r = await fetch('/reservar/'+TOKEN+'/slots?date='+isoDate,{headers:{'Accept':'application/json'}}); }
             const data=await r.json();
             show('slots-loading',false);
             const slots=data.slots||[];
