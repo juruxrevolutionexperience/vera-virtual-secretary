@@ -53,6 +53,9 @@ class VeraConfig extends Model
         // Onboarding
         'onboarding_completed',
         'onboarding_completed_at',
+
+        // Web de reservas
+        'auto_confirm_bookings',
     ];
 
     protected $casts = [
@@ -68,6 +71,7 @@ class VeraConfig extends Model
         'google_token_expires_at' => 'datetime',
         'meeting_duration'        => 'integer',
         'buffer_minutes'          => 'integer',
+        'auto_confirm_bookings'   => 'boolean',
         // Tokens sensibles — cifrados en reposo con APP_KEY
         'google_access_token'  => 'encrypted',
         'google_refresh_token' => 'encrypted',

@@ -223,6 +223,7 @@ class VeraController extends Controller
             'mode'                 => 'sometimes|in:supervised,autonomous',
             'confidence_threshold' => 'sometimes|numeric|min:0.5|max:1',
             'business_description' => 'nullable|string|max:2000',
+            'auto_confirm_bookings'=> 'sometimes|boolean',
         ]);
 
         $businessDescription = $validated['business_description'] ?? null;

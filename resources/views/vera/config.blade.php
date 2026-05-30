@@ -156,6 +156,23 @@
                         </select>
                     </div>
                 </div>
+
+                <!-- Confirmación de reservas (web de reservas) -->
+                <div class="mt-5 pt-5 border-t border-gray-100">
+                    <label class="flex items-start gap-3 cursor-pointer">
+                        <input type="hidden" name="auto_confirm_bookings" value="0">
+                        <input type="checkbox" name="auto_confirm_bookings" value="1"
+                               {{ $config->auto_confirm_bookings ? 'checked' : '' }}
+                               class="mt-0.5 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <span>
+                            <span class="block text-sm font-medium text-gray-700">Confirmar reservas automáticamente</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">
+                                Si está activado, las citas que reserven tus clientes desde el enlace de Vera se confirman al instante.
+                                Si lo dejas desactivado, recibirás un aviso y deberás confirmarlas o rechazarlas tú desde el panel.
+                            </span>
+                        </span>
+                    </label>
+                </div>
             </div>
 
             <!-- ── SECCIÓN 3: Personalidad ────────────────────── -->
@@ -401,6 +418,7 @@ function veraConfig() {
                 business_description: g('business_description'),
                 working_hours:        this.buildWorkingHours(),
                 escalation_triggers:  this.triggers,
+                auto_confirm_bookings: document.querySelector('[name="auto_confirm_bookings"][type="checkbox"]')?.checked ?? false,
             };
 
             try {
