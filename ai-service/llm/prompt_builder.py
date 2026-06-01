@@ -299,8 +299,8 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
         ctx = f"\nHorario de trabajo: {working_hours}" if working_hours else ""
         return (
             f"El cliente pidió {clean} pero ese hueco no está disponible.{ctx}\n"
-            f"Tu tarea: díselo con tu tono y termina exactamente con esta frase: 'Aquí tienes los huecos disponibles:'\n"
-            f"El sistema añade los huecos reales automáticamente después."
+            f"Tu tarea: díselo con tu tono en 1-2 frases e invítale a ver otros huecos. "
+            f"NO escribas horas ni un enlace: el sistema añade automáticamente el enlace a la agenda real justo después."
         )
 
     # Negociación activa — el cliente está eligiendo entre slots ya propuestos
@@ -332,11 +332,11 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
 
         return (
             f"{base}El cliente quiere una cita.\n"
-            f"Actúa como una secretaria que gestiona la agenda con criterio.\n"
-            f"Termina tu mensaje con una frase corta que introduzca los huecos disponibles, acabando en dos puntos (:).\n"
-            f"El sistema añade los huecos reales automáticamente después de tu frase.\n"
-            f"No preguntes qué hora prefiere — los huecos se muestran solos.\n"
-            f"No recites el horario laboral del negocio (ni 'lunes a viernes', ni 'de X a Y'): los huecos ya lo reflejan.\n"
+            f"Escribe un mensaje BREVE y cálido (1-2 frases) diciéndole que le ayudas a reservar.\n"
+            f"NO escribas horas, fechas ni huecos concretos: justo después de tu mensaje, el sistema añade "
+            f"AUTOMÁTICAMENTE un enlace para que el cliente vea la agenda real y elija su hueco él mismo.\n"
+            f"No preguntes qué hora prefiere ni ofrezcas opciones de horario — de eso se encarga el enlace.\n"
+            f"No escribas tú ningún enlace ni URL (lo añade el sistema). No recites el horario laboral.\n"
             f"No menciones que no tienes información — en este contexto solo gestionas citas."
         )
 
@@ -346,9 +346,9 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
         f"Lee el mensaje y razona qué necesita el cliente:\n"
         f"- Si pregunta sobre el negocio (precios, servicios, ubicación, horarios) → responde con la información que tienes arriba. "
         f"Si no tienes el dato, dilo en una frase y ofrece hablar con {owner}.\n"
-        f"- Si quiere una cita → actúa como secretaria. Termina con una frase corta que introduzca los huecos, acabando en dos puntos (:). "
-        f"El sistema añade los huecos reales después.\n"
-        f"- Si pregunta Y también quiere cita → primero responde la pregunta breve, luego termina introduciendo huecos.\n"
+        f"- Si quiere una cita → escribe 1-2 frases cálidas diciendo que le ayudas a reservar. NO escribas horas ni huecos: "
+        f"el sistema añade automáticamente un enlace para que elija su hueco en la agenda real.\n"
+        f"- Si pregunta Y también quiere cita → primero responde la pregunta breve, luego di que le pasas el enlace para reservar.\n"
         f"- Si es una notificación automática, spam o mensaje sin destinatario claro → clasifica como irrelevante y deja el texto vacío.\n"
-        f"{hours_ctx} Nunca propongas horas concretas — el sistema las pone."
+        f"{hours_ctx} Nunca propongas horas concretas ni escribas enlaces — el sistema los añade."
     )
