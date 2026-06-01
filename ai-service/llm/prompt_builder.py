@@ -303,15 +303,17 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
             f"NO escribas horas ni un enlace: el sistema añade automáticamente el enlace a la agenda real justo después."
         )
 
-    # Negociación activa — el cliente está eligiendo entre slots ya propuestos
+    # Negociación activa — el cliente está respondiendo dentro de un hilo de agenda.
+    # Con el sistema de enlace de reservas NO recitamos horarios: si el cliente da una
+    # hora concreta, el sistema la reserva directamente; si no, el sistema añade el
+    # enlace a la agenda real automáticamente después de tu mensaje.
     if meeting_state == "negotiating" and shown_slots:
-        slots_text = "\n".join(f"  • {s}" for s in shown_slots)
         return (
-            f"Estás en medio de una negociación de agenda.\n"
-            f"En el mensaje anterior propusiste estos slots al cliente:\n{slots_text}\n"
-            f"El cliente acaba de responder. Si elige uno concreto o muestra preferencia, "
-            f"confírmalo directamente. Si rechaza todos o pide otro día, "
-            f"termina con 'Aquí tienes los huecos disponibles:' para que el sistema proponga nuevos."
+            f"Estás en medio de una conversación de agenda con el cliente.\n"
+            f"Responde breve y cálido (1-2 frases). NO escribas horas, fechas ni huecos concretos, "
+            f"ni un enlace: el sistema añade automáticamente el enlace para que el cliente elija su hueco "
+            f"en la agenda real justo después de tu mensaje.\n"
+            f"No preguntes qué hora prefiere ni ofrezcas opciones de horario."
         )
 
     if mode == "respuesta":
