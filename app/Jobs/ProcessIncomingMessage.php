@@ -246,52 +246,50 @@ class ProcessIncomingMessage implements ShouldQueue
             $this->handleAgendaMode($user, $config, $meetingRequest, $slots);
         }
 
-        // Cuando mode=agenda o transicion, consultar Calendar y añadir slots reales.
-        // El LLM aporta el texto conversacional (p.ej. "las 19h están fuera de horario"),
-        // pero los horarios concretos los pone siempre el Calendar — nunca el LLM.
+        // CAPA 3 — En modo agenda/transicion, en vez de recitar slots, Vera manda el
+        // ENLACE de reservas: el cliente ve la agenda real y elige su hueco él mismo.
+        // (Si el cliente dio una hora concreta reservable, ya se reservó arriba con
+        // return — esto solo se alcanza cuando quiere ver opciones o no concreta.)
         if (\in_array($mode, ['agenda', 'transicion']) && $config->hasCalendarConnected()) {
-            $preferredDate = $this->extractPreferredDate($this->message);
-            // Máximo 5 slots: suficiente para el cliente sin abrumarlo.
-            // Con día preferido buscamos 2 días; sin él, los próximos 5 días.
-            // Si el cliente dice "esta semana", limitamos hasta el domingo actual (incl.)
-            // para no colar slots de la semana siguiente.
-            $daysAhead = $preferredDate ? 2 : 5;
-            if (!$preferredDate && $this->messageMentionsThisWeek($this->message)) {
-                // getAvailableSlots hace start + daysAhead, así que daysAhead = diffInDays
-                // exacto (sin +1) — con hoy miércoles llega justo hasta domingo.
-                $daysAhead = max(1, (int) now()->diffInDays(now()->endOfWeek(), false));
+            // Token único de un solo uso. Reutilizamos el válido si ya existe; si el
+            // cliente YA reservó con este enlace (token usado), no mandamos uno nuevo.
+            $bookingUrl = null;
+            if (!$meetingRequest->booking_token_used_at) {
+                $token = $meetingRequest->bookingTokenIsValid()
+                    ? $meetingRequest->booking_token
+                    : $meetingRequest->generateBookingToken();
+                $bookingUrl = rtrim(config('app.url'), '/') . '/reservar/' . $token;
             }
-            [$calendarText, $calendarSlots] = $this->buildAvailabilityResponse($user, $config, $preferredDate, $daysAhead, 5);
-            // Limpiar respuesta del LLM: eliminar slots falsos, firma y frases de cierre
-            // que el LLM añade aunque se le diga que no lo haga.
-            // También eliminamos cualquier frase introductoria de huecos del LLM
-            // (ej. "Aquí tienes los huecos disponibles:") para evitar duplicarla con
-            // el bloque de slots reales que Laravel añade justo después.
+
+            // Limpiar la redacción del LLM: quitar slots inventados, bullets, firmas y
+            // cierres tipo "¿cuál te viene mejor?" (los horarios ya no los pone el LLM).
             if ($response) {
-                // Frases introductorias del LLM que Laravel ya duplica con los slots reales.
                 $response = preg_replace(
                     '/[,]?\s*(tengo disponibilidad en:|aquí tienes los huecos disponibles:|estamos disponibles los|tenemos disponibilidad los|le ofrecemos disponibilidad|podemos atenderle los)[\s\S]*/i',
                     '',
                     $response
                 );
-                // Bullets falsos del LLM
                 $response = preg_replace('/\n*(•\s+.+(\n|$))+/i', '', $response);
-                // Firmas que el LLM mete dentro del cuerpo (las añade GmailService al final)
                 $response = preg_replace('/\n+--?\s*\n?.+$/m', '', $response);
-                // Cierres tipo "¿cuál te/le viene mejor?" — duplicarían el cierre que añade Laravel
                 $response = preg_replace('/\n*¿cuál (de estas opciones )?(te|le) viene mejor\?/i', '', $response);
                 $response = trim($response);
             }
-            // Pegar explicación del LLM (si la hay) + slots reales del Calendar
-            $response = ($response ? $response . "\n\n" : '') . $calendarText;
-            // Guardar slots en contexto para detectar confirmación en el siguiente mensaje
-            if (!empty($calendarSlots)) {
-                $ctx = $meetingRequest->context ?? [];
-                $ctx['calendar_slots'] = array_map(
-                    fn ($s) => ['start' => $s['start']->toIso8601String(), 'end' => $s['end']->toIso8601String(), 'label' => $s['label']],
-                    $calendarSlots
-                );
-                $meetingRequest->update(['context' => $ctx]);
+
+            // Añadir la invitación con el enlace. GmailService lo convierte en botón
+            // en el email; en texto plano / Telegram va como URL clicable.
+            if ($bookingUrl) {
+                $linkInvite = 'Para que veas mi agenda en tiempo real y elijas el hueco que mejor te venga, entra aquí:' . "\n" . $bookingUrl;
+                $response = ($response ? $response . "\n\n" : '') . $linkInvite;
+
+                VeraActivityLog::record([
+                    'user_id'              => $user->id,
+                    'activity_type'        => 'slot_proposed',
+                    'title'                => 'Enlace de reserva enviado a ' . ($this->contactName ?? $this->contactIdentifier),
+                    'description'          => 'Vera envió el enlace para que el cliente elija su hueco en la agenda real.',
+                    'metadata'             => ['channel' => $this->channel, 'contact' => $this->contactIdentifier, 'via' => 'booking_link'],
+                    'counts_towards_limit' => true,
+                    'status'               => 'completed',
+                ]);
             }
         }
 

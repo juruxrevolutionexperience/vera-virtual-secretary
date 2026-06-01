@@ -187,15 +187,31 @@ class GmailService
             ? $subject
             : '=?UTF-8?B?' . base64_encode($subject) . '?=';
 
+        // Multipart/alternative: parte de texto (fallback de siempre) + parte HTML.
+        // El cliente de correo elige la HTML si puede; si no, cae al texto plano.
+        $textPart = $replyBody . "\r\n\r\n-- \r\n" . $veraSignature;
+        $htmlPart = $this->buildHtmlBody($replyBody, $veraSignature);
+        $boundary = 'vera_' . bin2hex(random_bytes(8));
+
         $rawMessage = implode("\r\n", [
             "To: {$toEmail}",
             "Subject: {$encodedSubject}",
+            "MIME-Version: 1.0",
+            "Content-Type: multipart/alternative; boundary=\"{$boundary}\"",
+            "",
+            "--{$boundary}",
             "Content-Type: text/plain; charset=utf-8",
+            "Content-Transfer-Encoding: 8bit",
             "",
-            $replyBody,
+            $textPart,
             "",
-            "-- ",
-            $veraSignature,
+            "--{$boundary}",
+            "Content-Type: text/html; charset=utf-8",
+            "Content-Transfer-Encoding: 8bit",
+            "",
+            $htmlPart,
+            "",
+            "--{$boundary}--",
         ]);
 
         $encoded = base64_encode($rawMessage);
@@ -211,5 +227,57 @@ class GmailService
             'to'      => $toEmail,
             'subject' => $subject,
         ]);
+    }
+
+    /**
+     * Convierte el cuerpo de texto de Vera en HTML para el email.
+     * - Escapa HTML y respeta saltos de línea.
+     * - Si encuentra un enlace de reserva (/reservar/TOKEN), lo extrae del cuerpo
+     *   y lo pinta como un BOTÓN al final, con el dominio visible debajo
+     *   (transparencia anti-phishing). El resto de URLs se vuelven enlaces normales.
+     */
+    private function buildHtmlBody(string $text, string $signature): string
+    {
+        // Extraer el enlace de reserva (si lo hay) para renderizarlo como botón.
+        $bookingUrl = null;
+        if (preg_match('#https?://[^\s<>"]+/reservar/[A-Za-z0-9]+#', $text, $m)) {
+            $bookingUrl = $m[0];
+            // Quitar la URL del cuerpo (y la etiqueta tipo "...aquí:" justo antes, si la hay)
+            $text = trim(preg_replace('#[^\n]*' . preg_quote($bookingUrl, '#') . '#', '', $text));
+        }
+
+        $escaped = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+        // Autolink del resto de URLs (las que no sean de reserva)
+        $escaped = preg_replace(
+            '#(https?://[^\s<>"]+)#',
+            '<a href="$1" style="color:#7c3aed;">$1</a>',
+            $escaped
+        );
+        $bodyHtml = nl2br($escaped);
+
+        $button = '';
+        if ($bookingUrl) {
+            $safeUrl = htmlspecialchars($bookingUrl, ENT_QUOTES, 'UTF-8');
+            $button = '
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;">
+                <tr><td style="border-radius:8px;background:#7c3aed;">
+                    <a href="' . $safeUrl . '" style="display:inline-block;padding:13px 30px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;border-radius:8px;">
+                        Ver agenda y reservar
+                    </a>
+                </td></tr>
+            </table>
+            <p style="margin:0 0 16px 0;font-size:12px;color:#9ca3af;">' . $safeUrl . '</p>';
+        }
+
+        $sig = nl2br(htmlspecialchars($signature, ENT_QUOTES, 'UTF-8'));
+
+        return '<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#1f2937;">
+<div style="max-width:560px;margin:0 auto;padding:24px;font-size:15px;line-height:1.6;">
+<p style="margin:0 0 16px 0;">' . $bodyHtml . '</p>'
+. $button .
+'<p style="margin:24px 0 0 0;color:#6b7280;font-size:14px;">-- <br>' . $sig . '</p>
+</div></body></html>';
     }
 }
