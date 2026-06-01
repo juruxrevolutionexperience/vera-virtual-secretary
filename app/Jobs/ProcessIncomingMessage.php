@@ -275,11 +275,12 @@ class ProcessIncomingMessage implements ShouldQueue
                 $response = trim($response);
             }
 
-            // Añadir la invitación con el enlace. GmailService lo convierte en botón
-            // en el email; en texto plano / Telegram va como URL clicable.
+            // Añadir SOLO la URL: la invitación conversacional ya la redacta Vera (el LLM).
+            // GmailService convierte la URL en botón en el email; en texto plano /
+            // Telegram va como URL clicable. Fallback mínimo si el LLM no dejó texto.
             if ($bookingUrl) {
-                $linkInvite = 'Para que veas mi agenda en tiempo real y elijas el hueco que mejor te venga, entra aquí:' . "\n" . $bookingUrl;
-                $response = ($response ? $response . "\n\n" : '') . $linkInvite;
+                $intro    = $response ?: 'Te dejo mi agenda para que elijas el hueco que mejor te venga:';
+                $response = $intro . "\n\n" . $bookingUrl;
 
                 VeraActivityLog::record([
                     'user_id'              => $user->id,
