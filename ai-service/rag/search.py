@@ -51,7 +51,7 @@ def find_relevant(user_id: str, query: str, min_score: float = 0.65, history: li
     try:
         results = collection.query(
             query_texts=[enriched_query],
-            n_results=min(6, collection.count()),
+            n_results=min(10, collection.count()),
             where={"active": True},
             # OJO: NO incluir "ids" — las versiones nuevas de ChromaDB lo rechazan
             # (los ids se devuelven siempre por defecto). Si se incluye, query()

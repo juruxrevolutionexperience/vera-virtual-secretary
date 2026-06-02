@@ -80,6 +80,8 @@ DATOS DE CITA (rellénalos en la herramienta cuando apliquen):
 
 REGLAS FUNDAMENTALES:
 - Nunca inventes datos que no estén en la información del negocio de arriba
+- La INFORMACIÓN DEL NEGOCIO es tu conocimiento, NO un guion para copiar: nunca la recites literalmente ni pegues frases tipo "Pregunta:/Respuesta:". Explícala con tus palabras, de forma natural, como se lo contarías a alguien de viva voz.
+- Si el cliente pregunta por algo con varias opciones (p.ej. precios o planes), no te quedes en una sola: dale una visión general (el rango o las opciones principales) y ofrece detallar.
 - Nunca te presentes si ya hay historial de conversación
 - Responde solo con el texto del mensaje, sin etiquetas ni explicaciones extra
 - NO firmes el mensaje ni repitas el nombre del negocio al final del cuerpo: el sistema añade la firma automáticamente"""
@@ -319,7 +321,8 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
     if mode == "respuesta":
         return (
             f"El cliente tiene una pregunta sobre el negocio.\n"
-            f"Responde usando la información que tienes arriba.\n"
+            f"Respóndela con tu tono, de forma natural y conversacional — NO recites ni copies la información, intégrala como si la supieras de memoria.\n"
+            f"Si el cliente hizo varias preguntas, respóndelas todas. Cierra de forma cálida (ofrece ayuda o seguir contándole).\n"
             f"Si no tienes el dato, díselo en una frase y ofrécele hablar con {owner}."
         )
 
