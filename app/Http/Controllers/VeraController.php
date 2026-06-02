@@ -6,6 +6,7 @@ use App\Models\Meeting;
 use App\Models\VeraActivityLog;
 use App\Models\VeraConfig;
 use App\Models\VeraMemoryChunk;
+use App\Services\VeraMemoryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -201,7 +202,38 @@ class VeraController extends Controller
             ->where('is_active', true)
             ->value('content') ?? '';
 
-        return view('vera.config', compact('config', 'businessDescription'));
+        // Servicios cargados (chunks product_info manuales). El precio se guarda al
+        // final del contenido como " | Precio: X"; lo separamos para el formulario.
+        $services = VeraMemoryChunk::where('user_id', $user->id)
+            ->where('type', 'product_info')
+            ->where('source', 'manual')
+            ->where('is_active', true)
+            ->get()
+            ->map(function ($c) {
+                $price = '';
+                $desc  = $c->content;
+                if (preg_match('/^(.*)\s\|\sPrecio:\s(.+)$/s', $c->content, $m)) {
+                    $desc  = trim($m[1]);
+                    $price = trim($m[2]);
+                }
+                return ['name' => $c->title, 'price' => $price, 'description' => $desc];
+            })->values();
+
+        // FAQs cargadas (chunks faq manuales). El contenido es "Pregunta: ..\nRespuesta: .."
+        $faqs = VeraMemoryChunk::where('user_id', $user->id)
+            ->where('type', 'faq')
+            ->where('source', 'manual')
+            ->where('is_active', true)
+            ->get()
+            ->map(function ($c) {
+                $answer = $c->content;
+                if (preg_match('/Respuesta:\s(.+)$/s', $c->content, $m)) {
+                    $answer = trim($m[1]);
+                }
+                return ['question' => $c->title, 'answer' => $answer];
+            })->values();
+
+        return view('vera.config', compact('config', 'businessDescription', 'services', 'faqs'));
     }
 
     public function updateConfig(Request $request)
@@ -224,10 +256,19 @@ class VeraController extends Controller
             'confidence_threshold' => 'sometimes|numeric|min:0.5|max:1',
             'business_description' => 'nullable|string|max:2000',
             'auto_confirm_bookings'=> 'sometimes|boolean',
+            'services'             => 'nullable|array',
+            'services.*.name'      => 'nullable|string|max:120',
+            'services.*.price'     => 'nullable|string|max:60',
+            'services.*.description'=> 'nullable|string|max:500',
+            'faqs'                 => 'nullable|array',
+            'faqs.*.question'      => 'nullable|string|max:200',
+            'faqs.*.answer'        => 'nullable|string|max:1000',
         ]);
 
         $businessDescription = $validated['business_description'] ?? null;
-        unset($validated['business_description']);
+        $services            = $validated['services'] ?? null;
+        $faqs                = $validated['faqs'] ?? null;
+        unset($validated['business_description'], $validated['services'], $validated['faqs']);
 
         $config = VeraConfig::where('user_id', $user->id)->firstOrFail();
         $config->update($validated);
@@ -245,6 +286,38 @@ class VeraController extends Controller
             );
         }
 
+        // Servicios y FAQs → memoria RAG. La config es la fuente de verdad: si el
+        // formulario envía las listas, borramos los manuales anteriores y recreamos.
+        // (Si no se envían las claves, no tocamos nada — guardados parciales seguros.)
+        $memory = new VeraMemoryService();
+
+        if (!is_null($services)) {
+            $this->resetManualChunks($user->id, 'product_info', $memory);
+            foreach ($services as $s) {
+                $name = trim($s['name'] ?? '');
+                if ($name === '') {
+                    continue;
+                }
+                $desc  = trim($s['description'] ?? '');
+                $price = trim($s['price'] ?? '');
+                // Guardamos el precio dentro del contenido con un separador parseable.
+                $content = $price !== '' ? trim($desc . ' | Precio: ' . $price) : $desc;
+                $memory->addProductInfo($user->id, $name, $content);
+            }
+        }
+
+        if (!is_null($faqs)) {
+            $this->resetManualChunks($user->id, 'faq', $memory);
+            foreach ($faqs as $f) {
+                $q = trim($f['question'] ?? '');
+                $a = trim($f['answer'] ?? '');
+                if ($q === '' || $a === '') {
+                    continue;
+                }
+                $memory->addFAQ($user->id, $q, $a);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Configuración guardada.',
@@ -255,6 +328,24 @@ class VeraController extends Controller
     public function saveUserProfile(Request $request)
     {
         return $this->updateConfig($request);
+    }
+
+    /**
+     * Desactiva los chunks manuales de un tipo (en MySQL y ChromaDB) antes de
+     * recrearlos desde el formulario de configuración. Así la config es la fuente
+     * de verdad y editar/borrar en el formulario se refleja sin duplicar.
+     */
+    private function resetManualChunks(int $userId, string $type, VeraMemoryService $memory): void
+    {
+        $chunks = VeraMemoryChunk::where('user_id', $userId)
+            ->where('type', $type)
+            ->where('source', 'manual')
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($chunks as $chunk) {
+            $memory->deactivateChunk($userId, $chunk->id);
+        }
     }
 
     // ─── Estadísticas (API) ───────────────────────────────────────────────────

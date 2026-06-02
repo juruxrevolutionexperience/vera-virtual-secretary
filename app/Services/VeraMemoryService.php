@@ -94,7 +94,7 @@ class VeraMemoryService
             ? implode(' ', $keywords)
             : $this->extractKeywords($question . ' ' . $answer);
 
-        return VeraMemoryChunk::create([
+        $chunk = VeraMemoryChunk::create([
             'user_id'        => $userId,
             'type'           => 'faq',
             'title'          => mb_substr($question, 0, 100),
@@ -104,6 +104,11 @@ class VeraMemoryService
             'source'         => 'manual',
             'is_active'      => true,
         ]);
+
+        // Sincronizar a ChromaDB para que find_relevant lo recupere en el prompt.
+        $this->syncChunkToAiService($userId, $chunk);
+
+        return $chunk;
     }
 
     /**
@@ -117,7 +122,7 @@ class VeraMemoryService
             ? implode(' ', $keywords)
             : $this->extractKeywords($name . ' ' . $description);
 
-        return VeraMemoryChunk::create([
+        $chunk = VeraMemoryChunk::create([
             'user_id'        => $userId,
             'type'           => 'product_info',
             'title'          => $name,
@@ -127,6 +132,11 @@ class VeraMemoryService
             'source'         => 'manual',
             'is_active'      => true,
         ]);
+
+        // Sincronizar a ChromaDB para que find_relevant lo recupere en el prompt.
+        $this->syncChunkToAiService($userId, $chunk);
+
+        return $chunk;
     }
 
     /**

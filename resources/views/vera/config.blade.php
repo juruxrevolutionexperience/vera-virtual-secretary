@@ -234,6 +234,73 @@
                 <p class="text-xs text-gray-400 mt-1.5">Vera usará esto para contextualizar sus respuestas en el RAG</p>
             </div>
 
+            <!-- ── SECCIÓN 4b: Servicios y precios ─────────────── -->
+            <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-1">
+                    <h2 class="text-base font-bold text-gray-900">Servicios y precios</h2>
+                    <button type="button" @click="addService()"
+                            class="text-xs font-medium text-purple-600 hover:text-purple-700 px-2.5 py-1 rounded-md hover:bg-purple-50">+ Añadir servicio</button>
+                </div>
+                <p class="text-sm text-gray-500 mb-5">Vera responderá con esta info cuando un cliente pregunte qué ofreces o cuánto cuesta.</p>
+
+                <div class="space-y-4">
+                    <template x-for="(service, idx) in services" :key="idx">
+                        <div class="border border-gray-200 rounded-lg p-4 relative">
+                            <button type="button" @click="removeService(idx)"
+                                    class="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-lg leading-none">×</button>
+                            <div class="grid grid-cols-3 gap-3 mb-3">
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Nombre del servicio</label>
+                                    <input type="text" x-model="service.name" placeholder="Ej: Desarrollo web a medida"
+                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Precio</label>
+                                    <input type="text" x-model="service.price" placeholder="Ej: desde 1.500€"
+                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
+                                <textarea x-model="service.description" rows="2" placeholder="Breve descripción de qué incluye"
+                                          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none resize-none"></textarea>
+                            </div>
+                        </div>
+                    </template>
+                    <p x-show="services.length === 0" class="text-xs text-gray-400">Aún no has añadido servicios. Pulsa "+ Añadir servicio".</p>
+                </div>
+            </div>
+
+            <!-- ── SECCIÓN 4c: Preguntas frecuentes (FAQs) ─────── -->
+            <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-1">
+                    <h2 class="text-base font-bold text-gray-900">Preguntas frecuentes</h2>
+                    <button type="button" @click="addFaq()"
+                            class="text-xs font-medium text-purple-600 hover:text-purple-700 px-2.5 py-1 rounded-md hover:bg-purple-50">+ Añadir pregunta</button>
+                </div>
+                <p class="text-sm text-gray-500 mb-5">Dudas habituales de tus clientes y cómo quieres que Vera las responda.</p>
+
+                <div class="space-y-4">
+                    <template x-for="(faq, idx) in faqs" :key="idx">
+                        <div class="border border-gray-200 rounded-lg p-4 relative">
+                            <button type="button" @click="removeFaq(idx)"
+                                    class="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-lg leading-none">×</button>
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Pregunta</label>
+                                <input type="text" x-model="faq.question" placeholder="Ej: ¿Hacéis mantenimiento?"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Respuesta</label>
+                                <textarea x-model="faq.answer" rows="2" placeholder="Ej: Sí, ofrecemos planes de mantenimiento desde 50€/mes."
+                                          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none resize-none"></textarea>
+                            </div>
+                        </div>
+                    </template>
+                    <p x-show="faqs.length === 0" class="text-xs text-gray-400">Aún no has añadido preguntas. Pulsa "+ Añadir pregunta".</p>
+                </div>
+            </div>
+
             <!-- ── SECCIÓN 5: Google Calendar ─────────────────── -->
             <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
                 <h2 class="text-base font-bold text-gray-900 mb-1">Google Calendar</h2>
@@ -332,6 +399,8 @@ function veraConfig() {
         workStart: '09:00',
         workEnd: '18:00',
         triggers: @json($config->escalation_triggers ?? []),
+        services: @json($services ?? []),
+        faqs: @json($faqs ?? []),
         allDays: [
             { key: 'monday', label: 'Lun' },
             { key: 'tuesday', label: 'Mar' },
@@ -373,6 +442,19 @@ function veraConfig() {
             const t = this.triggerInput.trim();
             if (t && !this.triggers.includes(t)) this.triggers.push(t);
             this.triggerInput = '';
+        },
+
+        addService() {
+            this.services.push({ name: '', price: '', description: '' });
+        },
+        removeService(idx) {
+            this.services.splice(idx, 1);
+        },
+        addFaq() {
+            this.faqs.push({ question: '', answer: '' });
+        },
+        removeFaq(idx) {
+            this.faqs.splice(idx, 1);
         },
 
         buildWorkingHours() {
@@ -419,6 +501,8 @@ function veraConfig() {
                 working_hours:        this.buildWorkingHours(),
                 escalation_triggers:  this.triggers,
                 auto_confirm_bookings: document.querySelector('[name="auto_confirm_bookings"][type="checkbox"]')?.checked ?? false,
+                services:             this.services.filter(s => (s.name || '').trim() !== ''),
+                faqs:                 this.faqs.filter(f => (f.question || '').trim() !== '' && (f.answer || '').trim() !== ''),
             };
 
             try {
