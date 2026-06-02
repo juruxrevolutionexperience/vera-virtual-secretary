@@ -190,7 +190,7 @@ class GmailService
         // Multipart/alternative: parte de texto (fallback de siempre) + parte HTML.
         // El cliente de correo elige la HTML si puede; si no, cae al texto plano.
         $textPart = $replyBody . "\r\n\r\n-- \r\n" . $veraSignature;
-        $htmlPart = $this->buildHtmlBody($replyBody, $veraSignature);
+        $htmlPart = $this->buildHtmlBody($replyBody, $veraSignature, $config->business_name ?? 'Vera');
         $boundary = 'vera_' . bin2hex(random_bytes(8));
 
         $rawMessage = implode("\r\n", [
@@ -236,7 +236,7 @@ class GmailService
      *   y lo pinta como un BOTÓN al final, con el dominio visible debajo
      *   (transparencia anti-phishing). El resto de URLs se vuelven enlaces normales.
      */
-    private function buildHtmlBody(string $text, string $signature): string
+    private function buildHtmlBody(string $text, string $signature, string $businessName = 'Vera'): string
     {
         // Extraer el enlace de reserva (si lo hay) para renderizarlo como botón.
         $bookingUrl = null;
@@ -269,15 +269,31 @@ class GmailService
             <p style="margin:0 0 16px 0;font-size:12px;color:#9ca3af;">' . $safeUrl . '</p>';
         }
 
-        $sig = nl2br(htmlspecialchars($signature, ENT_QUOTES, 'UTF-8'));
+        $sig  = nl2br(htmlspecialchars($signature, ENT_QUOTES, 'UTF-8'));
+        $name = htmlspecialchars($businessName, ENT_QUOTES, 'UTF-8');
 
+        // Tarjeta centrada (mismo estilo que los emails transaccionales de Vera):
+        // fondo gris + tarjeta blanca + cabecera con el nombre del negocio + firma
+        // + pie "Gestionado por Vera". El texto de Vera va alineado a la izquierda
+        // dentro de la tarjeta.
         return '<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#1f2937;">
-<div style="max-width:560px;margin:0 auto;padding:24px;font-size:15px;line-height:1.6;">
-<p style="margin:0 0 16px 0;">' . $bodyHtml . '</p>'
-. $button .
-'<p style="margin:24px 0 0 0;color:#6b7280;font-size:14px;">-- <br>' . $sig . '</p>
-</div></body></html>';
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f4f4f5;padding:32px 16px;">
+        <tr><td align="center">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                <tr><td style="background:#18181b;padding:20px 32px;">
+                    <p style="margin:0;font-size:13px;font-weight:600;color:#a1a1aa;letter-spacing:0.05em;text-transform:uppercase;">' . $name . '</p>
+                </td></tr>
+                <tr><td style="padding:28px 32px;font-size:15px;line-height:1.6;color:#1f2937;">
+                    <p style="margin:0 0 12px 0;">' . $bodyHtml . '</p>'
+                    . $button .
+                    '<p style="margin:24px 0 0 0;color:#6b7280;font-size:14px;">-- <br>' . $sig . '</p>
+                </td></tr>
+            </table>
+            <p style="margin:20px 0 0 0;font-size:12px;color:#a1a1aa;">Gestionado por Vera · Jurux</p>
+        </td></tr>
+    </table>
+</body></html>';
     }
 }
