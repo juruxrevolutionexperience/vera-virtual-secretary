@@ -53,7 +53,10 @@ def find_relevant(user_id: str, query: str, min_score: float = 0.65, history: li
             query_texts=[enriched_query],
             n_results=min(6, collection.count()),
             where={"active": True},
-            include=["documents", "distances", "metadatas", "ids"],
+            # OJO: NO incluir "ids" — las versiones nuevas de ChromaDB lo rechazan
+            # (los ids se devuelven siempre por defecto). Si se incluye, query()
+            # lanza excepción → el except devolvía [] y el RAG quedaba mudo.
+            include=["documents", "distances", "metadatas"],
         )
     except Exception:
         return []
