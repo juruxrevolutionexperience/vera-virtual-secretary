@@ -22,11 +22,15 @@ class Meeting extends Model
         'google_meet_link',
         'meeting_request_id',
         'notes',
+        'reminder_24h_sent_at',
+        'reminder_1h_sent_at',
     ];
 
     protected $casts = [
-        'scheduled_at'     => 'datetime',
-        'duration_minutes' => 'integer',
+        'scheduled_at'         => 'datetime',
+        'duration_minutes'     => 'integer',
+        'reminder_24h_sent_at' => 'datetime',
+        'reminder_1h_sent_at'  => 'datetime',
     ];
 
     public function user(): BelongsTo

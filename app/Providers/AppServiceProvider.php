@@ -51,6 +51,12 @@ class AppServiceProvider extends ServiceProvider
                 \Log::error('❌ Error procesando emails de Vera');
             });
 
+        // Recordatorios de cita (24h y 1h antes) — cada 15 min para acertar la franja
+        Schedule::command('vera:send-reminders')
+            ->everyFifteenMinutes()
+            ->name('vera-send-reminders')
+            ->withoutOverlapping();
+
         // Limpiar sesiones expiradas — diariamente a las 4 AM
         Schedule::command('sessions:clean-expired')
             ->daily()
