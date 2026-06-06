@@ -160,9 +160,13 @@
                     <!-- Acciones: responder + marcar gestionada -->
                     <div class="flex items-center gap-2 mt-3">
                         @if($clientEmail)
-                        <a href="mailto:{{ $clientEmail }}?subject=Re:%20su%20consulta"
+                        {{-- Enlace de redacción de Gmail: abre la ventana de redactar ya
+                             con el cliente puesto. Más fiable que mailto (no depende de
+                             que el sistema tenga cliente de correo configurado). --}}
+                        <a href="https://mail.google.com/mail/?view=cm&fs=1&to={{ urlencode($clientEmail) }}&su={{ urlencode('Re: su consulta') }}"
+                           target="_blank" rel="noopener"
                            class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors">
-                            ✉️ Responder
+                            ✉️ Responder en Gmail
                         </a>
                         @endif
                         <form action="{{ route('incidencias.gestionada', $inc) }}" method="POST">
