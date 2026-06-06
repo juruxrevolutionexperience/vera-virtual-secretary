@@ -160,14 +160,21 @@
                     <!-- Acciones: responder + marcar gestionada -->
                     <div class="flex items-center gap-2 mt-3">
                         @if($clientEmail)
-                        {{-- Enlace de redacción de Gmail: abre la ventana de redactar ya
-                             con el cliente puesto. Más fiable que mailto (no depende de
-                             que el sistema tenga cliente de correo configurado). --}}
-                        <a href="https://mail.google.com/mail/?view=cm&fs=1&to={{ urlencode($clientEmail) }}&su={{ urlencode('Re: su consulta') }}"
+                        {{-- Abrir la conversación del cliente en Gmail (búsqueda por remitente):
+                             así el dueño responde en el hilo real con contexto. --}}
+                        <a href="https://mail.google.com/mail/u/0/#search/from:{{ urlencode($clientEmail) }}"
                            target="_blank" rel="noopener"
                            class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors">
-                            ✉️ Responder en Gmail
+                            ✉️ Abrir en Gmail
                         </a>
+                        {{-- Copiar email: funciona siempre, sin depender de cliente de correo. --}}
+                        <button type="button"
+                            x-data="{ copied: false }"
+                            @click="navigator.clipboard.writeText('{{ $clientEmail }}'); copied = true; setTimeout(() => copied = false, 1500)"
+                            class="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-medium rounded-lg transition-colors">
+                            <span x-show="!copied">📋 Copiar email</span>
+                            <span x-show="copied" x-cloak class="text-green-600">✓ Copiado</span>
+                        </button>
                         @endif
                         <form action="{{ route('incidencias.gestionada', $inc) }}" method="POST">
                             @csrf
