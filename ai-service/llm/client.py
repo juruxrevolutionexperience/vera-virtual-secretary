@@ -69,7 +69,7 @@ _TOOLS = [{
                 "modo": {
                     "type": "string",
                     "enum": ["respuesta", "agenda", "transicion", "escalation", "irrelevante"],
-                    "description": "respuesta=pregunta info, agenda=quiere cita, transicion=info+cita, escalation=queja/urgencia, irrelevante=notificación automática sin acción"
+                    "description": "respuesta=SOLO pregunta info y NO pide cita; agenda=quiere o ACEPTA una cita/reunión (incluye frases cortas como 'sí quiero una cita', 'quiero agendar', 'sí, una reunión', aunque antes se hablara de info); transicion=en el mismo mensaje pregunta info Y pide cita; escalation=queja/urgencia; irrelevante=notificación automática sin acción. Si el cliente quiere/acepta cita de cualquier forma → agenda, nunca respuesta."
                 },
                 "texto": {
                     "type": "string",

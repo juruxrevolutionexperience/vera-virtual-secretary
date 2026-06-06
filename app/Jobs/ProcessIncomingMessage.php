@@ -251,15 +251,13 @@ class ProcessIncomingMessage implements ShouldQueue
         // (Si el cliente dio una hora concreta reservable, ya se reservó arriba con
         // return — esto solo se alcanza cuando quiere ver opciones o no concreta.)
         if (\in_array($mode, ['agenda', 'transicion']) && $config->hasCalendarConnected()) {
-            // Token único de un solo uso. Reutilizamos el válido si ya existe; si el
-            // cliente YA reservó con este enlace (token usado), no mandamos uno nuevo.
-            $bookingUrl = null;
-            if (!$meetingRequest->booking_token_used_at) {
-                $token = $meetingRequest->bookingTokenIsValid()
-                    ? $meetingRequest->booking_token
-                    : $meetingRequest->generateBookingToken();
-                $bookingUrl = rtrim(config('app.url'), '/') . '/reservar/' . $token;
-            }
+            // Token: reutilizamos el válido si aún existe; si ya se usó o caducó,
+            // generamos uno NUEVO. Así, si el cliente vuelve a pedir cita (aunque ya
+            // reservara antes), siempre recibe un enlace fresco — no se queda sin él.
+            $token = $meetingRequest->bookingTokenIsValid()
+                ? $meetingRequest->booking_token
+                : $meetingRequest->generateBookingToken();
+            $bookingUrl = rtrim(config('app.url'), '/') . '/reservar/' . $token;
 
             // Limpiar la redacción del LLM: quitar slots inventados, bullets, firmas y
             // cierres tipo "¿cuál te viene mejor?" (los horarios ya no los pone el LLM).

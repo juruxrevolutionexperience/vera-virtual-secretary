@@ -51,11 +51,12 @@ def build_prompt(brain, message, history, user_id, mode="agenda", requested_time
     # En modo auto el LLM elige el modo vía tool calling — le explicamos las opciones brevemente
     modo_instruccion = "" if mode != "auto" else """
 CLASIFICA TU RESPUESTA usando la herramienta disponible:
-- respuesta → el cliente pregunta algo sobre el negocio
-- agenda → el cliente quiere una cita
-- transicion → pregunta algo Y también quiere cita
+- respuesta → el cliente SOLO pregunta info del negocio (precios, servicios, horario...) y NO pide cita
+- agenda → el cliente quiere o ACEPTA una cita/reunión. Incluye frases cortas como "sí quiero una cita", "quiero agendar", "sí, una reunión", "me gustaría quedar", "vale, una cita". AUNQUE los mensajes anteriores fueran de información, si AHORA pide o acepta cita → es agenda.
+- transicion → en el MISMO mensaje pregunta algo Y además pide cita
 - escalation → el cliente tiene una queja o está muy molesto
-- irrelevante → notificación automática, spam, mensaje sin destinatario claro"""
+- irrelevante → notificación automática, spam, mensaje sin destinatario claro
+REGLA CLAVE: si el cliente expresa de cualquier forma que quiere/acepta una cita o reunión (aunque sea una frase muy corta), clasifícalo SIEMPRE como agenda — nunca como respuesta."""
 
     customer_block = _build_customer_context(customer_profile)
     hoy = _hoy_str(brain.get("timezone"))
