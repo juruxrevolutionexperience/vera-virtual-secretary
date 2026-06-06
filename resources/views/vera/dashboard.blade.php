@@ -135,19 +135,44 @@
             </div>
             <div class="divide-y divide-red-50">
                 @foreach($escalations as $inc)
-                <div class="px-5 py-4 flex items-start justify-between gap-4">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900">{{ $inc->contact?->name ?? $inc->contact_identifier }}</p>
-                        <p class="text-xs text-gray-600 mt-1">{{ Str::limit($inc->context['last_message'] ?? $inc->escalation_reason ?? 'Queja escalada', 160) }}</p>
-                        <p class="text-xs text-gray-400 mt-1.5">{{ $inc->updated_at->diffForHumans() }}</p>
+                @php
+                    // Email del cliente para poder responderle (de la relación o del identificador).
+                    $clientEmail = $inc->contact?->email;
+                    if (!$clientEmail && preg_match('/<(.+?)>/', $inc->contact_identifier, $mm)) { $clientEmail = $mm[1]; }
+                    if (!$clientEmail && filter_var($inc->contact_identifier, FILTER_VALIDATE_EMAIL)) { $clientEmail = $inc->contact_identifier; }
+                    $clientPhone = $inc->contact?->phone;
+                    $fullMsg = $inc->context['last_message'] ?? $inc->escalation_reason ?? 'Queja escalada';
+                @endphp
+                <div class="px-5 py-4">
+                    <div class="flex items-start justify-between gap-4 mb-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-gray-900">{{ $inc->contact?->name ?? $clientEmail ?? $inc->contact_identifier }}</p>
+                            <p class="text-xs text-gray-500">
+                                @if($clientEmail)<span>✉️ {{ $clientEmail }}</span>@endif
+                                @if($clientPhone) · <span>📞 {{ $clientPhone }}</span>@endif
+                                · {{ $inc->updated_at->diffForHumans() }}
+                            </p>
+                        </div>
+                        <span class="flex-shrink-0 text-[11px] uppercase tracking-wide font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded">Queja</span>
                     </div>
-                    <form action="{{ route('incidencias.gestionada', $inc) }}" method="POST" class="flex-shrink-0">
-                        @csrf
-                        <button type="submit" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors"
-                            onclick="return confirm('¿Marcar esta incidencia como gestionada?')">
-                            Gestionada
-                        </button>
-                    </form>
+                    <!-- Mensaje completo del cliente -->
+                    <div class="bg-gray-50 border-l-2 border-red-300 rounded px-3 py-2 text-sm text-gray-700 whitespace-pre-line">{{ $fullMsg }}</div>
+                    <!-- Acciones: responder + marcar gestionada -->
+                    <div class="flex items-center gap-2 mt-3">
+                        @if($clientEmail)
+                        <a href="mailto:{{ $clientEmail }}?subject=Re:%20su%20consulta"
+                           class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors">
+                            ✉️ Responder
+                        </a>
+                        @endif
+                        <form action="{{ route('incidencias.gestionada', $inc) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="px-3 py-1.5 bg-white border border-red-200 text-red-700 hover:bg-red-50 text-xs font-medium rounded-lg transition-colors"
+                                onclick="return confirm('¿Marcar esta incidencia como gestionada?')">
+                                ✓ Marcar gestionada
+                            </button>
+                        </form>
+                    </div>
                 </div>
                 @endforeach
             </div>
