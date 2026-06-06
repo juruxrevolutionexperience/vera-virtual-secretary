@@ -21,6 +21,7 @@ use App\Jobs\SynthesizeContactInsights;
 use App\Services\GmailService;
 use App\Services\TelegramService;
 use App\Services\VeraMemoryService;
+use App\Services\VeraNotificationService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -1071,6 +1072,18 @@ class ProcessIncomingMessage implements ShouldQueue
             'state'             => 'escalated',
             'escalation_reason' => $aiResponse['escalation_reason'] ?? 'trigger detectado',
         ]);
+
+        // Avisar al dueño de inmediato (email + in-app). Una queja no puede esperar
+        // a que entre al panel por casualidad. No bloquea el flujo si falla.
+        try {
+            (new VeraNotificationService())->sendEscalationAlert(
+                $user,
+                $this->contactName ?? $this->contactIdentifier,
+                $this->message
+            );
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo avisar al dueño de la escalada', ['error' => $e->getMessage()]);
+        }
 
         VeraActivityLog::record([
             'user_id'       => $user->id,

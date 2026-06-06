@@ -447,15 +447,22 @@
                             </div>
                             <div class="divide-y divide-gray-100">
                                 @forelse($recentActivity as $activity)
-                                <div class="activity-item px-5 py-4 hover:bg-gray-50 transition-colors cursor-pointer">
+                                @php $esQueja = ($activity->activity_type ?? '') === 'escalation'; @endphp
+                                <div class="activity-item px-5 py-4 transition-colors cursor-pointer {{ $esQueja ? 'bg-red-50 hover:bg-red-100 border-l-4 border-red-400' : 'hover:bg-gray-50' }}">
                                     <div class="flex gap-3">
-                                        <div class="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center flex-shrink-0">
+                                        <div class="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 {{ $esQueja ? 'bg-red-100' : 'bg-purple-100' }}">
+                                            @if($esQueja)
+                                            <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.33 16a2 2 0 001.74 3z"/>
+                                            </svg>
+                                            @else
                                             <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                             </svg>
+                                            @endif
                                         </div>
                                         <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-900">{{ $activity->action_type ?? 'Acción de Vera' }}</p>
+                                            <p class="text-sm font-medium {{ $esQueja ? 'text-red-900' : 'text-gray-900' }}">{{ $activity->title ?? 'Acción de Vera' }}</p>
                                             <p class="text-xs text-gray-500 mt-1">{{ Str::limit($activity->description ?? '', 80) }}</p>
                                             <p class="text-xs text-gray-400 mt-1.5">{{ $activity->created_at->diffForHumans() }}</p>
                                         </div>

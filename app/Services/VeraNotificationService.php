@@ -146,6 +146,29 @@ class VeraNotificationService
     }
 
     /**
+     * Avisar al dueño de que Vera ha escalado una queja/incidencia de un cliente.
+     * Email + aviso in-app inmediato: una queja grave no puede esperar a que el
+     * dueño entre al panel por casualidad.
+     */
+    public function sendEscalationAlert(User $user, string $contactName, string $clientMessage): ?VeraNotification
+    {
+        $resumen = mb_substr(trim(preg_replace('/\s+/', ' ', $clientMessage)), 0, 400);
+
+        $message = "Vera ha detectado una queja o incidencia de {$contactName} y la ha escalado para que la gestiones personalmente.\n\n"
+            . "Mensaje del cliente:\n\"{$resumen}\"\n\n"
+            . "Te recomendamos contactar con el cliente cuanto antes.";
+
+        return $this->createNotification([
+            'user_id' => $user->id,
+            'type'    => 'escalation_alert',
+            'title'   => '⚠️ Queja escalada — ' . $contactName,
+            'message' => $message,
+            'data'    => ['contact' => $contactName],
+            'channel' => 'both',
+        ]);
+    }
+
+    /**
      * Crear notificación
      */
     protected function createNotification(array $data): VeraNotification
