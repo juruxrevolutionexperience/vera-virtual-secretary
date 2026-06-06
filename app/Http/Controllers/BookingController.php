@@ -44,6 +44,7 @@ class BookingController extends Controller
             'token'        => $token,
             'businessName' => $config->business_name ?? 'el negocio',
             'duration'     => $config->meeting_duration ?? 45,
+            'tzLabel'      => VeraConfig::humanTimezone($config->timezone ?? null),
         ]);
     }
 
@@ -90,7 +91,7 @@ class BookingController extends Controller
 
         $user   = $req->user;
         $config = VeraConfig::where('user_id', $user->id)->first();
-        $tz     = ($user->timezone && $user->timezone !== 'UTC') ? $user->timezone : config('app.timezone', 'Europe/Madrid');
+        $tz     = $config->timezone ?: config('app.timezone', 'Europe/Madrid');
         $start  = Carbon::parse($data['datetime'])->setTimezone($tz);
         $end    = $start->copy()->addMinutes($config->meeting_duration ?? 45);
 
@@ -154,7 +155,8 @@ class BookingController extends Controller
         // el hueco ya ocupado (en vez de esperar al TTL de 60s).
         Cache::forget("booking-slots-{$user->id}-{$start->format('Y-m-d')}");
 
-        $dateLabel = $start->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i');
+        $dateLabel = $start->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i')
+            . ' (' . VeraConfig::humanTimezone($tz) . ')';
 
         // Email al dueño del negocio
         try {

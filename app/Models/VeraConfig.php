@@ -15,6 +15,7 @@ class VeraConfig extends Model
         'owner_name',
         'tone',
         'language',
+        'timezone',
 
         // Horario y reuniones
         'working_hours',
@@ -82,6 +83,24 @@ class VeraConfig extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Nombre legible de una zona horaria para mostrar en emails y la web de reservas,
+     * para que el cliente no se confunda aunque su Google muestre otra zona.
+     */
+    public static function humanTimezone(?string $tz): string
+    {
+        return match ($tz) {
+            'Europe/Madrid'   => 'hora peninsular española',
+            'Atlantic/Canary' => 'hora de Canarias',
+            'Europe/Lisbon'   => 'hora de Portugal',
+            'America/Mexico_City' => 'hora de México',
+            'America/Argentina/Buenos_Aires' => 'hora de Argentina',
+            'America/Bogota'  => 'hora de Colombia',
+            'UTC', null       => 'UTC',
+            default           => $tz,
+        };
     }
 
     /**

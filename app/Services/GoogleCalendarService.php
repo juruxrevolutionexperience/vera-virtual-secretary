@@ -182,7 +182,7 @@ class GoogleCalendarService
             return [];
         }
 
-        $tz       = ($user->timezone && $user->timezone !== 'UTC') ? $user->timezone : config('app.timezone', 'Europe/Madrid');
+        $tz       = $config->timezone ?: config('app.timezone', 'Europe/Madrid');
         $duration = $config->meeting_duration ?? 45;
         $buffer   = $config->buffer_minutes ?? 15;
         $wh       = $config->working_hours ?? [];

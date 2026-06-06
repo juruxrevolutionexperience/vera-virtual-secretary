@@ -66,6 +66,7 @@
                 <p class="tag">Reserva de cita</p>
                 <h1>{{ $businessName }}</h1>
                 <p>Elige el día y la hora que mejor te venga · {{ $duration }} min</p>
+                <p style="font-size:13px;opacity:.85;margin-top:6px;">🕒 Horas en {{ $tzLabel }}</p>
             </div>
             <div class="body">
                 <div id="step-day">

@@ -245,6 +245,7 @@ class VeraController extends Controller
             'owner_name'           => 'sometimes|string|max:100',
             'tone'                 => 'sometimes|in:formal,cercano,profesional',
             'language'             => 'sometimes|in:es,en,ca',
+            'timezone'             => 'sometimes|timezone',
             'working_hours'        => 'sometimes|array',
             'meeting_duration'     => 'sometimes|integer|in:30,45,60',
             'buffer_minutes'       => 'sometimes|integer|in:0,10,15,30',

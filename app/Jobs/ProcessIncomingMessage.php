@@ -847,7 +847,7 @@ class ProcessIncomingMessage implements ShouldQueue
     private function bookSlotAtTime(User $user, VeraConfig $config, MeetingRequest $request, Carbon $slotStart): bool
     {
         try {
-            $timezone = ($user->timezone && $user->timezone !== 'UTC') ? $user->timezone : config('app.timezone', 'Europe/Madrid');
+            $timezone = $config->timezone ?: config('app.timezone', 'Europe/Madrid');
 
             $meeting = Meeting::create([
                 'user_id'            => $user->id,
@@ -987,7 +987,7 @@ class ProcessIncomingMessage implements ShouldQueue
     {
         try {
             $start    = Carbon::parse($slot['start']);
-            $timezone = ($user->timezone && $user->timezone !== 'UTC') ? $user->timezone : config('app.timezone', 'Europe/Madrid');
+            $timezone = $config->timezone ?: config('app.timezone', 'Europe/Madrid');
 
             $meeting = Meeting::create([
                 'user_id'            => $user->id,

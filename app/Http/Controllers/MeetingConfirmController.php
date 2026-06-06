@@ -6,6 +6,7 @@ use App\Mail\BookingConfirmedMail;
 use App\Mail\BookingRejectedMail;
 use App\Models\Meeting;
 use App\Models\MeetingRequest;
+use App\Models\VeraConfig;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -25,9 +26,11 @@ class MeetingConfirmController extends Controller
             $req->update(['state' => 'confirmed']);
         }
 
-        $dateLabel = $meeting->scheduled_at
+        $dateLabel = $meeting->scheduled_at->copy()
+            ->setTimezone($meeting->timezone)
             ->locale('es')
-            ->translatedFormat('l d \d\e F \a \l\a\s H:i');
+            ->translatedFormat('l d \d\e F \a \l\a\s H:i')
+            . ' (' . VeraConfig::humanTimezone($meeting->timezone) . ')';
 
         $clientEmail = $meeting->contact_email
             ?? ($req?->channel === 'email' ? $req->contact_identifier : null);
@@ -64,9 +67,11 @@ class MeetingConfirmController extends Controller
             $req->update(['state' => 'cancelled']);
         }
 
-        $dateLabel = $meeting->scheduled_at
+        $dateLabel = $meeting->scheduled_at->copy()
+            ->setTimezone($meeting->timezone)
             ->locale('es')
-            ->translatedFormat('l d \d\e F \a \l\a\s H:i');
+            ->translatedFormat('l d \d\e F \a \l\a\s H:i')
+            . ' (' . VeraConfig::humanTimezone($meeting->timezone) . ')';
 
         $clientEmail = $meeting->contact_email
             ?? ($req?->channel === 'email' ? $req->contact_identifier : null);

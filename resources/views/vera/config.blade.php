@@ -89,6 +89,21 @@
                         </select>
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Zona horaria</label>
+                        @php $tzActual = $config->timezone ?? 'Europe/Madrid'; @endphp
+                        <select name="timezone"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
+                            <option value="Europe/Madrid" {{ $tzActual === 'Europe/Madrid' ? 'selected' : '' }}>España (peninsular) — Europe/Madrid</option>
+                            <option value="Atlantic/Canary" {{ $tzActual === 'Atlantic/Canary' ? 'selected' : '' }}>Canarias — Atlantic/Canary</option>
+                            <option value="Europe/Lisbon" {{ $tzActual === 'Europe/Lisbon' ? 'selected' : '' }}>Portugal — Europe/Lisbon</option>
+                            <option value="America/Mexico_City" {{ $tzActual === 'America/Mexico_City' ? 'selected' : '' }}>México — America/Mexico_City</option>
+                            <option value="America/Argentina/Buenos_Aires" {{ $tzActual === 'America/Argentina/Buenos_Aires' ? 'selected' : '' }}>Argentina — Buenos Aires</option>
+                            <option value="America/Bogota" {{ $tzActual === 'America/Bogota' ? 'selected' : '' }}>Colombia — America/Bogota</option>
+                            <option value="UTC" {{ $tzActual === 'UTC' ? 'selected' : '' }}>UTC</option>
+                        </select>
+                        <p class="text-xs text-gray-400 mt-1.5">Las citas y los horarios se gestionan en esta zona.</p>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">Modo</label>
                         <select name="mode" x-model="currentMode"
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
@@ -492,6 +507,7 @@ function veraConfig() {
                 owner_name:           g('owner_name'),
                 tone:                 g('tone'),
                 language:             g('language'),
+                timezone:             g('timezone'),
                 mode:                 this.currentMode,
                 meeting_duration:     parseInt(g('meeting_duration')),
                 buffer_minutes:       parseInt(g('buffer_minutes')),
