@@ -35,8 +35,8 @@
         <!-- Header escritorio -->
         <div class="hidden lg:flex items-center justify-between mb-6">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">Panel de Vera</h1>
-                <p class="text-sm text-gray-500 mt-0.5">Tu secretaria de agenda inteligente</p>
+                <h1 class="text-2xl font-bold text-gray-900">Bandeja de gestión</h1>
+                <p class="text-sm text-gray-500 mt-0.5">Todo lo que requiere tu acción: citas por confirmar e incidencias</p>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
                 @if($config && $config->hasCalendarConnected())
@@ -116,6 +116,44 @@
             </div>
         </div>
 
+        @if(session('success'))
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(()=>show=false,4000)"
+             class="mb-6 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800 font-medium">
+            {{ session('success') }}
+        </div>
+        @endif
+
+        <!-- Incidencias / quejas escaladas (requieren al dueño) -->
+        @if(isset($escalations) && $escalations->isNotEmpty())
+        <div class="mb-6 bg-white border border-red-200 rounded-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-red-100 bg-red-50 flex items-center justify-between">
+                <div>
+                    <h2 class="text-sm font-semibold text-red-900">⚠️ Incidencias / Quejas</h2>
+                    <p class="text-xs text-red-600 mt-0.5">Vera las escaló — gestiónalas tú</p>
+                </div>
+                <span class="inline-flex items-center justify-center w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full">{{ $escalations->count() }}</span>
+            </div>
+            <div class="divide-y divide-red-50">
+                @foreach($escalations as $inc)
+                <div class="px-5 py-4 flex items-start justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900">{{ $inc->contact?->name ?? $inc->contact_identifier }}</p>
+                        <p class="text-xs text-gray-600 mt-1">{{ Str::limit($inc->context['last_message'] ?? $inc->escalation_reason ?? 'Queja escalada', 160) }}</p>
+                        <p class="text-xs text-gray-400 mt-1.5">{{ $inc->updated_at->diffForHumans() }}</p>
+                    </div>
+                    <form action="{{ route('incidencias.gestionada', $inc) }}" method="POST" class="flex-shrink-0">
+                        @csrf
+                        <button type="submit" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors"
+                            onclick="return confirm('¿Marcar esta incidencia como gestionada?')">
+                            Gestionada
+                        </button>
+                    </form>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             <!-- Próximas reuniones -->
@@ -178,12 +216,19 @@
                             <p class="text-xs text-gray-400">via {{ ucfirst($meeting->source_channel) }} · {{ \Carbon\Carbon::parse($meeting->created_at)->diffForHumans() }}</p>
                         </div>
                         <div class="flex flex-col gap-1">
-                            <button class="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
-                                Confirmar
-                            </button>
-                            <button class="text-xs px-2 py-1 bg-white text-gray-500 border border-gray-200 rounded hover:bg-gray-50 transition-colors">
-                                Rechazar
-                            </button>
+                            <form action="{{ route('meetings.confirm', $meeting) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="w-full text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+                                    Confirmar
+                                </button>
+                            </form>
+                            <form action="{{ route('meetings.reject', $meeting) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="w-full text-xs px-2 py-1 bg-white text-gray-500 border border-gray-200 rounded hover:bg-gray-50 transition-colors"
+                                    onclick="return confirm('¿Rechazar esta reserva? El cliente será notificado.')">
+                                    Rechazar
+                                </button>
+                            </form>
                         </div>
                     </div>
                     @empty

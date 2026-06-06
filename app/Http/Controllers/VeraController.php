@@ -44,7 +44,14 @@ class VeraController extends Controller
             ->limit(8)
             ->get();
 
-        return view('vera.dashboard', compact('config', 'stats', 'upcomingMeetings', 'pendingMeetings', 'recentActivity'));
+        // Incidencias/quejas escaladas y aún no gestionadas (Bandeja de gestión).
+        $escalations = \App\Models\MeetingRequest::forUser($user->id)
+            ->where('state', 'escalated')
+            ->whereNull('context->handled_at')
+            ->with('contact')
+            ->latest()->get();
+
+        return view('vera.dashboard', compact('config', 'stats', 'upcomingMeetings', 'pendingMeetings', 'recentActivity', 'escalations'));
     }
 
     // ─── Onboarding ───────────────────────────────────────────────────────────
