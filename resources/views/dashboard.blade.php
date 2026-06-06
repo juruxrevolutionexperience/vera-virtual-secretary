@@ -338,6 +338,39 @@
                         </div>
                         @endif
 
+                        <!-- Incidencias / quejas escaladas (requieren al dueño) -->
+                        @if(isset($escalations) && $escalations->isNotEmpty())
+                        <div class="bg-white border border-red-200 rounded-lg overflow-hidden">
+                            <div class="px-5 py-4 border-b border-red-100 bg-red-50 flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-sm font-semibold text-red-900">⚠️ Incidencias / Quejas</h3>
+                                    <p class="text-xs text-red-600 mt-0.5">Vera las escaló — requieren que las gestiones tú</p>
+                                </div>
+                                <span class="inline-flex items-center justify-center w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full">{{ $escalations->count() }}</span>
+                            </div>
+                            <div class="divide-y divide-red-50">
+                                @foreach($escalations as $inc)
+                                <div class="px-5 py-4">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-900">{{ $inc->contact?->name ?? $inc->contact_identifier }}</p>
+                                            <p class="text-xs text-gray-600 mt-1">{{ Str::limit($inc->context['last_message'] ?? $inc->escalation_reason ?? 'Queja escalada', 140) }}</p>
+                                            <p class="text-xs text-gray-400 mt-1.5">{{ $inc->updated_at->diffForHumans() }}</p>
+                                        </div>
+                                        <form action="{{ route('incidencias.gestionada', $inc) }}" method="POST" class="flex-shrink-0">
+                                            @csrf
+                                            <button type="submit" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors"
+                                                onclick="return confirm('¿Marcar esta incidencia como gestionada?')">
+                                                Gestionada
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+
                         <!-- Reservas pendientes de confirmar -->
                         @if($pendingMeetings->isNotEmpty())
                         <div class="bg-white border border-amber-200 rounded-lg overflow-hidden">

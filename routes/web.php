@@ -53,13 +53,20 @@ Route::get('/dashboard', function () {
         ->upcoming()->confirmed()->limit(4)->get();
     $pendingMeetings = \App\Models\Meeting::forUser($user->id)
         ->where('status', 'pending')->upcoming()->get();
-    return view('dashboard', compact('meetingsThisMonth', 'meetingsThisWeek', 'recentActivity', 'upcomingMeetings', 'pendingMeetings'));
+    // Incidencias/quejas escaladas y aún no gestionadas por el dueño.
+    $escalations = \App\Models\MeetingRequest::forUser($user->id)
+        ->where('state', 'escalated')
+        ->whereNull('context->handled_at')
+        ->with('contact')
+        ->latest()->get();
+    return view('dashboard', compact('meetingsThisMonth', 'meetingsThisWeek', 'recentActivity', 'upcomingMeetings', 'pendingMeetings', 'escalations'));
 })->middleware(['auth', 'verified', 'subscribed'])->name('dashboard');
 
-// Confirmación / rechazo de reservas pendientes
+// Confirmación / rechazo de reservas pendientes + gestión de incidencias
 Route::middleware(['auth', 'verified', 'subscribed'])->group(function () {
     Route::post('/meetings/{meeting}/confirm', [\App\Http\Controllers\MeetingConfirmController::class, 'confirm'])->name('meetings.confirm');
     Route::post('/meetings/{meeting}/reject',  [\App\Http\Controllers\MeetingConfirmController::class, 'reject'])->name('meetings.reject');
+    Route::post('/incidencias/{meetingRequest}/gestionada', [\App\Http\Controllers\MeetingConfirmController::class, 'resolveEscalation'])->name('incidencias.gestionada');
 });
 
 // Rutas de Perfil (requiere autenticación)

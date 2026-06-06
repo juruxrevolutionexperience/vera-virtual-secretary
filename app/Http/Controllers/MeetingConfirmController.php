@@ -88,4 +88,20 @@ class MeetingConfirmController extends Controller
 
         return back()->with('success', 'Reserva rechazada. El cliente ha sido notificado.');
     }
+
+    /**
+     * Marca una incidencia/queja escalada como gestionada por el dueño.
+     * No cambia el estado del request (sigue 'escalated' como histórico), solo
+     * añade context->handled_at para que salga del listado de "Requiere tu atención".
+     */
+    public function resolveEscalation(Request $request, MeetingRequest $meetingRequest): RedirectResponse
+    {
+        abort_if($meetingRequest->user_id !== auth()->id(), 403);
+
+        $ctx = $meetingRequest->context ?? [];
+        $ctx['handled_at'] = now()->toIso8601String();
+        $meetingRequest->update(['context' => $ctx]);
+
+        return back()->with('success', 'Incidencia marcada como gestionada.');
+    }
 }
