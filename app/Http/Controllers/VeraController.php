@@ -332,9 +332,13 @@ class VeraController extends Controller
         // bloquear el guardado y reintentar si el ai-service tarda.
         if (!is_null($businessDescription) || !is_null($services) || !is_null($faqs)) {
             try {
+                // Sincroniza el conocimiento NUEVO/actualizado a ChromaDB...
                 \Illuminate\Support\Facades\Artisan::queue('vera:sync-memory-to-chroma', ['--user' => (string) $user->id]);
+                // ...y elimina de ChromaDB el conocimiento VIEJO (chunks desactivados al
+                // editar), para que Vera nunca responda con info obsoleta. Ambas en cola.
+                \Illuminate\Support\Facades\Artisan::queue('vera:cleanup-chroma', ['--user' => (string) $user->id]);
             } catch (\Throwable $e) {
-                \Log::warning('No se pudo encolar la sincronización de memoria de Vera', ['error' => $e->getMessage()]);
+                \Log::warning('No se pudo encolar la sincronización/limpieza de memoria de Vera', ['error' => $e->getMessage()]);
             }
         }
 
