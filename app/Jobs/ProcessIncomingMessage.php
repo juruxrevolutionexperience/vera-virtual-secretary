@@ -94,34 +94,15 @@ class ProcessIncomingMessage implements ShouldQueue
         // ── 1. Crear o recuperar la solicitud de reunión en curso ─────────────
         $meetingRequest = $this->getOrCreateMeetingRequest($user, $config);
 
-        // ── 2. Detectar confirmación de slot ANTES del LLM ───────────────────
-        // Si el usuario responde confirmando uno de los slots propuestos, lo agendamos
-        // directamente sin gastar tokens en el LLM.
-        if ($meetingRequest->state === 'negotiating') {
-            $confirmedSlot = $this->detectConfirmedSlot($meetingRequest);
-            if ($confirmedSlot) {
-                $response = $this->bookSlot($user, $config, $meetingRequest, $confirmedSlot);
-                $this->saveToHistory($meetingRequest, $response);
-                if ($response) {
-                    $this->sendResponse($user, $response, $config);
-                }
-                $this->dispatchSynthesis($meetingRequest);
-                return;
-            }
-        }
-
         // ── 3. Cargar historial de la conversación ────────────────────────────
         $history = $this->loadConversationHistory($meetingRequest);
 
-        // ── 3.5 Verificar slot solicitado antes de llamar al LLM ─────────────
-        // Si el cliente pidió una hora concreta, comprobamos en Calendar si está libre
-        // para que el LLM pueda decir "a las 12:00 no hay disponibilidad" en lugar de
-        // ignorar la petición y listar huecos sin contexto.
-        $requestedTime          = $this->extractRequestedTime($this->message);
+        // NOTA (2026-06-07): Vera ya NO agenda desde el texto. Todas las citas se
+        // reservan a través de la web de reservas (el cliente elige el hueco real en
+        // el calendario). Por eso no extraemos hora pedida ni reservamos por texto:
+        // en modo agenda siempre se manda el ENLACE. Pasamos requested_time=null.
+        $requestedTime          = null;
         $requestedSlotAvailable = false;
-        if ($requestedTime && $config->hasCalendarConnected()) {
-            $requestedSlotAvailable = $this->checkRequestedSlotAvailable($user, $config, $requestedTime);
-        }
 
         // ── 4. Llamar a ai-service ────────────────────────────────────────────
         $aiResponse = $this->callAiService($user, $config, $history, $meetingRequest, $requestedTime, $requestedSlotAvailable);
@@ -176,38 +157,9 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
-        // ── 5.2 Reserva por intención estructurada (fecha+hora EXACTAS del cliente) ──
-        // Si el LLM detectó que el cliente da o acepta una fecha+hora concretas,
-        // reservamos ESA hora exacta — nunca un slot por defecto. Arregla el
-        // "agenda cuando ella quiere". Fail-safe: si falta dato, la fecha no es
-        // válida o el hueco no está libre, NO reserva y sigue el flujo normal.
-        $intentAction = $aiResponse['intent_action'] ?? 'ninguna';
-        $intentDate   = $aiResponse['intent_date']   ?? null;
-        $intentTime   = $aiResponse['intent_time']   ?? null;
-
-        if ($intentAction === 'confirmar' && $intentDate && $intentTime && $config->hasCalendarConnected()) {
-            $exact = $this->resolveIntentSlot($user, $intentDate, $intentTime);
-            if ($exact && $this->isSlotFree($user, $config, $exact)) {
-                if ($this->bookSlotAtTime($user, $config, $meetingRequest, $exact)) {
-                    $label = $exact->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i');
-                    $confirmText = $this->generateConfirmationText($config, $label);
-                    $this->saveToHistory($meetingRequest, $confirmText);
-                    $this->sendResponse($user, $confirmText, $config);
-                    $this->dispatchSynthesis($meetingRequest);
-                    Log::info('✅ Reserva por intención estructurada del LLM', [
-                        'user_id' => $user->id,
-                        'slot'    => $exact->toDateTimeString(),
-                    ]);
-                    return;
-                }
-            } else {
-                Log::info('🗓 Intención confirmar pero slot no reservable — sigue flujo normal', [
-                    'intent_date' => $intentDate,
-                    'intent_time' => $intentTime,
-                    'resolved'    => $exact?->toDateTimeString(),
-                ]);
-            }
-        }
+        // NOTA (2026-06-07): Vera ya NO reserva desde el texto (ni por intención del
+        // LLM ni por hora pedida). TODAS las citas se reservan en la web de reservas,
+        // donde el cliente elige el hueco real. En modo agenda se manda el ENLACE.
 
         // ── 6. Actuar según el modo ───────────────────────────────────────────
 
@@ -215,31 +167,6 @@ class ProcessIncomingMessage implements ShouldQueue
             $this->handleEscalation($user, $meetingRequest, $aiResponse);
             $this->sendResponse($user, $response ?? $config->unknown_response ?? 'Déjame consultarlo y te respondo en breve.', $config);
             $this->dispatchSynthesis($meetingRequest);
-            return;
-        }
-
-        // Si el slot pedido está libre → reservarlo y confirmar con fecha real (no confiar en el LLM para la fecha).
-        if ($requestedSlotAvailable && $requestedTime) {
-            $confirmationResponse = null;
-            $slotStart = $this->resolveRequestedSlotStart($requestedTime);
-            Log::info('🗓 Slot resuelto para booking directo', [
-                'requested_time' => $requestedTime,
-                'slot_start'     => $slotStart?->toDateTimeString(),
-                'message_preview'=> substr($this->message, 0, 100),
-            ]);
-            if ($config->hasCalendarConnected() && $slotStart) {
-                $this->bookConfirmedRequestedSlot($user, $config, $meetingRequest, $requestedTime);
-                $label = $slotStart->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i');
-                $confirmationResponse = $this->generateConfirmationText($config, $label);
-            }
-            $this->updateMeetingRequestState($meetingRequest, $mode, $aiResponse);
-            $this->saveToHistory($meetingRequest, $confirmationResponse ?? $response);
-            $this->sendResponse($user, $confirmationResponse ?? $response, $config);
-            $this->dispatchSynthesis($meetingRequest);
-            Log::info('✅ Slot directo reservado', [
-                'user_id'    => $user->id,
-                'slot_start' => $slotStart?->toDateTimeString(),
-            ]);
             return;
         }
 
