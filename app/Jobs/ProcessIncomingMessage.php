@@ -52,7 +52,7 @@ class ProcessIncomingMessage implements ShouldQueue
     public function __construct(
         public readonly int     $userId,
         public readonly string  $channel,
-        public readonly string  $message,
+        public string           $message,
         public readonly string  $contactIdentifier,
         public readonly ?string $contactName = null,
         public readonly array   $metadata    = []
@@ -68,6 +68,14 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         $config = VeraConfig::where('user_id', $user->id)->first();
+
+        // Quitar el hilo citado: cuando el cliente RESPONDE, el email arrastra toda la
+        // conversación anterior (la respuesta de Vera, firma, etc.). Vera solo debe
+        // procesar el mensaje NUEVO — así clasifica bien y no gasta tokens en el hilo.
+        $clean = $this->stripQuotedEmailText($this->message);
+        if (trim($clean) !== '') {
+            $this->message = $clean;
+        }
 
         if (!$config || !$config->isBrainReady()) {
             Log::warning('ProcessIncomingMessage: Cerebro de Vera no configurado', ['user_id' => $user->id]);
