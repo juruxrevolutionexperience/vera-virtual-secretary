@@ -806,7 +806,11 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         $dayStart = $slotStart->copy()->setTimeFromTimeString(($dayConfig['start'] ?? '09:00') . ':00');
-        $dayEnd   = $slotStart->copy()->setTimeFromTimeString(($dayConfig['end']   ?? '18:00') . ':00');
+        // "00:00" como fin = medianoche (fin del día), no inicio del día.
+        $endStr   = $dayConfig['end'] ?? '18:00';
+        $dayEnd   = $endStr === '00:00'
+            ? $slotStart->copy()->addDay()->startOfDay()
+            : $slotStart->copy()->setTimeFromTimeString($endStr . ':00');
 
         return $slotStart->greaterThanOrEqualTo($dayStart) && $slotStart->lessThan($dayEnd);
     }

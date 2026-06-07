@@ -198,7 +198,12 @@ class GoogleCalendarService
         try {
             $service  = $this->getCalendarService($config);
             $dayStart = $day->copy()->setTimeFromTimeString(($cfg['start'] ?? '09:00') . ':00');
-            $dayEnd   = $day->copy()->setTimeFromTimeString(($cfg['end'] ?? '18:00') . ':00');
+            // "00:00" como hora de fin = medianoche (fin del día), no inicio. Si no,
+            // la ventana quedaría "10:00 → 00:00" (negativa) y no saldría ningún hueco.
+            $endStr   = $cfg['end'] ?? '18:00';
+            $dayEnd   = $endStr === '00:00'
+                ? $day->copy()->addDay()->startOfDay()
+                : $day->copy()->setTimeFromTimeString($endStr . ':00');
 
             $events = $service->events->listEvents('primary', [
                 'timeMin'      => $dayStart->toRfc3339String(),
