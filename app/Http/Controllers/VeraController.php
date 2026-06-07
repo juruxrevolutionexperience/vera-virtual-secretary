@@ -326,6 +326,18 @@ class VeraController extends Controller
             }
         }
 
+        // Sincronización AUTOMÁTICA del conocimiento de Vera a ChromaDB, en segundo
+        // plano (cola): si el negocio cambia descripción/servicios/FAQs, Vera queda
+        // actualizada al instante sin que nadie ejecute comandos. En cola para no
+        // bloquear el guardado y reintentar si el ai-service tarda.
+        if (!is_null($businessDescription) || !is_null($services) || !is_null($faqs)) {
+            try {
+                \Illuminate\Support\Facades\Artisan::queue('vera:sync-memory-to-chroma', ['--user' => (string) $user->id]);
+            } catch (\Throwable $e) {
+                \Log::warning('No se pudo encolar la sincronización de memoria de Vera', ['error' => $e->getMessage()]);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Configuración guardada.',

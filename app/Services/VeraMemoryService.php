@@ -94,7 +94,9 @@ class VeraMemoryService
             ? implode(' ', $keywords)
             : $this->extractKeywords($question . ' ' . $answer);
 
-        $chunk = VeraMemoryChunk::create([
+        // La sincronización a ChromaDB la dispara updateConfig en cola (bulk), para
+        // no bloquear el guardado con una llamada HTTP por cada chunk.
+        return VeraMemoryChunk::create([
             'user_id'        => $userId,
             'type'           => 'faq',
             'title'          => mb_substr($question, 0, 100),
@@ -104,11 +106,6 @@ class VeraMemoryService
             'source'         => 'manual',
             'is_active'      => true,
         ]);
-
-        // Sincronizar a ChromaDB para que find_relevant lo recupere en el prompt.
-        $this->syncChunkToAiService($userId, $chunk);
-
-        return $chunk;
     }
 
     /**
@@ -122,7 +119,8 @@ class VeraMemoryService
             ? implode(' ', $keywords)
             : $this->extractKeywords($name . ' ' . $description);
 
-        $chunk = VeraMemoryChunk::create([
+        // La sincronización a ChromaDB la dispara updateConfig en cola (bulk).
+        return VeraMemoryChunk::create([
             'user_id'        => $userId,
             'type'           => 'product_info',
             'title'          => $name,
@@ -132,11 +130,6 @@ class VeraMemoryService
             'source'         => 'manual',
             'is_active'      => true,
         ]);
-
-        // Sincronizar a ChromaDB para que find_relevant lo recupere en el prompt.
-        $this->syncChunkToAiService($userId, $chunk);
-
-        return $chunk;
     }
 
     /**
