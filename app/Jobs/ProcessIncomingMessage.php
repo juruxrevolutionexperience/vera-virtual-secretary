@@ -80,7 +80,7 @@ class ProcessIncomingMessage implements ShouldQueue
             'user_id'       => $user->id,
             'activity_type' => 'message_received',
             'title'         => 'Email recibido de ' . ($this->contactName ?? $this->contactIdentifier),
-            'description'   => substr($this->message, 0, 200),
+            'description'   => mb_substr($this->message, 0, 200),
             'metadata'      => [
                 'channel'          => $this->channel,
                 'contact'          => $this->contactIdentifier,

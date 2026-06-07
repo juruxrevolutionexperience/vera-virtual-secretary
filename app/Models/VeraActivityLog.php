@@ -189,6 +189,15 @@ class VeraActivityLog extends Model
             $data['plan_type_at_time'] = $user?->plan_type ?? 'basic';
         }
 
+        // Saneado UTF-8: el texto de emails entrantes puede traer bytes inválidos
+        // (tildes cortadas, codificación latin1...) que reventarían el INSERT en MySQL
+        // y tumbarían el job. Eliminamos secuencias inválidas para que NUNCA falle.
+        foreach (['title', 'description'] as $field) {
+            if (isset($data[$field]) && is_string($data[$field])) {
+                $data[$field] = (string) @iconv('UTF-8', 'UTF-8//IGNORE', $data[$field]);
+            }
+        }
+
         return self::create($data);
     }
 
