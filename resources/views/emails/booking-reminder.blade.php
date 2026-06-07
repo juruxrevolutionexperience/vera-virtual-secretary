@@ -10,10 +10,18 @@
                 </td></tr>
                 <tr><td style="padding:28px 32px;">
                     <h1 style="margin:0 0 8px 0;font-size:21px;font-weight:600;color:#18181b;">
-                        @if($kind === '1h')⏰ Tu cita es en 1 hora@else⏰ Recordatorio de tu cita@endif
+                        @if($kind === '1h')
+                            ⏰ Tu cita es en 1 hora
+                        @else
+                            ⏰ Recordatorio de tu cita
+                        @endif
                     </h1>
                     <p style="margin:0 0 20px 0;font-size:14px;color:#71717a;">
-                        @if($kind === '1h')Te esperamos muy pronto.@else Te recordamos que tienes una cita mañana.@endif
+                        @if($kind === '1h')
+                            Te esperamos muy pronto.
+                        @else
+                            Te recordamos que tienes una cita mañana.
+                        @endif
                     </p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f9fafb;border-radius:8px;padding:20px;">
                         <tr><td style="padding:6px 0;">
