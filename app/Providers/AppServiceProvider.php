@@ -57,6 +57,12 @@ class AppServiceProvider extends ServiceProvider
             ->name('vera-send-reminders')
             ->withoutOverlapping();
 
+        // Seguimiento a leads que recibieron el enlace de reserva y no agendaron en 24h
+        Schedule::command('vera:send-followups')
+            ->hourly()
+            ->name('vera-send-followups')
+            ->withoutOverlapping();
+
         // Limpiar sesiones expiradas — diariamente a las 4 AM
         Schedule::command('sessions:clean-expired')
             ->daily()

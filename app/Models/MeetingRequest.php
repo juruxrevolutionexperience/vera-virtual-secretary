@@ -21,12 +21,16 @@ class MeetingRequest extends Model
         'booking_token',
         'booking_token_expires_at',
         'booking_token_used_at',
+        'booking_link_sent_at',
+        'follow_up_sent_at',
     ];
 
     protected $casts = [
         'context' => 'array',
         'booking_token_expires_at' => 'datetime',
         'booking_token_used_at'    => 'datetime',
+        'booking_link_sent_at'     => 'datetime',
+        'follow_up_sent_at'        => 'datetime',
     ];
 
     /**

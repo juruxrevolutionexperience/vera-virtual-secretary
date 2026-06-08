@@ -216,6 +216,13 @@ class ProcessIncomingMessage implements ShouldQueue
                 $intro    = $response ?: 'Te dejo mi agenda para que elijas el hueco que mejor te venga:';
                 $response = $intro . "\n\n" . $bookingUrl;
 
+                // Marcar cuándo se envió el enlace y resetear el follow-up, para el
+                // seguimiento a 24h si el cliente no reserva.
+                $meetingRequest->update([
+                    'booking_link_sent_at' => now(),
+                    'follow_up_sent_at'    => null,
+                ]);
+
                 VeraActivityLog::record([
                     'user_id'              => $user->id,
                     'activity_type'        => 'slot_proposed',
