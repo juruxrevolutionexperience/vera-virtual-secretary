@@ -69,6 +69,15 @@
                     </div>
                 </div>
 
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Email para tus avisos</label>
+                    <input type="email" name="notification_email"
+                           value="{{ old('notification_email', $config->notification_email) }}"
+                           placeholder="tu-correo-personal@ejemplo.com"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
+                    <p class="text-xs text-gray-400 mt-1.5">Aquí recibirás los avisos de Vera (quejas escaladas, resúmenes...). Si lo dejas vacío, llegan al correo de tu cuenta. Pon uno distinto al que gestiona Vera para no mezclarlos.</p>
+                </div>
+
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">Tono</label>
@@ -505,6 +514,7 @@ function veraConfig() {
             const payload = {
                 business_name:        g('business_name'),
                 owner_name:           g('owner_name'),
+                notification_email:   g('notification_email'),
                 tone:                 g('tone'),
                 language:             g('language'),
                 timezone:             g('timezone'),

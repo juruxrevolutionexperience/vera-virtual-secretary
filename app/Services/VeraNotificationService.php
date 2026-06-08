@@ -216,7 +216,15 @@ class VeraNotificationService
      */
     protected function sendEmail(VeraNotification $notification): void
     {
-        Mail::to($notification->user->email)->send(
+        // Email de avisos configurado por el dueño (su correo personal); si no lo
+        // ha puesto, cae al email de la cuenta. Así las quejas/resúmenes no se
+        // mezclan en el buzón que Vera gestiona.
+        $configEmail = \App\Models\VeraConfig::where('user_id', $notification->user_id)->value('notification_email');
+        $to = ($configEmail && filter_var($configEmail, FILTER_VALIDATE_EMAIL))
+            ? $configEmail
+            : $notification->user->email;
+
+        Mail::to($to)->send(
             new \App\Mail\VeraNotificationMail($notification)
         );
     }

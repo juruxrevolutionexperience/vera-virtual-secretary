@@ -13,6 +13,7 @@ class VeraConfig extends Model
         // Identidad del negocio (Cerebro Capa 1)
         'business_name',
         'owner_name',
+        'notification_email',
         'tone',
         'language',
         'timezone',

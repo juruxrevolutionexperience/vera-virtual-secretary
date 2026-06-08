@@ -250,6 +250,7 @@ class VeraController extends Controller
         $validated = $request->validate([
             'business_name'        => 'sometimes|string|max:100',
             'owner_name'           => 'sometimes|string|max:100',
+            'notification_email'   => 'nullable|email|max:150',
             'tone'                 => 'sometimes|in:formal,cercano,profesional',
             'language'             => 'sometimes|in:es,en,ca',
             'timezone'             => 'sometimes|timezone',

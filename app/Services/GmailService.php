@@ -131,30 +131,52 @@ class GmailService
 
     /**
      * Extrae el texto del cuerpo del email (prefiere texto plano sobre HTML).
+     * Recorre el árbol MIME de forma RECURSIVA: muchos clientes (Outlook, correos
+     * con firma/logo) anidan el cuerpo en multipart/mixed → multipart/alternative →
+     * text/plain. Sin recursión el cuerpo salía vacío y Vera solo veía el asunto.
      */
     private function extractBody($payload): string
     {
-        // Email simple (sin partes)
+        // Email simple (cuerpo directo, sin partes)
         $data = $payload->getBody()?->getData();
         if ($data) {
             return $this->decodeBase64($data);
         }
 
-        // Email multiparte
-        foreach ($payload->getParts() ?? [] as $part) {
-            if ($part->getMimeType() === 'text/plain') {
-                $data = $part->getBody()?->getData();
-                if ($data) return $this->decodeBase64($data);
-            }
+        // Preferimos text/plain en cualquier nivel; si no, text/html (limpiado).
+        $plain = $this->findMimePart($payload, 'text/plain');
+        if ($plain !== null && trim($plain) !== '') {
+            return $plain;
         }
 
-        // Fallback: primer parte disponible — puede ser HTML, lo limpiamos
-        foreach ($payload->getParts() ?? [] as $part) {
-            $data = $part->getBody()?->getData();
-            if ($data) return strip_tags($this->decodeBase64($data));
+        $html = $this->findMimePart($payload, 'text/html');
+        if ($html !== null) {
+            return trim(strip_tags($html));
         }
 
         return '';
+    }
+
+    /**
+     * Busca recursivamente la primera parte del MIME con el tipo dado y devuelve su
+     * contenido decodificado. Null si no existe.
+     */
+    private function findMimePart($payload, string $mimeType): ?string
+    {
+        foreach ($payload->getParts() ?? [] as $part) {
+            if ($part->getMimeType() === $mimeType) {
+                $data = $part->getBody()?->getData();
+                if ($data) {
+                    return $this->decodeBase64($data);
+                }
+            }
+            // Bajar a sub-partes (multipart anidado)
+            $nested = $this->findMimePart($part, $mimeType);
+            if ($nested !== null) {
+                return $nested;
+            }
+        }
+        return null;
     }
 
     private function decodeBase64(string $data): string
