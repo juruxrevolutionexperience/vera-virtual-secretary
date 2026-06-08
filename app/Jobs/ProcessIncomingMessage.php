@@ -1014,9 +1014,20 @@ class ProcessIncomingMessage implements ShouldQueue
 
     private function handleEscalation(User $user, MeetingRequest $request, array $aiResponse): void
     {
+        // Guardar EN EL CONTEXTO el mensaje que disparó la escalada. La rama de
+        // escalación hace return temprano y nunca pasa por updateMeetingRequestState,
+        // así que sin esto la Bandeja mostraría el last_message de un mensaje ANTERIOR
+        // de la conversación (p.ej. una petición de cita) en lugar de la queja real,
+        // y el texto de la incidencia se perdería.
+        $context = $request->context ?? [];
+        $context['last_message']     = $this->message;
+        $context['escalated_message'] = $this->message;
+        $context['escalated_at']      = now()->toIso8601String();
+
         $request->update([
             'state'             => 'escalated',
             'escalation_reason' => $aiResponse['escalation_reason'] ?? 'trigger detectado',
+            'context'           => $context,
         ]);
 
         // Avisar al dueño de inmediato (email + in-app). Una queja no puede esperar
