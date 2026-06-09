@@ -142,6 +142,12 @@
                     if (!$clientEmail && filter_var($inc->contact_identifier, FILTER_VALIDATE_EMAIL)) { $clientEmail = $inc->contact_identifier; }
                     $clientPhone = $inc->contact?->phone;
                     $fullMsg = $inc->context['last_message'] ?? $inc->escalation_reason ?? 'Queja escalada';
+                    // Enlace a Gmail: si tenemos el ID del mensaje concreto, abrimos ESE
+                    // email directamente (#all/{id}); si no, caemos al listado por remitente.
+                    $gmailMsgId = $inc->context['gmail_message_id'] ?? null;
+                    $gmailUrl = $gmailMsgId
+                        ? 'https://mail.google.com/mail/u/0/#all/' . $gmailMsgId
+                        : ($clientEmail ? 'https://mail.google.com/mail/u/0/#search/from:' . urlencode($clientEmail) : null);
                 @endphp
                 <div class="px-5 py-4">
                     <div class="flex items-start justify-between gap-4 mb-2">
@@ -159,14 +165,16 @@
                     <div class="bg-gray-50 border-l-2 border-red-300 rounded px-3 py-2 text-sm text-gray-700 whitespace-pre-line">{{ $fullMsg }}</div>
                     <!-- Acciones: responder + marcar gestionada -->
                     <div class="flex items-center gap-2 mt-3">
-                        @if($clientEmail)
-                        {{-- Abrir la conversación del cliente en Gmail (búsqueda por remitente):
-                             así el dueño responde en el hilo real con contexto. --}}
-                        <a href="https://mail.google.com/mail/u/0/#search/from:{{ urlencode($clientEmail) }}"
+                        @if($gmailUrl)
+                        {{-- Si tenemos el ID del mensaje, abre ESE email directamente; si no,
+                             cae al listado por remitente para responder en el hilo real. --}}
+                        <a href="{{ $gmailUrl }}"
                            target="_blank" rel="noopener"
                            class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors">
                             ✉️ Abrir en Gmail
                         </a>
+                        @endif
+                        @if($clientEmail)
                         {{-- Copiar email: funciona siempre, sin depender de cliente de correo. --}}
                         <button type="button"
                             x-data="{ copied: false }"

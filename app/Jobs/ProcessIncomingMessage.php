@@ -1023,6 +1023,11 @@ class ProcessIncomingMessage implements ShouldQueue
         $context['last_message']     = $this->message;
         $context['escalated_message'] = $this->message;
         $context['escalated_at']      = now()->toIso8601String();
+        // Guardar el ID del mensaje de Gmail para poder abrir ESE email concreto
+        // desde la Bandeja (enlace directo), no un listado del remitente.
+        if (!empty($this->metadata['gmail_message_id'])) {
+            $context['gmail_message_id'] = $this->metadata['gmail_message_id'];
+        }
 
         $request->update([
             'state'             => 'escalated',
