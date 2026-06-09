@@ -106,13 +106,13 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
     # configure el dueño en su VeraConfig. Una queja humana es universal — el dueño
     # solo añade palabras específicas de su sector (p.ej. "infección" en clínicas).
     triggers = resolve_triggers(brain.get("escalation_triggers"))
-    escalate = should_escalate(request.message, triggers)
+    keyword_escalate = should_escalate(request.message, triggers)
 
     # 2. Construir prompt unificado
     try:
         system_prompt, user_prompt = build_prompt(
             brain, request.message, history, request.user_id,
-            mode="escalation" if escalate else "auto",
+            mode="escalation" if keyword_escalate else "auto",
             requested_time=request.requested_time,
             requested_slot_available=request.requested_slot_available,
             booking_confirmed=request.booking_confirmed,
@@ -141,7 +141,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
         )
 
     # Respetar escalado por keyword aunque el LLM clasifique diferente
-    if escalate:
+    if keyword_escalate:
         mode = "escalation"
 
     # Limpiar dobles saltos de línea
@@ -153,6 +153,17 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
         if not any(kw in request.message.lower() for kw in agenda_keywords):
             response_text = re.sub(r'\nAquí tienes los huecos disponibles:.*', '', response_text, flags=re.DOTALL).strip()
 
+    # Escalar a la Bandeja si lo pilló el keyword check O si el LLM clasificó el
+    # mensaje como queja. El LLM caza quejas con palabras fuera de la lista core
+    # ("decepcionado", "quiero que me devolváis el dinero", "no sois serios"...),
+    # que antes Vera respondía con empatía pero SIN avisar al dueño.
+    escalate = keyword_escalate or mode == "escalation"
+    if not escalate:
+        escalation_reason = None
+    elif keyword_escalate:
+        escalation_reason = "trigger de escalado detectado en el mensaje"
+    else:
+        escalation_reason = "Vera detectó una queja del cliente"
 
     return ProcessResponse(
         response=response_text,
@@ -161,7 +172,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
         confidence=0.9,
         suggested_slots=[],
         tokens_used=tokens_used,
-        escalation_reason="trigger de escalado detectado en el mensaje" if escalate else None,
+        escalation_reason=escalation_reason,
         intent_action=intent.get("intencion_cita", "ninguna"),
         intent_date=intent.get("fecha") or None,
         intent_time=intent.get("hora") or None,
