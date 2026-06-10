@@ -469,6 +469,10 @@ class GoogleCalendarService
             $config  = VeraConfig::where('user_id', $user->id)->firstOrFail();
             $service = $this->getCalendarService($config);
 
+            // Zona del negocio: Google devuelve las horas con offset/UTC y, sin convertir,
+            // el calendario interno las pintaba en UTC (p.ej. 08:15 en vez de 10:15 Madrid).
+            $tz = $config->timezone ?: config('app.timezone', 'Europe/Madrid');
+
             $results = $service->events->listEvents('primary', [
                 'timeMin'      => $from->startOfDay()->toRfc3339String(),
                 'timeMax'      => $to->endOfDay()->toRfc3339String(),
@@ -479,11 +483,15 @@ class GoogleCalendarService
 
             $events = [];
             foreach ($results->getItems() as $event) {
-                $startRaw = $event->getStart()->getDateTime() ?? $event->getStart()->getDate();
-                $endRaw   = $event->getEnd()->getDateTime()   ?? $event->getEnd()->getDate();
+                // getDateTime() = evento con hora (convertir a la zona del negocio);
+                // getDate() = evento de día completo (sin hora → NO convertir, desplazaría la fecha).
+                $startTimed = $event->getStart()->getDateTime();
+                $endTimed   = $event->getEnd()->getDateTime();
+                $startRaw   = $startTimed ?? $event->getStart()->getDate();
+                $endRaw     = $endTimed   ?? $event->getEnd()->getDate();
 
-                $start = Carbon::parse($startRaw);
-                $end   = Carbon::parse($endRaw);
+                $start = $startTimed ? Carbon::parse($startRaw)->setTimezone($tz) : Carbon::parse($startRaw);
+                $end   = $endTimed   ? Carbon::parse($endRaw)->setTimezone($tz)   : Carbon::parse($endRaw);
 
                 $meeting = Meeting::where('user_id', $user->id)
                     ->where('google_event_id', $event->getId())
