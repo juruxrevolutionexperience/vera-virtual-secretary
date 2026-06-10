@@ -281,6 +281,24 @@ class GoogleCalendarService
     // ─── CRUD de eventos ──────────────────────────────────────────────────────
 
     /**
+     * Construye la descripción del evento con la HORA LOCAL explícita.
+     * Google/Outlook muestran la hora en la zona de la cuenta de cada invitado, así que
+     * un invitado en UTC vería otra hora. Escribir la hora canónica como TEXTO (estilo
+     * Calendly) elimina la ambigüedad: diga lo que diga su calendario, aquí pone la real.
+     */
+    private function buildEventDescription(Meeting $meeting, Carbon $start): string
+    {
+        $base    = trim((string) ($meeting->notes ?? '')) ?: 'Reunión gestionada por Vera';
+        $tzLabel = VeraConfig::humanTimezone($meeting->timezone);
+        $cuando  = $start->copy()->setTimezone($meeting->timezone ?: config('app.timezone', 'Europe/Madrid'))
+            ->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i');
+
+        return $base
+            . "\n\n🕒 Hora de la cita: {$cuando} ({$tzLabel})."
+            . "\nSi tu calendario muestra otra hora, es por la zona horaria de tu cuenta; la hora correcta es la indicada aquí.";
+    }
+
+    /**
      * Crea un evento en Google Calendar y actualiza el modelo Meeting.
      *
      * @return string  google_event_id del evento creado
@@ -296,7 +314,7 @@ class GoogleCalendarService
 
             $event = new Event([
                 'summary'     => "Reunión con {$meeting->contact_name}",
-                'description' => $meeting->notes ?? "Reunión gestionada por Vera",
+                'description' => $this->buildEventDescription($meeting, $start),
                 'attendees'   => $meeting->contact_email
                     ? [['email' => $meeting->contact_email]]
                     : [],
@@ -371,6 +389,9 @@ class GoogleCalendarService
                 'dateTime' => $newEnd->toRfc3339String(),
                 'timeZone' => $meeting->timezone,
             ]));
+
+            // Refrescar la hora local explícita en la descripción (si no, quedaría la antigua).
+            $event->setDescription($this->buildEventDescription($meeting, $newStart));
 
             $service->events->update('primary', $meeting->google_event_id, $event, [
                 'sendUpdates' => 'all',
