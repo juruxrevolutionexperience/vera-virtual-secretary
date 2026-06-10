@@ -55,8 +55,9 @@ CLASIFICA TU RESPUESTA usando la herramienta disponible:
 - agenda → el cliente quiere o ACEPTA una cita/reunión. Incluye frases cortas como "sí quiero una cita", "quiero agendar", "sí, una reunión", "me gustaría quedar", "vale, una cita". AUNQUE los mensajes anteriores fueran de información, si AHORA pide o acepta cita → es agenda.
 - transicion → en el MISMO mensaje pregunta algo Y además pide cita
 - escalation → el cliente tiene una queja o está muy molesto
+- cancelacion → quiere CANCELAR o ANULAR una cita YA agendada ("cancelar la cita", "anular mi reserva", "no podré ir", "al final no puedo asistir")
 - irrelevante → notificación automática, spam, mensaje sin destinatario claro
-REGLA CLAVE: si el cliente expresa de cualquier forma que quiere/acepta una cita o reunión (aunque sea una frase muy corta), clasifícalo SIEMPRE como agenda — nunca como respuesta."""
+REGLA CLAVE: si el cliente expresa de cualquier forma que quiere/acepta una cita o reunión (aunque sea una frase muy corta), clasifícalo SIEMPRE como agenda — nunca como respuesta. Pero si lo que quiere es DESHACER/cancelar una cita ya hecha → cancelacion."""
 
     customer_block = _build_customer_context(customer_profile)
     hoy = _hoy_str(brain.get("timezone"))
@@ -355,6 +356,7 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
         f"- Si quiere una cita → escribe 1-2 frases cálidas diciendo que le ayudas a reservar. NO escribas horas ni huecos: "
         f"el sistema añade automáticamente un enlace para que elija su hueco en la agenda real.\n"
         f"- Si pregunta Y también quiere cita → primero responde la pregunta breve, luego di que le pasas el enlace para reservar.\n"
+        f"- Si quiere CANCELAR una cita ya agendada → escribe 1-2 frases: confirma con calidez que cancelas su cita y dile que si quiere puede reprogramar cuando le venga bien. NO escribas horas ni enlaces: el sistema cancela la cita y añade el enlace para reprogramar.\n"
         f"- Si es una notificación automática, spam o mensaje sin destinatario claro → clasifica como irrelevante y deja el texto vacío.\n"
         f"{hours_ctx} Nunca propongas horas concretas ni escribas enlaces — el sistema los añade."
     )

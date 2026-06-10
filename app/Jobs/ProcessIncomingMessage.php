@@ -178,6 +178,53 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
+        // ── Cancelación de cita ────────────────────────────────────────────────
+        // El cliente quiere anular una cita YA agendada. Liberamos el hueco en el
+        // calendario (cancelEvent), lo registramos en la actividad y le ofrecemos
+        // reprogramar con un enlace nuevo. Cae al envío normal de abajo.
+        if ($mode === 'cancelacion') {
+            $meeting = $this->findUpcomingMeetingForContact($user);
+
+            if ($meeting) {
+                try {
+                    (new GoogleCalendarService())->cancelEvent($user, $meeting);
+                } catch (\Throwable $e) {
+                    Log::warning('No se pudo cancelar el evento en Calendar', [
+                        'meeting_id' => $meeting->id,
+                        'error'      => $e->getMessage(),
+                    ]);
+                }
+
+                $cuando = $meeting->scheduled_at->copy()
+                    ->setTimezone($meeting->timezone ?: config('app.timezone', 'Europe/Madrid'))
+                    ->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i');
+
+                VeraActivityLog::record([
+                    'user_id'              => $user->id,
+                    'activity_type'        => 'meeting_cancelled',
+                    'title'                => 'Cita cancelada por ' . ($this->contactName ?? $this->contactIdentifier),
+                    'description'          => "El cliente canceló su cita del {$cuando}. El hueco quedó libre.",
+                    'metadata'             => ['channel' => $this->channel, 'contact' => $this->contactIdentifier, 'meeting_id' => $meeting->id],
+                    'counts_towards_limit' => false,
+                    'status'               => 'completed',
+                ]);
+
+                $response = $response ?: 'Entendido, he cancelado tu cita. Si quieres reprogramar, te dejo mi agenda:';
+            } else {
+                // No hay cita activa a su nombre: lo tratamos con naturalidad y ofrecemos reservar.
+                $response = $response ?: 'No encuentro una cita activa a tu nombre. Si quieres, puedo ayudarte a reservar una nueva:';
+            }
+
+            // Ofrecer reprogramar con un enlace nuevo (si hay calendario conectado).
+            if ($config->hasCalendarConnected()) {
+                $token = $meetingRequest->bookingTokenIsValid()
+                    ? $meetingRequest->booking_token
+                    : $meetingRequest->generateBookingToken();
+                $response = trim((string) $response) . "\n\n" . rtrim(config('app.url'), '/') . '/reservar/' . $token;
+                $meetingRequest->update(['booking_link_sent_at' => now(), 'follow_up_sent_at' => null]);
+            }
+        }
+
         if (\in_array($mode, ['agenda', 'transicion']) && !empty($slots)) {
             $this->handleAgendaMode($user, $config, $meetingRequest, $slots);
         }
@@ -369,6 +416,30 @@ class ProcessIncomingMessage implements ShouldQueue
 
         return Contact::where('user_id', $user->id)
             ->where('email', $email)
+            ->first();
+    }
+
+    /**
+     * Busca la cita confirmada/pendiente y FUTURA más próxima de este contacto,
+     * para poder cancelarla. Casa el email del remitente con varios formatos en que
+     * pudo guardarse contact_email ("Nombre <email>", email plano, o el identificador crudo).
+     */
+    private function findUpcomingMeetingForContact(User $user): ?Meeting
+    {
+        $raw   = (string) $this->contactIdentifier;
+        $email = preg_match('/<(.+?)>/', $raw, $m)
+            ? strtolower(trim($m[1]))
+            : strtolower(trim($raw));
+
+        return Meeting::where('user_id', $user->id)
+            ->whereIn('status', ['confirmed', 'pending'])
+            ->where('scheduled_at', '>', now())
+            ->where(function ($q) use ($raw, $email) {
+                $q->where('contact_email', $raw)
+                  ->orWhereRaw('LOWER(contact_email) = ?', [$email])
+                  ->orWhere('contact_email', 'like', '%<' . $email . '>%');
+            })
+            ->orderBy('scheduled_at')
             ->first();
     }
 

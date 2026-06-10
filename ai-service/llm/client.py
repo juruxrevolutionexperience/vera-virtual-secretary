@@ -68,8 +68,8 @@ _TOOLS = [{
             "properties": {
                 "modo": {
                     "type": "string",
-                    "enum": ["respuesta", "agenda", "transicion", "escalation", "irrelevante"],
-                    "description": "respuesta=SOLO pregunta info y NO pide cita; agenda=quiere o ACEPTA una cita/reunión (incluye frases cortas como 'sí quiero una cita', 'quiero agendar', 'sí, una reunión', aunque antes se hablara de info); transicion=en el mismo mensaje pregunta info Y pide cita; escalation=queja/urgencia; irrelevante=notificación automática sin acción. Si el cliente quiere/acepta cita de cualquier forma → agenda, nunca respuesta."
+                    "enum": ["respuesta", "agenda", "transicion", "escalation", "cancelacion", "irrelevante"],
+                    "description": "respuesta=SOLO pregunta info y NO pide cita; agenda=quiere o ACEPTA una cita/reunión (incluye frases cortas como 'sí quiero una cita', 'quiero agendar', 'sí, una reunión', aunque antes se hablara de info); transicion=en el mismo mensaje pregunta info Y pide cita; escalation=queja/urgencia; cancelacion=quiere CANCELAR o ANULAR una cita ya agendada ('cancelar la cita', 'anular mi reserva', 'no podré ir', 'al final no puedo asistir'); irrelevante=notificación automática sin acción. Si el cliente quiere/acepta cita de cualquier forma → agenda, nunca respuesta."
                 },
                 "texto": {
                     "type": "string",
@@ -95,7 +95,7 @@ _TOOLS = [{
 }]
 
 
-_VALID_MODES = {"respuesta", "agenda", "transicion", "escalation", "irrelevante"}
+_VALID_MODES = {"respuesta", "agenda", "transicion", "escalation", "cancelacion", "irrelevante"}
 _VALID_INTENTS = {"confirmar", "proponer", "rechazar", "ninguna"}
 
 
@@ -212,7 +212,7 @@ def call_llm_with_tools(prompt, system, temperature=0.7):
     fb_prompt = (
         system + "\n\n" + prompt +
         '\n\nResponde EXCLUSIVAMENTE con un JSON válido en este formato exacto, sin texto antes ni después:\n'
-        '{"modo": "respuesta|agenda|transicion|escalation|irrelevante", "texto": "tu respuesta aquí", '
+        '{"modo": "respuesta|agenda|transicion|escalation|cancelacion|irrelevante", "texto": "tu respuesta aquí", '
         '"fecha": "YYYY-MM-DD o vacío", "hora": "HH:MM o vacío", '
         '"intencion_cita": "confirmar|proponer|rechazar|ninguna"}'
     )
