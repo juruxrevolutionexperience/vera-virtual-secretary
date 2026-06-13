@@ -179,49 +179,33 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         // ── Cancelación de cita ────────────────────────────────────────────────
-        // El cliente quiere anular una cita YA agendada. Liberamos el hueco en el
-        // calendario (cancelEvent), lo registramos en la actividad y le ofrecemos
-        // reprogramar con un enlace nuevo. Cae al envío normal de abajo.
+        // Igual que con las reservas, Vera NO cancela desde el texto (sería adivinar
+        // cuál cita si el cliente tiene varias). Manda el ENLACE de cancelación: el
+        // cliente ve SUS citas y elige cuál anular en la página /cancelar/{token}.
         if ($mode === 'cancelacion') {
-            $meeting = $this->findUpcomingMeetingForContact($user);
+            $hasUpcoming = Meeting::where('user_id', $user->id)
+                ->whereIn('status', ['confirmed', 'pending'])
+                ->where('scheduled_at', '>', now())
+                ->where(function ($q) {
+                    $email = preg_match('/<(.+?)>/', $this->contactIdentifier, $m)
+                        ? strtolower(trim($m[1]))
+                        : strtolower(trim($this->contactIdentifier));
+                    $q->where('contact_email', $this->contactIdentifier)
+                      ->orWhereRaw('LOWER(contact_email) = ?', [$email])
+                      ->orWhere('contact_email', 'like', '%<' . $email . '>%');
+                })
+                ->exists();
 
-            if ($meeting) {
-                try {
-                    (new GoogleCalendarService())->cancelEvent($user, $meeting);
-                } catch (\Throwable $e) {
-                    Log::warning('No se pudo cancelar el evento en Calendar', [
-                        'meeting_id' => $meeting->id,
-                        'error'      => $e->getMessage(),
-                    ]);
-                }
-
-                $cuando = $meeting->scheduled_at->copy()
-                    ->setTimezone($meeting->timezone ?: config('app.timezone', 'Europe/Madrid'))
-                    ->locale('es')->translatedFormat('l d \d\e F \a \l\a\s H:i');
-
-                VeraActivityLog::record([
-                    'user_id'              => $user->id,
-                    'activity_type'        => 'meeting_cancelled',
-                    'title'                => 'Cita cancelada por ' . ($this->contactName ?? $this->contactIdentifier),
-                    'description'          => "El cliente canceló su cita del {$cuando}. El hueco quedó libre.",
-                    'metadata'             => ['channel' => $this->channel, 'contact' => $this->contactIdentifier, 'meeting_id' => $meeting->id],
-                    'counts_towards_limit' => false,
-                    'status'               => 'completed',
-                ]);
-
-                $response = $response ?: 'Entendido, he cancelado tu cita. Si quieres reprogramar, te dejo mi agenda:';
+            if ($hasUpcoming) {
+                $token     = $meetingRequest->cancelTokenIsValid()
+                    ? $meetingRequest->cancel_token
+                    : $meetingRequest->generateCancelToken();
+                $cancelUrl = rtrim(config('app.url'), '/') . '/cancelar/' . $token;
+                $intro     = $response ?: 'Claro, puedes cancelar tu cita desde aquí:';
+                $response  = trim((string) $intro) . "\n\n" . $cancelUrl;
             } else {
-                // No hay cita activa a su nombre: lo tratamos con naturalidad y ofrecemos reservar.
-                $response = $response ?: 'No encuentro una cita activa a tu nombre. Si quieres, puedo ayudarte a reservar una nueva:';
-            }
-
-            // Ofrecer reprogramar con un enlace nuevo (si hay calendario conectado).
-            if ($config->hasCalendarConnected()) {
-                $token = $meetingRequest->bookingTokenIsValid()
-                    ? $meetingRequest->booking_token
-                    : $meetingRequest->generateBookingToken();
-                $response = trim((string) $response) . "\n\n" . rtrim(config('app.url'), '/') . '/reservar/' . $token;
-                $meetingRequest->update(['booking_link_sent_at' => now(), 'follow_up_sent_at' => null]);
+                // No tiene citas activas: lo tratamos con naturalidad (sin enlace de cancelar).
+                $response = $response ?: 'No encuentro ninguna cita próxima a tu nombre. Si quieres reservar una nueva, dímelo y te ayudo.';
             }
         }
 
@@ -416,30 +400,6 @@ class ProcessIncomingMessage implements ShouldQueue
 
         return Contact::where('user_id', $user->id)
             ->where('email', $email)
-            ->first();
-    }
-
-    /**
-     * Busca la cita confirmada/pendiente y FUTURA más próxima de este contacto,
-     * para poder cancelarla. Casa el email del remitente con varios formatos en que
-     * pudo guardarse contact_email ("Nombre <email>", email plano, o el identificador crudo).
-     */
-    private function findUpcomingMeetingForContact(User $user): ?Meeting
-    {
-        $raw   = (string) $this->contactIdentifier;
-        $email = preg_match('/<(.+?)>/', $raw, $m)
-            ? strtolower(trim($m[1]))
-            : strtolower(trim($raw));
-
-        return Meeting::where('user_id', $user->id)
-            ->whereIn('status', ['confirmed', 'pending'])
-            ->where('scheduled_at', '>', now())
-            ->where(function ($q) use ($raw, $email) {
-                $q->where('contact_email', $raw)
-                  ->orWhereRaw('LOWER(contact_email) = ?', [$email])
-                  ->orWhere('contact_email', 'like', '%<' . $email . '>%');
-            })
-            ->orderBy('scheduled_at')
             ->first();
     }
 

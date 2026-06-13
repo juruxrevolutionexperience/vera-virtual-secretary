@@ -11,6 +11,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\CancellationController;
 
 // Google OAuth login
 Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])->name('auth.google');
@@ -23,6 +24,10 @@ Route::get('/invite/{token}', [InvitationController::class, 'accept'])->name('in
 Route::get('/reservar/{token}',        [BookingController::class, 'show'])->name('booking.show');
 Route::get('/reservar/{token}/slots',  [BookingController::class, 'slots'])->name('booking.slots');
 Route::post('/reservar/{token}',       [BookingController::class, 'store'])->name('booking.store');
+
+// Web de cancelación (pública, enlace tokenizado que envía Vera al cliente)
+Route::get('/cancelar/{token}',  [CancellationController::class, 'show'])->name('cancel.show');
+Route::post('/cancelar/{token}', [CancellationController::class, 'cancel'])->name('cancel.cancel');
 
 // Beta cerrada: redirige la raíz a login. Descomentar Route::view cuando abramos al público.
 // Route::view('/', 'landing-new')->name('landing-new');

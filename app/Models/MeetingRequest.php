@@ -23,6 +23,8 @@ class MeetingRequest extends Model
         'booking_token_used_at',
         'booking_link_sent_at',
         'follow_up_sent_at',
+        'cancel_token',
+        'cancel_token_expires_at',
     ];
 
     protected $casts = [
@@ -31,6 +33,7 @@ class MeetingRequest extends Model
         'booking_token_used_at'    => 'datetime',
         'booking_link_sent_at'     => 'datetime',
         'follow_up_sent_at'        => 'datetime',
+        'cancel_token_expires_at'  => 'datetime',
     ];
 
     /**
@@ -57,6 +60,28 @@ class MeetingRequest extends Model
             && !$this->booking_token_used_at
             && $this->booking_token_expires_at
             && $this->booking_token_expires_at->isFuture();
+    }
+
+    /**
+     * Genera (o regenera) el token de la página de cancelación, válido X días.
+     * No es de un solo uso: el cliente puede tener varias citas y volver al enlace.
+     */
+    public function generateCancelToken(int $validDays = 7): string
+    {
+        $token = bin2hex(random_bytes(20)); // 40 chars, URL-safe
+        $this->update([
+            'cancel_token'            => $token,
+            'cancel_token_expires_at' => now()->addDays($validDays),
+        ]);
+        return $token;
+    }
+
+    /** El token de cancelación es válido si existe y no ha caducado. */
+    public function cancelTokenIsValid(): bool
+    {
+        return $this->cancel_token
+            && $this->cancel_token_expires_at
+            && $this->cancel_token_expires_at->isFuture();
     }
 
     public function user(): BelongsTo
