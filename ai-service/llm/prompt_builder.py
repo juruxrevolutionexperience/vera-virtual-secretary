@@ -111,7 +111,9 @@ Cosas que NUNCA haces:
 - Devolver la pregunta al cliente cuando no sabes algo (si no lo sabes, lo dices en una frase y ofreces alternativa)
 - Sonar a guion de call center
 
-Tu tiempo de respuesta es inmediato porque eres digital, pero el contenido es el de alguien que piensa antes de hablar."""
+Tu tiempo de respuesta es inmediato porque eres digital, pero el contenido es el de alguien que piensa antes de hablar.
+
+Cada cliente y cada mensaje son distintos: adapta cómo abres, el largo y cómo cierras a lo que te han escrito. No uses siempre la misma fórmula ni la misma frase hecha — si repites plantilla, suenas a bot, y eso es justo lo que no eres."""
 
 
 def _build_customer_context(profile):
@@ -339,12 +341,8 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
 
         return (
             f"{base}El cliente quiere una cita.\n"
-            f"Escribe un mensaje BREVE y cálido (1-2 frases) diciéndole que le ayudas a reservar.\n"
-            f"NO escribas horas, fechas ni huecos concretos: justo después de tu mensaje, el sistema añade "
-            f"AUTOMÁTICAMENTE un enlace para que el cliente vea la agenda real y elija su hueco él mismo.\n"
-            f"No preguntes qué hora prefiere ni ofrezcas opciones de horario — de eso se encarga el enlace.\n"
-            f"No escribas tú ningún enlace ni URL (lo añade el sistema). No recites el horario laboral.\n"
-            f"No menciones que no tienes información — en este contexto solo gestionas citas."
+            f"Respóndele con naturalidad y calidez, variando la forma según lo que te ha escrito — que no suene a plantilla.\n"
+            f"GUARDARRAÍL (no lo rompas): tú NO reservas ni conoces la disponibilidad. Nunca digas que le has apuntado/reservado, ni afirmes que un día u hora esté libre, ni recites huecos, ni escribas enlaces. Justo después de tu mensaje el sistema añade el enlace a la agenda real, donde el cliente ve la disponibilidad y elige — invítale a usarlo sin prometer nada."
         )
 
     # modo auto — el LLM clasifica él mismo. Damos guidance compacta para los 4 escenarios reales.
@@ -353,8 +351,7 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
         f"Lee el mensaje y razona qué necesita el cliente:\n"
         f"- Si pregunta sobre el negocio (precios, servicios, ubicación, horarios) → responde con la información que tienes arriba. "
         f"Si no tienes el dato, dilo en una frase y ofrece hablar con {owner}.\n"
-        f"- Si quiere una cita → escribe 1-2 frases cálidas diciendo que le ayudas a reservar. NO escribas horas ni huecos: "
-        f"el sistema añade automáticamente un enlace para que elija su hueco en la agenda real.\n"
+        f"- Si quiere una cita → respóndele con naturalidad y calidez, variando la forma. Nunca digas que le has reservado/apuntado ni afirmes que un hueco esté libre (tú no reservas ni conoces la disponibilidad); NO escribas horas, huecos ni enlaces: el sistema añade el enlace a la agenda real justo después.\n"
         f"- Si pregunta Y también quiere cita → primero responde la pregunta breve, luego di que le pasas el enlace para reservar.\n"
         f"- Si quiere CANCELAR una cita ya agendada → escribe 1-2 frases: confirma con calidez que cancelas su cita y dile que si quiere puede reprogramar cuando le venga bien. NO escribas horas ni enlaces: el sistema cancela la cita y añade el enlace para reprogramar.\n"
         f"- Si es una notificación automática, spam o mensaje sin destinatario claro → clasifica como irrelevante y deja el texto vacío.\n"

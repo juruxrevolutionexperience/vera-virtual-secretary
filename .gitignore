@@ -47,3 +47,6 @@ ai-service/venv/
 ai-service/chroma_db/
 ai-service/__pycache__/
 ai-service/**/__pycache__/
+
+# TestSprite — artefactos/logs generados, no van a git
+testsprite_tests/

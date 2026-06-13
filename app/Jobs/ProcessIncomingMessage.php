@@ -240,6 +240,15 @@ class ProcessIncomingMessage implements ShouldQueue
                 $response = trim($response);
             }
 
+            // RED DE SEGURIDAD determinista: si el LLM se despista y AFIRMA que ya
+            // reservó/apuntó/agendó la cita (Vera NO reserva desde texto — lo hace el
+            // enlace), descartamos su texto y caemos al intro neutral. No depende de la
+            // suerte del modelo: garantiza que el cliente nunca lea una falsa confirmación.
+            if ($response && preg_match('/\bte\s+(lo\s+|la\s+)?reserv|\bte\s+(he\s+)?apunt|\bte\s+(he\s+)?agend|qued[ao]\s+(reservad|agendad|confirmad)|ya\s+est[áa]\s+(reservad|agendad|confirmad)|\bcita\s+(reservad|agendad|confirmad)|\bhe\s+(reservad|apuntad|agendad)/iu', $response)) {
+                Log::info('Falsa confirmación de reserva neutralizada en agenda', ['contact' => $this->contactIdentifier]);
+                $response = null; // fuerza el intro neutral de abajo
+            }
+
             // Añadir SOLO la URL: la invitación conversacional ya la redacta Vera (el LLM).
             // GmailService convierte la URL en botón en el email; en texto plano /
             // Telegram va como URL clicable. Fallback mínimo si el LLM no dejó texto.
