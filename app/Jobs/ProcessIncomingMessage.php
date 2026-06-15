@@ -20,6 +20,7 @@ use App\Events\VeraTokensConsumed;
 use App\Jobs\SynthesizeContactInsights;
 use App\Services\GmailService;
 use App\Services\TelegramService;
+use App\Services\WhatsAppService;
 use App\Services\VeraMemoryService;
 use App\Services\VeraNotificationService;
 use Illuminate\Support\Facades\Http;
@@ -1219,7 +1220,21 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
-        // Otros canales (WhatsApp): pendiente implementación
+        if ($this->channel === 'whatsapp' && $config?->hasWhatsAppConnected()) {
+            $ok = (new WhatsAppService())->sendText(
+                $config->whatsapp_phone_number_id,
+                $config->whatsapp_access_token,
+                $this->contactIdentifier,   // teléfono del cliente (wa_id)
+                $response
+            );
+            Log::info($ok ? '🟢 WhatsApp enviado por Vera' : '⚠️ WhatsApp envío fallido', [
+                'user_id' => $user->id,
+                'to'      => $this->contactIdentifier,
+            ]);
+            return;
+        }
+
+        // Otros canales sin conectar: solo se registra (no se envía)
         Log::info('📤 Respuesta lista para enviar', [
             'user_id' => $user->id,
             'channel' => $this->channel,
