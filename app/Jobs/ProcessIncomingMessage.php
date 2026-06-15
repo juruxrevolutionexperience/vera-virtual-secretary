@@ -24,6 +24,7 @@ use App\Services\VeraMemoryService;
 use App\Services\VeraNotificationService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * ProcessIncomingMessage — Sprint 3
@@ -82,6 +83,27 @@ class ProcessIncomingMessage implements ShouldQueue
             $this->sendResponse($user, 'Lo siento, Vera aún no está configurada para gestionar reuniones.');
             return;
         }
+
+        // ── SEGURIDAD: límites anti-abuso/coste ANTES de tocar el LLM ──────────
+        // Protege contra flood de correos (DoS) y gasto descontrolado de tokens.
+        // (a) Tope de plan del dueño (monthly_tokens_limit; 0/null = ilimitado, NO bloquea).
+        if (!$user->hasTokensAvailable()) {
+            Log::warning('Vera: tope de uso del plan alcanzado — mensaje NO procesado', ['user_id' => $user->id]);
+            return;
+        }
+        // (b) Rate-limit por CONTACTO: máx 12 mensajes/hora del mismo remitente (anti-flood/bot).
+        $rlContact = 'vera-msg:' . $user->id . ':' . md5((string) $this->contactIdentifier);
+        // (c) Rate-limit GLOBAL del negocio: máx 120 mensajes/hora (buzón inundado/comprometido).
+        $rlUser = 'vera-msg-user:' . $user->id;
+        if (RateLimiter::tooManyAttempts($rlContact, 12) || RateLimiter::tooManyAttempts($rlUser, 120)) {
+            Log::warning('Vera: rate-limit alcanzado — mensaje descartado', [
+                'user_id' => $user->id,
+                'contact' => $this->contactIdentifier,
+            ]);
+            return;
+        }
+        RateLimiter::hit($rlContact, 3600);
+        RateLimiter::hit($rlUser, 3600);
 
         // ── Log: email recibido ───────────────────────────────────────────────
         VeraActivityLog::record([

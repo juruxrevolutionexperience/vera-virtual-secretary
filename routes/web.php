@@ -20,14 +20,17 @@ Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleC
 // Invitaciones beta
 Route::get('/invite/{token}', [InvitationController::class, 'accept'])->name('invite.accept');
 
-// Web de reservas (pública, enlace tokenizado que envía Vera al cliente)
-Route::get('/reservar/{token}',        [BookingController::class, 'show'])->name('booking.show');
-Route::get('/reservar/{token}/slots',  [BookingController::class, 'slots'])->name('booking.slots');
-Route::post('/reservar/{token}',       [BookingController::class, 'store'])->name('booking.store');
+// Web de reservas y cancelación (públicas, enlace tokenizado que envía Vera).
+// throttle:30,1 = máx 30 peticiones/min por IP → anti-abuso/flood (los slots tocan
+// Google Calendar, que cuesta) sin estorbar a un cliente real navegando la agenda.
+Route::middleware('throttle:30,1')->group(function () {
+    Route::get('/reservar/{token}',        [BookingController::class, 'show'])->name('booking.show');
+    Route::get('/reservar/{token}/slots',  [BookingController::class, 'slots'])->name('booking.slots');
+    Route::post('/reservar/{token}',       [BookingController::class, 'store'])->name('booking.store');
 
-// Web de cancelación (pública, enlace tokenizado que envía Vera al cliente)
-Route::get('/cancelar/{token}',  [CancellationController::class, 'show'])->name('cancel.show');
-Route::post('/cancelar/{token}', [CancellationController::class, 'cancel'])->name('cancel.cancel');
+    Route::get('/cancelar/{token}',  [CancellationController::class, 'show'])->name('cancel.show');
+    Route::post('/cancelar/{token}', [CancellationController::class, 'cancel'])->name('cancel.cancel');
+});
 
 // Beta cerrada: redirige la raíz a login. Descomentar Route::view cuando abramos al público.
 // Route::view('/', 'landing-new')->name('landing-new');
