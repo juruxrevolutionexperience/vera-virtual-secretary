@@ -21,7 +21,7 @@ class WhatsAppService
     public function __construct()
     {
         // Versión del Graph API — configurable por si Meta la actualiza.
-        $this->version = config('services.whatsapp.api_version', 'v21.0');
+        $this->version = config('services.whatsapp.api_version', 'v25.0');
     }
 
     /**
