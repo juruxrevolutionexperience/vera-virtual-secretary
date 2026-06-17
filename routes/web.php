@@ -243,6 +243,10 @@ Route::middleware(['auth'])->prefix('vera/channels')->name('vera.channels.')->gr
     Route::post('/telegram/save-token',      [VeraChannelsController::class, 'saveTelegramToken'])->name('telegram.save-token');
     Route::post('/telegram/register-webhook',[VeraChannelsController::class, 'registerWebhook'])->name('telegram.register-webhook');
     Route::delete('/telegram',               [VeraChannelsController::class, 'disconnectTelegram'])->name('telegram.disconnect');
+
+    Route::get('/whatsapp',          [VeraChannelsController::class, 'whatsappIndex'])->name('whatsapp');
+    Route::post('/whatsapp/save',    [VeraChannelsController::class, 'saveWhatsApp'])->name('whatsapp.save');
+    Route::delete('/whatsapp',       [VeraChannelsController::class, 'disconnectWhatsApp'])->name('whatsapp.disconnect');
 });
 
 // ========================================

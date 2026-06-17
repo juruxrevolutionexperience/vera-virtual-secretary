@@ -128,6 +128,24 @@
                 @endif
             </a>
 
+            <a href="{{ route('vera.channels.whatsapp') }}"
+                class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('vera.channels.whatsapp') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24z"/>
+                </svg>
+                <span class="flex-1">WhatsApp</span>
+                @php
+                    try {
+                        $waConnected = auth()->check()
+                            ? \App\Models\VeraConfig::where('user_id', auth()->id())->value('whatsapp_phone_number_id') !== null
+                            : false;
+                    } catch (\Exception) { $waConnected = false; }
+                @endphp
+                @if($waConnected)
+                <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                @endif
+            </a>
+
             <a href="{{ route('vera.config') }}"
                 class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('vera.config') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

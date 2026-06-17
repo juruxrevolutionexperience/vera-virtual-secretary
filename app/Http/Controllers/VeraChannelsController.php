@@ -160,4 +160,77 @@ class VeraChannelsController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    // ─── WhatsApp (Meta Cloud API) ───────────────────────────────────────────
+
+    public function whatsappIndex()
+    {
+        $user   = Auth::user();
+        $config = VeraConfig::where('user_id', $user->id)->firstOrFail();
+        $webhookUrl   = url('/webhooks/whatsapp');
+        $verifyToken  = config('services.whatsapp.verify_token');
+
+        return view('vera.channels.whatsapp', compact('config', 'webhookUrl', 'verifyToken'));
+    }
+
+    /**
+     * Guarda phone_number_id + access_token y verifica contra Meta antes de guardar
+     * (consulta el número en la Graph API). Así confirmamos que los datos son válidos.
+     */
+    public function saveWhatsApp(Request $request)
+    {
+        $request->validate([
+            'whatsapp_phone_number_id' => 'required|string|max:50',
+            'whatsapp_access_token'    => 'required|string|max:1000',
+        ]);
+
+        $pnid    = trim($request->whatsapp_phone_number_id);
+        $token   = trim($request->whatsapp_access_token);
+        $version = config('services.whatsapp.api_version', 'v25.0');
+
+        try {
+            $res = Http::withToken($token)->timeout(10)
+                ->get("https://graph.facebook.com/{$version}/{$pnid}", ['fields' => 'verified_name,display_phone_number']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'No se pudo conectar con Meta. Revisa tu conexión.'], 422);
+        }
+
+        if (!$res->successful()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos inválidos. Revisa el Phone Number ID y el token (¿el token temporal ha caducado?).',
+            ], 422);
+        }
+
+        $user   = Auth::user();
+        $config = VeraConfig::where('user_id', $user->id)->firstOrFail();
+        $config->update([
+            'whatsapp_phone_number_id' => $pnid,
+            'whatsapp_access_token'    => $token,
+        ]);
+
+        Log::info('WhatsApp conectado', ['user_id' => $user->id, 'phone_number_id' => $pnid]);
+
+        return response()->json([
+            'success'     => true,
+            'number'      => $res->json('display_phone_number'),
+            'name'        => $res->json('verified_name'),
+            'webhook_url' => url('/webhooks/whatsapp'),
+        ]);
+    }
+
+    public function disconnectWhatsApp()
+    {
+        $user   = Auth::user();
+        $config = VeraConfig::where('user_id', $user->id)->firstOrFail();
+
+        $config->update([
+            'whatsapp_phone_number_id' => null,
+            'whatsapp_access_token'    => null,
+        ]);
+
+        Log::info('WhatsApp desconectado', ['user_id' => $user->id]);
+
+        return response()->json(['success' => true]);
+    }
 }
