@@ -28,6 +28,7 @@ class VeraConfig extends Model
         'escalation_triggers',
         'mode',
         'vera_signature',
+        'response_delay_seconds',   // segundos que Vera espera antes de responder (0 = instantáneo)
 
         // Personalidad rica (Fase A)
         'personality_traits',

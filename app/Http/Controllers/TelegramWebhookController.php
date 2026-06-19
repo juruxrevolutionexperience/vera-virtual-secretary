@@ -104,7 +104,7 @@ class TelegramWebhookController extends Controller
             'length'   => strlen($text),
         ]);
 
-        ProcessIncomingMessage::dispatch(
+        ProcessIncomingMessage::dispatchWithDelay(
             userId:            $user->id,
             channel:           'telegram',
             message:           $text,

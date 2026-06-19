@@ -134,7 +134,7 @@ class WhatsAppWebhookController extends Controller
                     ]);
 
                     // Despachar Job a la cola
-                    ProcessIncomingMessage::dispatch(
+                    ProcessIncomingMessage::dispatchWithDelay(
                         userId:             $user->id,
                         channel:            'whatsapp',
                         message:            $text,

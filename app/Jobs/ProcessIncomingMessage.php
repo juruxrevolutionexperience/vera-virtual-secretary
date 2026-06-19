@@ -60,6 +60,29 @@ class ProcessIncomingMessage implements ShouldQueue
         public readonly array   $metadata    = []
     ) {}
 
+    /**
+     * Lanza el job aplicando el "delay humano" que el dueño configura en su panel
+     * (vera_configs.response_delay_seconds). 0 = instantáneo (por defecto), tope 300s
+     * para no romper la ventana de 24h de WhatsApp. El retardo va en la COLA: no bloquea
+     * el worker. Lo usan los canales reales (email/WhatsApp/Telegram); el endpoint de
+     * pruebas (DevController) usa dispatch() directo para que los tests sean instantáneos.
+     */
+    public static function dispatchWithDelay(
+        int $userId,
+        string $channel,
+        string $message,
+        string $contactIdentifier,
+        ?string $contactName = null,
+        array $metadata = []
+    ): void {
+        $pending = static::dispatch($userId, $channel, $message, $contactIdentifier, $contactName, $metadata);
+
+        $delay = max(0, min(300, (int) (VeraConfig::where('user_id', $userId)->value('response_delay_seconds') ?? 0)));
+        if ($delay > 0) {
+            $pending->delay(now()->addSeconds($delay));
+        }
+    }
+
     public function handle(): void
     {
         $user = User::find($this->userId);

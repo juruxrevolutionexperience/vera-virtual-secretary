@@ -113,7 +113,7 @@ class ProcessGmailEmails extends Command
                 }
 
                 // Lanzar Job
-                ProcessIncomingMessage::dispatch(
+                ProcessIncomingMessage::dispatchWithDelay(
                     userId:            $user->id,
                     channel:           'email',
                     message:           $email['subject'] . "\n\n" . $email['body'],
