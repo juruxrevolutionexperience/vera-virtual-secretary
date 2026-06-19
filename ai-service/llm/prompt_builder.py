@@ -344,7 +344,8 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
         return (
             f"{base}El cliente quiere una cita.\n"
             f"Respóndele con naturalidad y calidez, variando la forma según lo que te ha escrito — que no suene a plantilla.\n"
-            f"GUARDARRAÍL (no lo rompas): tú NO reservas ni conoces la disponibilidad. Nunca digas que le has apuntado/reservado, ni afirmes que un día u hora esté libre, ni recites huecos, ni escribas enlaces. Justo después de tu mensaje el sistema añade el enlace a la agenda real, donde el cliente ve la disponibilidad y elige — invítale a usarlo sin prometer nada."
+            f"GUARDARRAÍL (no lo rompas): tú NO reservas ni conoces la disponibilidad. Nunca digas que le has apuntado/reservado, ni afirmes que un día u hora esté libre, ni recites huecos, ni escribas enlaces. Justo después de tu mensaje el sistema añade el enlace a la agenda real, donde el cliente ve la disponibilidad y elige — invítale a usarlo sin prometer nada. "
+            f"ESTILO: háblale al cliente en segunda persona y con naturalidad ('aquí tienes lo necesario para reservar', 'te dejo para que elijas tu hueco'); NUNCA escribas 'me paso el enlace' ni 'le paso el enlace' (suena raro)."
         )
 
     # modo auto — el LLM clasifica él mismo. Damos guidance compacta para los 4 escenarios reales.
@@ -353,8 +354,8 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
         f"Lee el mensaje y razona qué necesita el cliente:\n"
         f"- Si pregunta sobre el negocio (precios, servicios, ubicación, horarios) → responde con la información que tienes arriba. "
         f"Si no tienes el dato, dilo en una frase y ofrece hablar con {owner}.\n"
-        f"- Si quiere una cita → respóndele con naturalidad y calidez, variando la forma. Nunca digas que le has reservado/apuntado ni afirmes que un hueco esté libre (tú no reservas ni conoces la disponibilidad); NO escribas horas, huecos ni enlaces: el sistema añade el enlace a la agenda real justo después.\n"
-        f"- Si pregunta Y también quiere cita → primero responde la pregunta breve, luego di que le pasas el enlace para reservar.\n"
+        f"- Si quiere una cita → respóndele con naturalidad y calidez, variando la forma. Nunca digas que le has reservado/apuntado ni afirmes que un hueco esté libre (tú no reservas ni conoces la disponibilidad); NO escribas horas, huecos ni enlaces: el sistema añade el enlace a la agenda real justo después. Háblale en segunda persona ('aquí tienes', 'te dejo el enlace'); nunca 'me paso' ni 'le paso el enlace'.\n"
+        f"- Si pregunta Y también quiere cita → primero responde la pregunta breve, luego invítale con calidez a reservar. NO escribas tú el enlace: el sistema lo añade después.\n"
         f"- Si quiere CANCELAR una cita ya agendada → escribe 1-2 frases: confirma con calidez que cancelas su cita y dile que si quiere puede reprogramar cuando le venga bien. NO escribas horas ni enlaces: el sistema cancela la cita y añade el enlace para reprogramar.\n"
         f"- Si es una notificación automática, spam o mensaje sin destinatario claro → clasifica como irrelevante y deja el texto vacío.\n"
         f"{hours_ctx} Nunca propongas horas concretas ni escribas enlaces — el sistema los añade."
