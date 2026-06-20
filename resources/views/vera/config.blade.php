@@ -113,6 +113,22 @@
                         <p class="text-xs text-gray-400 mt-1.5">Las citas y los horarios se gestionan en esta zona.</p>
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Dirección del negocio <span class="text-gray-400 font-normal">(opcional)</span></label>
+                        <input type="text" name="business_address"
+                               value="{{ old('business_address', $config->business_address) }}"
+                               placeholder="Calle Ejemplo 12, Málaga"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
+                        <p class="text-xs text-gray-400 mt-1.5">Si la rellenas, Vera la dirá cuando pregunten dónde estáis. Déjala vacía si prefieres gestionar la ubicación desde tus FAQ.</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Enlace de Google Maps <span class="text-gray-400 font-normal">(opcional)</span></label>
+                        <input type="url" name="maps_url"
+                               value="{{ old('maps_url', $config->maps_url) }}"
+                               placeholder="https://maps.app.goo.gl/..."
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
+                        <p class="text-xs text-gray-400 mt-1.5">Cuando el cliente pregunte cómo llegar, Vera añade un botón “📍 Cómo llegar” con este enlace.</p>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">Modo</label>
                         <select name="mode" x-model="currentMode"
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
@@ -518,6 +534,8 @@ function veraConfig() {
                 tone:                 g('tone'),
                 language:             g('language'),
                 timezone:             g('timezone'),
+                business_address:     g('business_address'),
+                maps_url:             g('maps_url'),
                 mode:                 this.currentMode,
                 meeting_duration:     parseInt(g('meeting_duration')),
                 buffer_minutes:       parseInt(g('buffer_minutes')),
