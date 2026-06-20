@@ -270,7 +270,7 @@ class ProcessIncomingMessage implements ShouldQueue
         if ($response
             && !\in_array($mode, ['agenda', 'transicion', 'cancelacion'])
             && (!empty($config->maps_url) || !empty($config->business_address))
-            && preg_match('/\b(d[oó]nde\s+est[aá]is|d[oó]nde\s+est[aá]|direcci[oó]n|ubicaci[oó]n|c[oó]mo\s+lleg|d[oó]nde\s+os\s+encuentr|d[oó]nde\s+se\s+encuentr|localizaci[oó]n)\b/iu', $this->message)) {
+            && preg_match('/(\bubic|\bdirecci[oó]n|\blocalizaci[oó]n|d[oó]nde\s+est[aá]is|d[oó]nde\s+os\s|d[oó]nde\s+se\s|c[oó]mo\s+(lleg|llego|se\s+va)|en\s+qu[eé]\s+calle)/iu', $this->message)) {
             // Si el dueño no pegó un enlace, lo generamos GRATIS desde la dirección
             // (enlace de búsqueda de Google Maps, sin API key). GmailService lo pinta como botón.
             $mapsLink = $config->maps_url
