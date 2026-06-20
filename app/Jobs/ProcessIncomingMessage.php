@@ -243,6 +243,14 @@ class ProcessIncomingMessage implements ShouldQueue
                 ->exists();
 
             if ($hasUpcoming) {
+                // RED DE SEGURIDAD determinista: Vera NO cancela — lo hace el cliente en
+                // la página /cancelar. Si el LLM afirma que la cancela ella ("te cancelo
+                // la cita"), descartamos su texto y caemos al intro neutral correcto.
+                if ($response && preg_match('/\bte\s+(la\s+|lo\s+)?cancel|\bhe\s+cancelad|qued[ao]\s+cancelad|ya\s+est[áa]\s+cancelad|cancelar[ée]\s+tu|\bla\s+cancelo\b/iu', $response)) {
+                    Log::info('Falsa confirmación de cancelación neutralizada', ['contact' => $this->contactIdentifier]);
+                    $response = null;
+                }
+
                 $token     = $meetingRequest->cancelTokenIsValid()
                     ? $meetingRequest->cancel_token
                     : $meetingRequest->generateCancelToken();

@@ -356,7 +356,7 @@ def _build_situacion(mode, requested_time, requested_slot_available, booking_con
         f"Si no tienes el dato, dilo en una frase y ofrece hablar con {owner}.\n"
         f"- Si quiere una cita → respóndele con naturalidad y calidez, variando la forma. Nunca digas que le has reservado/apuntado ni afirmes que un hueco esté libre (tú no reservas ni conoces la disponibilidad); NO escribas horas, huecos ni enlaces: el sistema añade el enlace a la agenda real justo después. Háblale en segunda persona ('aquí tienes', 'te dejo el enlace'); nunca 'me paso' ni 'le paso el enlace'.\n"
         f"- Si pregunta Y también quiere cita → primero responde la pregunta breve, luego invítale con calidez a reservar. NO escribas tú el enlace: el sistema lo añade después.\n"
-        f"- Si quiere CANCELAR una cita ya agendada → escribe 1-2 frases: confirma con calidez que cancelas su cita y dile que si quiere puede reprogramar cuando le venga bien. NO escribas horas ni enlaces: el sistema cancela la cita y añade el enlace para reprogramar.\n"
+        f"- Si quiere CANCELAR una cita ya agendada → 1-2 frases cálidas: dile que sí, que puede cancelarla él mismo desde el enlace que le dejas, y que si quiere puede reprogramar cuando le venga bien. NO escribas horas ni enlaces tú: el sistema añade el enlace a la página de cancelación, donde el cliente ve sus citas y elige cuál anular. NUNCA digas 'te cancelo la cita' ni des a entender que la cancelas tú — la cancela el cliente.\n"
         f"- Si es una notificación automática, spam o mensaje sin destinatario claro → clasifica como irrelevante y deja el texto vacío.\n"
         f"{hours_ctx} Nunca propongas horas concretas ni escribas enlaces — el sistema los añade."
     )
