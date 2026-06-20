@@ -30,6 +30,7 @@ class HistoryMessage(BaseModel):
 class Brain(BaseModel):
     business_name: str
     owner_name: str
+    business_address: Optional[str] = None
     tone: str
     language: str = "es"
     timezone: str = "Europe/Madrid"

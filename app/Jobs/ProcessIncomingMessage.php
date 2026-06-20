@@ -263,6 +263,17 @@ class ProcessIncomingMessage implements ShouldQueue
             }
         }
 
+        // UBICACIÓN — si el cliente pregunta dónde está el negocio / cómo llegar y hay un
+        // enlace de Google Maps configurado, lo añadimos para que GmailService lo pinte
+        // como botón "Cómo llegar". Solo en info/respuesta (agenda y cancelación ya tienen
+        // su propio botón). La dirección en texto la dice Vera desde su cerebro.
+        if ($response
+            && !\in_array($mode, ['agenda', 'transicion', 'cancelacion'])
+            && !empty($config->maps_url)
+            && preg_match('/\b(d[oó]nde\s+est[aá]is|d[oó]nde\s+est[aá]|direcci[oó]n|ubicaci[oó]n|c[oó]mo\s+lleg|d[oó]nde\s+os\s+encuentr|d[oó]nde\s+se\s+encuentr|localizaci[oó]n)\b/iu', $this->message)) {
+            $response = trim($response) . "\n\n" . $config->maps_url;
+        }
+
         if (\in_array($mode, ['agenda', 'transicion']) && !empty($slots)) {
             $this->handleAgendaMode($user, $config, $meetingRequest, $slots);
         }
@@ -521,6 +532,7 @@ class ProcessIncomingMessage implements ShouldQueue
                 'brain'                    => [
                     'business_name'       => $config->business_name,
                     'owner_name'          => $config->owner_name,
+                    'business_address'    => $config->business_address,
                     'tone'                => $config->tone,
                     'working_hours'       => $config->working_hours,
                     'meeting_duration'    => $config->meeting_duration,

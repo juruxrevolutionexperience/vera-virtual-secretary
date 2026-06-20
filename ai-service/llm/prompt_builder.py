@@ -62,6 +62,15 @@ REGLA CLAVE: si el cliente expresa de cualquier forma que quiere/acepta una cita
     customer_block = _build_customer_context(customer_profile)
     hoy = _hoy_str(brain.get("timezone"))
 
+    # Dirección del negocio — para que Vera la dé cuando pregunten dónde está.
+    # El sistema añade aparte un botón "Cómo llegar" con el enlace de Google Maps.
+    direccion_block = ""
+    if brain.get("business_address"):
+        direccion_block = (
+            f"\n\nDIRECCIÓN DEL NEGOCIO: {brain['business_address']}\n"
+            f"(Si el cliente pregunta dónde estáis o cómo llegar, dale la dirección con naturalidad.)"
+        )
+
     system_prompt = f"""{identidad}
 
 FECHA DE HOY: {hoy}
@@ -69,7 +78,7 @@ FECHA DE HOY: {hoy}
 INFORMACIÓN DEL NEGOCIO:
 {rag_context if rag_context else "Todavía no tienes información del negocio cargada."}
 
-{f"HORARIO DE TRABAJO: {working_hours}" if working_hours else "El horario de trabajo aún no está configurado."}{customer_block}
+{f"HORARIO DE TRABAJO: {working_hours}" if working_hours else "El horario de trabajo aún no está configurado."}{direccion_block}{customer_block}
 
 SITUACIÓN ACTUAL:
 {situacion}{modo_instruccion}

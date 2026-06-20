@@ -269,6 +269,9 @@ class GmailService
         } elseif (preg_match('#https?://[^\s<>"]+/cancelar/[A-Za-z0-9]+#', $text, $m)) {
             $actionUrl   = $m[0];
             $buttonLabel = 'Cancelar mi cita';
+        } elseif (preg_match('#https?://[^\s<>"]*(?:google\.[a-z.]+/maps|maps\.google|maps\.app\.goo\.gl|goo\.gl/maps)[^\s<>"]*#i', $text, $m)) {
+            $actionUrl   = $m[0];
+            $buttonLabel = '📍 Cómo llegar';
         }
         if ($actionUrl) {
             // Quitar la URL del cuerpo (y la etiqueta tipo "...aquí:" justo antes, si la hay)

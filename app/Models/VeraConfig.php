@@ -17,6 +17,8 @@ class VeraConfig extends Model
         'tone',
         'language',
         'timezone',
+        'business_address',   // dirección física del negocio
+        'maps_url',           // enlace de Google Maps → botón "Cómo llegar"
 
         // Horario y reuniones
         'working_hours',
