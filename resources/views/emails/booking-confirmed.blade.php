@@ -46,6 +46,19 @@
                                         <span style="font-size:15px;color:#18181b;">{{ $meeting->duration_minutes }} minutos</span>
                                     </td>
                                 </tr>
+                                @if(!empty($businessAddress) || !empty($mapsUrl))
+                                <tr>
+                                    <td style="padding:6px 0;">
+                                        <span style="font-size:13px;color:#71717a;display:block;">Dónde</span>
+                                        @if(!empty($businessAddress))<span style="font-size:15px;color:#18181b;">{{ $businessAddress }}</span>@endif
+                                        @if(!empty($mapsUrl))
+                                        <div style="margin-top:10px;">
+                                            <a href="{{ $mapsUrl }}" style="display:inline-block;padding:9px 18px;background:#7c3aed;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;border-radius:6px;">📍 Cómo llegar</a>
+                                        </div>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endif
                             </table>
                         </td>
                     </tr>

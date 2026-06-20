@@ -32,14 +32,22 @@ class BookingConfirmedMail extends Mailable
 
     public function content(): Content
     {
+        $config  = $this->req->user->veraConfig;
+        $address = $config?->business_address;
+        // Enlace de Maps: el del dueño, o uno generado gratis desde la dirección.
+        $mapsUrl = $config?->maps_url
+            ?: ($address ? 'https://www.google.com/maps/search/?api=1&query=' . urlencode($address) : null);
+
         return new Content(
             view: 'emails.booking-confirmed',
             with: [
-                'meeting'       => $this->meeting,
-                'req'           => $this->req,
-                'dateLabel'     => $this->dateLabel,
-                'autoConfirmed' => $this->autoConfirmed,
-                'businessName'  => $this->req->user->veraConfig?->business_name ?? config('app.name'),
+                'meeting'         => $this->meeting,
+                'req'             => $this->req,
+                'dateLabel'       => $this->dateLabel,
+                'autoConfirmed'   => $this->autoConfirmed,
+                'businessName'    => $config?->business_name ?? config('app.name'),
+                'businessAddress' => $address,
+                'mapsUrl'         => $mapsUrl,
             ],
         );
     }
