@@ -118,7 +118,11 @@
                                value="{{ old('business_address', $config->business_address) }}"
                                placeholder="Calle Ejemplo 12, Málaga"
                                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
-                        <p class="text-xs text-gray-400 mt-1.5">Si la rellenas, Vera la dirá cuando pregunten dónde estáis. Déjala vacía si prefieres gestionar la ubicación desde tus FAQ.</p>
+                        <div class="flex items-center justify-between mt-1.5">
+                            <p class="text-xs text-gray-400">Vera genera solo el botón “📍 Cómo llegar” con esta dirección. Déjala vacía si prefieres gestionar la ubicación desde tus FAQ.</p>
+                            <a href="#" onclick="event.preventDefault(); var a=document.querySelector('[name=business_address]').value.trim(); if(a){window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(a),'_blank');}"
+                               class="text-xs text-purple-600 hover:underline whitespace-nowrap ml-3">🗺️ Comprobar en el mapa</a>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">Enlace de Google Maps <span class="text-gray-400 font-normal">(opcional)</span></label>
@@ -126,7 +130,7 @@
                                value="{{ old('maps_url', $config->maps_url) }}"
                                placeholder="https://maps.app.goo.gl/..."
                                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
-                        <p class="text-xs text-gray-400 mt-1.5">Cuando el cliente pregunte cómo llegar, Vera añade un botón “📍 Cómo llegar” con este enlace.</p>
+                        <p class="text-xs text-gray-400 mt-1.5">Solo si quieres un <strong>pin exacto</strong> (tu enlace de Google Business). Si lo dejas vacío, el botón se genera automáticamente desde la dirección de arriba.</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1.5">Modo</label>

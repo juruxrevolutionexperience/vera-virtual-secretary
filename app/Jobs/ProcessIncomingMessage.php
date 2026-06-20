@@ -269,9 +269,13 @@ class ProcessIncomingMessage implements ShouldQueue
         // su propio botón). La dirección en texto la dice Vera desde su cerebro.
         if ($response
             && !\in_array($mode, ['agenda', 'transicion', 'cancelacion'])
-            && !empty($config->maps_url)
+            && (!empty($config->maps_url) || !empty($config->business_address))
             && preg_match('/\b(d[oó]nde\s+est[aá]is|d[oó]nde\s+est[aá]|direcci[oó]n|ubicaci[oó]n|c[oó]mo\s+lleg|d[oó]nde\s+os\s+encuentr|d[oó]nde\s+se\s+encuentr|localizaci[oó]n)\b/iu', $this->message)) {
-            $response = trim($response) . "\n\n" . $config->maps_url;
+            // Si el dueño no pegó un enlace, lo generamos GRATIS desde la dirección
+            // (enlace de búsqueda de Google Maps, sin API key). GmailService lo pinta como botón.
+            $mapsLink = $config->maps_url
+                ?: 'https://www.google.com/maps/search/?api=1&query=' . urlencode($config->business_address);
+            $response = trim($response) . "\n\n" . $mapsLink;
         }
 
         if (\in_array($mode, ['agenda', 'transicion']) && !empty($slots)) {
