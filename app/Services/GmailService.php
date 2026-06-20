@@ -260,12 +260,19 @@ class GmailService
      */
     private function buildHtmlBody(string $text, string $signature, string $businessName = 'Vera'): string
     {
-        // Extraer el enlace de reserva (si lo hay) para renderizarlo como botón.
-        $bookingUrl = null;
+        // Extraer el enlace de acción (reserva o cancelación) para renderizarlo como botón.
+        $actionUrl   = null;
+        $buttonLabel = '';
         if (preg_match('#https?://[^\s<>"]+/reservar/[A-Za-z0-9]+#', $text, $m)) {
-            $bookingUrl = $m[0];
+            $actionUrl   = $m[0];
+            $buttonLabel = 'Ver agenda y reservar';
+        } elseif (preg_match('#https?://[^\s<>"]+/cancelar/[A-Za-z0-9]+#', $text, $m)) {
+            $actionUrl   = $m[0];
+            $buttonLabel = 'Cancelar mi cita';
+        }
+        if ($actionUrl) {
             // Quitar la URL del cuerpo (y la etiqueta tipo "...aquí:" justo antes, si la hay)
-            $text = trim(preg_replace('#[^\n]*' . preg_quote($bookingUrl, '#') . '#', '', $text));
+            $text = trim(preg_replace('#[^\n]*' . preg_quote($actionUrl, '#') . '#', '', $text));
         }
 
         $escaped = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
@@ -278,13 +285,14 @@ class GmailService
         $bodyHtml = nl2br($escaped);
 
         $button = '';
-        if ($bookingUrl) {
-            $safeUrl = htmlspecialchars($bookingUrl, ENT_QUOTES, 'UTF-8');
+        if ($actionUrl) {
+            $safeUrl   = htmlspecialchars($actionUrl, ENT_QUOTES, 'UTF-8');
+            $safeLabel = htmlspecialchars($buttonLabel, ENT_QUOTES, 'UTF-8');
             $button = '
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;">
                 <tr><td style="border-radius:8px;background:#7c3aed;">
                     <a href="' . $safeUrl . '" style="display:inline-block;padding:13px 30px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;border-radius:8px;">
-                        Ver agenda y reservar
+                        ' . $safeLabel . '
                     </a>
                 </td></tr>
             </table>
