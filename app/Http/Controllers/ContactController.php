@@ -3,17 +3,36 @@
 namespace App\Http\Controllers;
 
 use App\Models\Contact;
+use App\Models\Meeting;
 use App\Services\ContactService;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Auth;
 
-class ContactController extends Controller
+class ContactController extends Controller implements HasMiddleware
 {
     protected ContactService $contactService;
 
     public function __construct(ContactService $contactService)
     {
         $this->contactService = $contactService;
+    }
+
+    /**
+     * El CRM (Contactos) solo está disponible en planes con la función 'crm_basic'
+     * (Pro y Centro). El Básico no tiene acceso.
+     */
+    public static function middleware(): array
+    {
+        return [
+            new Middleware(function ($request, $next) {
+                if (! $request->user()?->hasFeature('crm_basic')) {
+                    abort(403, 'Tu plan no incluye el CRM. Actualiza a Pro o Centro para gestionar tus contactos.');
+                }
+                return $next($request);
+            }),
+        ];
     }
 
     /**
@@ -76,8 +95,19 @@ class ContactController extends Controller
         // Obtener todos los emails del contacto
         $emails = $contact->all_emails;
 
+        // Historial de citas del contacto (enlazadas por id o por email) → "ficha de paciente"
+        $appointments = Meeting::where('user_id', $contact->user_id)
+            ->where(function ($q) use ($contact) {
+                $q->where('contact_id', $contact->id);
+                if ($contact->email) {
+                    $q->orWhereRaw('LOWER(contact_email) = ?', [strtolower($contact->email)]);
+                }
+            })
+            ->orderByDesc('scheduled_at')
+            ->get();
+
         // Si es petición normal del navegador, devolver vista
-        return view('contacts.show', compact('contact', 'emails'));
+        return view('contacts.show', compact('contact', 'emails', 'appointments'));
     }
 
     /**

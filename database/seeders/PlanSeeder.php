@@ -52,7 +52,7 @@ class PlanSeeder extends Seeder
                 'email_limit' => 2000,
                 'token_limit' => 1000000,
                 'price_eur'   => 30,
-                'features'    => ['basic_analysis', 'sentiment', 'weekly_learning', 'suggested_replies', 'auto_response', 'analytics'],
+                'features'    => ['basic_analysis', 'sentiment', 'weekly_learning', 'suggested_replies', 'auto_response', 'analytics', 'crm_basic'],
                 'is_active'   => true,
             ],
             [
@@ -61,7 +61,7 @@ class PlanSeeder extends Seeder
                 'email_limit' => null,
                 'token_limit' => null,
                 'price_eur'   => 99,
-                'features'    => ['basic_analysis', 'sentiment', 'weekly_learning', 'suggested_replies', 'auto_response', 'analytics', 'organizations', 'priority_support'],
+                'features'    => ['basic_analysis', 'sentiment', 'weekly_learning', 'suggested_replies', 'auto_response', 'analytics', 'organizations', 'priority_support', 'crm_basic', 'crm_advanced'],
                 'is_active'   => true,
             ],
         ];

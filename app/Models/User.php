@@ -201,6 +201,19 @@ class User extends Authenticatable implements \Illuminate\Contracts\Auth\MustVer
         return $this->plan?->name ?? ucfirst($this->plan_type ?? 'Basic');
     }
 
+    /**
+     * ¿El plan del usuario incluye esta función? (ej. 'crm_basic', 'crm_advanced').
+     * Enterprise y cuentas dev tienen todo.
+     */
+    public function hasFeature(string $feature): bool
+    {
+        if ($this->is_dev || $this->plan_type === 'enterprise') {
+            return true;
+        }
+
+        return in_array($feature, $this->plan?->features ?? [], true);
+    }
+
     // ─── Acceso activo ───────────────────────────────────────────────────────
 
     public function getHasActiveAccessAttribute(): bool

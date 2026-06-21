@@ -131,6 +131,50 @@
         </div>
     </div>
 
+    <!-- Historial de Citas -->
+    <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Historial de Citas ({{ $appointments->count() }})
+        </h2>
+
+        @if($appointments->isEmpty())
+            <p class="text-sm text-gray-500">Este contacto todavía no tiene citas registradas.</p>
+        @else
+            <div class="space-y-3">
+                @foreach($appointments as $appt)
+                    @php
+                        $estado = $appt->status ?? 'pending';
+                        $badge = match($estado) {
+                            'confirmed' => 'bg-green-100 text-green-700',
+                            'cancelled', 'canceled' => 'bg-red-100 text-red-700',
+                            'completed' => 'bg-gray-100 text-gray-700',
+                            default => 'bg-amber-100 text-amber-700',
+                        };
+                        $estadoLabel = match($estado) {
+                            'confirmed' => 'Confirmada',
+                            'cancelled', 'canceled' => 'Cancelada',
+                            'completed' => 'Completada',
+                            'pending' => 'Pendiente',
+                            default => ucfirst($estado),
+                        };
+                    @endphp
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">{{ optional($appt->scheduled_at)->format('d/m/Y · H:i') ?? 'Sin fecha' }}</p>
+                            @if($appt->duration_minutes)
+                                <p class="text-xs text-gray-500">{{ $appt->duration_minutes }} min</p>
+                            @endif
+                        </div>
+                        <span class="text-xs font-medium px-2.5 py-1 rounded-full {{ $badge }}">{{ $estadoLabel }}</span>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </div>
+
     <!-- Historial de Emails -->
     <div class="bg-white rounded-lg border border-gray-200 p-6">
         <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">

@@ -46,6 +46,7 @@
                 <span class="flex-1">Bandeja</span>
             </a>
 
+            @if(auth()->user()?->hasFeature('crm_basic'))
             <a href="{{ route('contacts.index') }}"
                 class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('contacts.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,6 +55,7 @@
                 </svg>
                 <span class="flex-1">Contactos</span>
             </a>
+            @endif
 
             <a href="{{ route('vera.chat.index') }}"
                 class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('vera.chat.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">
