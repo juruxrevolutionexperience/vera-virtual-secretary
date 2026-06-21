@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Jobs\ProcessIncomingMessage;
 use App\Models\User;
+use App\Services\TelegramService;
+use App\Services\UnsupportedMessageResponder;
+use App\Services\VeraNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -72,18 +75,14 @@ class TelegramWebhookController extends Controller
         $chat = $message['chat'] ?? [];
         $from = $message['from'] ?? [];
 
-        if (!$text) {
-            return; // Mensaje sin texto (foto, sticker, etc.)
-        }
-
-        $chatId       = $chat['id'] ?? null;
-        $contactName  = trim(($from['first_name'] ?? '') . ' ' . ($from['last_name'] ?? '')) ?: null;
-        $username     = $from['username'] ?? null;
-        $updateId     = $update['update_id'] ?? null;
-
+        $chatId = $chat['id'] ?? null;
         if (!$chatId) {
             return;
         }
+
+        $contactName = trim(($from['first_name'] ?? '') . ' ' . ($from['last_name'] ?? '')) ?: null;
+        $username    = $from['username'] ?? null;
+        $updateId    = $update['update_id'] ?? null;
 
         // Identificador del contacto: username si existe, si no chat_id
         $contactIdentifier = $username ? "@{$username}" : (string) $chatId;
@@ -95,6 +94,13 @@ class TelegramWebhookController extends Controller
             Log::warning('Telegram: no se encontró usuario para chat', [
                 'chat_id' => $chatId,
             ]);
+            return;
+        }
+
+        // Mensajes que NO son de texto (foto, voz, documento, ubicación...):
+        // Vera responde con un mensaje claro en vez de ignorarlos en silencio.
+        if (!$text) {
+            $this->handleNonText($message, $user, $chatId, $contactName ?? $contactIdentifier);
             return;
         }
 
@@ -112,6 +118,41 @@ class TelegramWebhookController extends Controller
             contactName:       $contactName,
             metadata:          ['chat_id' => $chatId, 'update_id' => $updateId, 'username' => $username]
         );
+    }
+
+    /**
+     * Responde a un mensaje de Telegram que NO es de texto (documento, voz, foto,
+     * ubicación...) con un mensaje claro. Avisa al dueño en documentos/imágenes.
+     */
+    private function handleNonText(array $message, User $user, int|string $chatId, string $contactName): void
+    {
+        $config = $user->veraConfig;
+        if (!$config) {
+            return;
+        }
+
+        $kind = match (true) {
+            isset($message['document'])                                                     => 'document',
+            isset($message['voice']) || isset($message['audio'])                            => 'audio',
+            isset($message['photo']) || isset($message['sticker']) || isset($message['video']) => 'image',
+            isset($message['location']) || isset($message['venue'])                         => 'location',
+            default                                                                         => 'other',
+        };
+
+        $resp = UnsupportedMessageResponder::build($config, $kind);
+
+        (new TelegramService())->sendMessage($config->telegram_bot_token, $chatId, $resp['text']);
+
+        if ($resp['notify_owner']) {
+            $label = $kind === 'document' ? 'un documento' : 'una imagen';
+            (new VeraNotificationService())->sendEscalationAlert(
+                $user,
+                $contactName,
+                "📎 {$contactName} te ha enviado {$label} por Telegram. Échale un vistazo cuando puedas."
+            );
+        }
+
+        Log::info('📎 Telegram no-texto respondido', ['user_id' => $user->id, 'kind' => $kind]);
     }
 
     /**

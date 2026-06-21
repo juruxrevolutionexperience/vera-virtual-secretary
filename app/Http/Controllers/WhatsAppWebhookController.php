@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Jobs\ProcessIncomingMessage;
 use App\Models\User;
+use App\Services\UnsupportedMessageResponder;
+use App\Services\VeraNotificationService;
+use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -95,8 +98,12 @@ class WhatsAppWebhookController extends Controller
                 $phoneNumberId = $metadata['phone_number_id'] ?? null;
 
                 foreach ($messages as $message) {
-                    // Solo procesar mensajes de texto por ahora
-                    if (($message['type'] ?? '') !== 'text') {
+                    $type = $message['type'] ?? '';
+
+                    // Mensajes que NO son de texto (PDF, audio, imagen, ubicación...):
+                    // Vera responde con un mensaje claro en vez de ignorarlos en silencio.
+                    if ($type !== 'text') {
+                        $this->handleNonText($type, $message, $contacts, $phoneNumberId);
                         continue;
                     }
 
@@ -145,6 +152,66 @@ class WhatsAppWebhookController extends Controller
                 }
             }
         }
+    }
+
+    /**
+     * Responde a un mensaje que NO es de texto (documento, audio, imagen, ubicación...)
+     * con un mensaje claro, en vez de ignorarlo. Avisa al dueño en docs/imágenes.
+     */
+    private function handleNonText(string $type, array $message, array $contacts, ?string $phoneNumberId): void
+    {
+        $from = $message['from'] ?? null;
+        if (!$from) {
+            return;
+        }
+
+        $user   = $this->findUserByPhoneNumberId($phoneNumberId);
+        $config = $user?->veraConfig;
+        if (!$user || !$config) {
+            return;
+        }
+
+        $kind = match ($type) {
+            'document'                  => 'document',
+            'audio', 'voice'            => 'audio',
+            'image', 'sticker', 'video' => 'image',
+            'location'                  => 'location',
+            default                     => 'other',
+        };
+
+        $resp = UnsupportedMessageResponder::build($config, $kind);
+
+        (new WhatsAppService())->sendText(
+            $config->whatsapp_phone_number_id,
+            $config->whatsapp_access_token,
+            $from,
+            $resp['text']
+        );
+
+        if ($resp['notify_owner']) {
+            $name  = $this->contactNameFor($contacts, $from) ?? $from;
+            $label = $kind === 'document' ? 'un documento' : 'una imagen';
+            (new VeraNotificationService())->sendEscalationAlert(
+                $user,
+                $name,
+                "📎 {$name} te ha enviado {$label} por WhatsApp. Échale un vistazo cuando puedas."
+            );
+        }
+
+        Log::info('📎 WhatsApp no-texto respondido', ['user_id' => $user->id, 'kind' => $kind]);
+    }
+
+    /**
+     * Saca el nombre del contacto del payload de WhatsApp por su wa_id.
+     */
+    private function contactNameFor(array $contacts, string $waId): ?string
+    {
+        foreach ($contacts as $contact) {
+            if (($contact['wa_id'] ?? '') === $waId) {
+                return $contact['profile']['name'] ?? null;
+            }
+        }
+        return null;
     }
 
     /**
