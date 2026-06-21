@@ -65,4 +65,10 @@ return [
         'secret' => env('AI_SERVICE_SECRET'),
     ],
 
+    // Groq — transcripción de notas de voz (Whisper). Tier gratis; coste ínfimo.
+    'groq' => [
+        'key'           => env('GROQ_API_KEY'),
+        'whisper_model' => env('GROQ_WHISPER_MODEL', 'whisper-large-v3'),
+    ],
+
 ];

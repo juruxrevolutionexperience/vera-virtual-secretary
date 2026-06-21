@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessIncomingMessage;
+use App\Jobs\ProcessVoiceMessage;
 use App\Models\User;
 use App\Services\UnsupportedMessageResponder;
 use App\Services\VeraNotificationService;
@@ -169,6 +170,23 @@ class WhatsAppWebhookController extends Controller
         $config = $user?->veraConfig;
         if (!$user || !$config) {
             return;
+        }
+
+        // Nota de voz → transcribir y meterla en el flujo normal (no "prefiero que me escribas").
+        if (in_array($type, ['audio', 'voice'], true)) {
+            $mediaId = $message['audio']['id'] ?? $message['voice']['id'] ?? null;
+            if ($mediaId) {
+                ProcessVoiceMessage::dispatch(
+                    $user->id,
+                    'whatsapp',
+                    $mediaId,
+                    $from,
+                    $this->contactNameFor($contacts, $from),
+                    ['phone_number_id' => $phoneNumberId]
+                );
+                Log::info('🎤 WhatsApp voz recibida → a transcripción', ['user_id' => $user->id]);
+                return;
+            }
         }
 
         $kind = match ($type) {

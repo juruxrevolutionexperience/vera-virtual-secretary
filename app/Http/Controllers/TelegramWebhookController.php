@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessIncomingMessage;
+use App\Jobs\ProcessVoiceMessage;
 use App\Models\User;
 use App\Services\TelegramService;
 use App\Services\UnsupportedMessageResponder;
@@ -100,7 +101,7 @@ class TelegramWebhookController extends Controller
         // Mensajes que NO son de texto (foto, voz, documento, ubicación...):
         // Vera responde con un mensaje claro en vez de ignorarlos en silencio.
         if (!$text) {
-            $this->handleNonText($message, $user, $chatId, $contactName ?? $contactIdentifier);
+            $this->handleNonText($message, $user, $chatId, $contactIdentifier, $contactName);
             return;
         }
 
@@ -124,16 +125,27 @@ class TelegramWebhookController extends Controller
      * Responde a un mensaje de Telegram que NO es de texto (documento, voz, foto,
      * ubicación...) con un mensaje claro. Avisa al dueño en documentos/imágenes.
      */
-    private function handleNonText(array $message, User $user, int|string $chatId, string $contactName): void
+    private function handleNonText(array $message, User $user, int|string $chatId, string $contactIdentifier, ?string $contactName): void
     {
         $config = $user->veraConfig;
         if (!$config) {
             return;
         }
 
+        // Nota de voz → transcribir y meterla en el flujo normal (no "prefiero que me escribas").
+        if (isset($message['voice']) || isset($message['audio'])) {
+            $fileId = $message['voice']['file_id'] ?? $message['audio']['file_id'] ?? null;
+            if ($fileId) {
+                ProcessVoiceMessage::dispatch($user->id, 'telegram', $fileId, $contactIdentifier, $contactName, ['chat_id' => $chatId]);
+                Log::info('🎤 Telegram voz recibida → a transcripción', ['user_id' => $user->id]);
+                return;
+            }
+        }
+
+        $displayName = $contactName ?? $contactIdentifier;
+
         $kind = match (true) {
             isset($message['document'])                                                     => 'document',
-            isset($message['voice']) || isset($message['audio'])                            => 'audio',
             isset($message['photo']) || isset($message['sticker']) || isset($message['video']) => 'image',
             isset($message['location']) || isset($message['venue'])                         => 'location',
             default                                                                         => 'other',
@@ -147,8 +159,8 @@ class TelegramWebhookController extends Controller
             $label = $kind === 'document' ? 'un documento' : 'una imagen';
             (new VeraNotificationService())->sendEscalationAlert(
                 $user,
-                $contactName,
-                "📎 {$contactName} te ha enviado {$label} por Telegram. Échale un vistazo cuando puedas."
+                $displayName,
+                "📎 {$displayName} te ha enviado {$label} por Telegram. Échale un vistazo cuando puedas."
             );
         }
 
