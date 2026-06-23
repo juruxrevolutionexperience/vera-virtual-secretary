@@ -53,15 +53,14 @@
                             <!-- Plan Name & Price -->
                             <h3 class="text-2xl font-bold text-gray-900 mb-2">{{ $plan['name'] }}</h3>
                             <div class="mb-6">
-                                <span class="text-4xl font-bold text-gray-900">${{ $plan['price'] }}</span>
+                                <span class="text-4xl font-bold text-gray-900">{{ $plan['price'] }}€</span>
                                 <span class="text-gray-600">/mes</span>
                             </div>
 
-                            <!-- Email Limit -->
+                            <!-- Límite de mensajes -->
                             <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-                                <div class="text-gray-600 text-sm mb-1">Emails con IA mensuales</div>
-                                <div class="text-3xl font-bold text-gray-900">{{ $plan['email_limit'] }}</div>
-                                <div class="text-gray-500 text-xs mt-1">≈ {{ number_format($plan['token_limit']) }} tokens</div>
+                                <div class="text-gray-600 text-sm mb-1">Mensajes con IA al mes</div>
+                                <div class="text-3xl font-bold text-gray-900">{{ number_format($plan['email_limit']) }}</div>
                             </div>
 
                             <!-- Features List -->
@@ -159,9 +158,9 @@
 
             // Confirm
             const planNames = {
-                'basic': 'Basic ($5/mes - 100 emails)',
-                'starter': 'Starter ($15/mes - 250 emails)',
-                'pro': 'Pro ($30/mes - 450 emails)'
+                'basic': 'Básico (49€/mes)',
+                'pro': 'Pro (89€/mes)',
+                'enterprise': 'Centro (149€/mes)'
             };
 
             if (!confirm(`¿Confirmas el cambio al plan ${planNames[plan]}?\n\nTu límite se reiniciará inmediatamente.`)) {

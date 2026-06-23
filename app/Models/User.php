@@ -66,6 +66,7 @@ class User extends Authenticatable implements \Illuminate\Contracts\Auth\MustVer
             'monthly_tokens_limit'   => 'integer',
             'monthly_meeting_limit'  => 'integer',
             'meetings_this_month'    => 'integer',
+            'plan_metadata'          => 'array',
         ];
     }
 
