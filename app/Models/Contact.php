@@ -92,6 +92,32 @@ class Contact extends Model
         });
     }
 
+    /**
+     * Segmentación automática del contacto según su comportamiento (CRM Centro).
+     * Función pura: depende solo del nº de citas y la última interacción.
+     * Devuelve ['key', 'label', 'color'].
+     */
+    public static function segmentFrom(int $appointmentCount, $lastContactAt = null): array
+    {
+        if ($appointmentCount >= 2) {
+            return ['key' => 'habitual', 'label' => 'Cliente habitual', 'color' => 'green'];
+        }
+        if ($appointmentCount === 1) {
+            return ['key' => 'cliente', 'label' => 'Cliente', 'color' => 'blue'];
+        }
+
+        $dias = $lastContactAt ? \Carbon\Carbon::parse($lastContactAt)->diffInDays(now()) : null;
+
+        if ($dias !== null && $dias <= 30) {
+            return ['key' => 'potencial', 'label' => 'Potencial', 'color' => 'amber'];
+        }
+        if ($dias !== null && $dias <= 90) {
+            return ['key' => 'dudoso', 'label' => 'Dudoso', 'color' => 'orange'];
+        }
+
+        return ['key' => 'perdido', 'label' => 'Perdido', 'color' => 'gray'];
+    }
+
     // ==========================================
     // MÉTODOS DE UTILIDAD
     // ==========================================

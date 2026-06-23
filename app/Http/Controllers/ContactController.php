@@ -106,8 +106,56 @@ class ContactController extends Controller implements HasMiddleware
             ->orderByDesc('scheduled_at')
             ->get();
 
+        // Segmento automático (CRM Centro) — se calcula del nº de citas + última interacción.
+        $segment = Contact::segmentFrom($appointments->count(), $contact->last_contact_at);
+
         // Si es petición normal del navegador, devolver vista
-        return view('contacts.show', compact('contact', 'emails', 'appointments'));
+        return view('contacts.show', compact('contact', 'emails', 'appointments', 'segment'));
+    }
+
+    /**
+     * Informes del CRM (Centro / crm_advanced): embudo de conversión, segmentación
+     * automática de la cartera e informe mensual de citas.
+     */
+    public function reports()
+    {
+        $user = Auth::user();
+
+        if (! $user->hasFeature('crm_advanced')) {
+            abort(403, 'Los informes del CRM están disponibles en el plan Centro.');
+        }
+
+        // nº de citas por email de contacto (una sola query, sin N+1)
+        $apptCounts = Meeting::where('user_id', $user->id)
+            ->whereNotNull('contact_email')
+            ->selectRaw('LOWER(contact_email) as email, COUNT(*) as total')
+            ->groupBy('email')
+            ->pluck('total', 'email');
+
+        // Segmentación de toda la cartera
+        $segments = ['habitual' => 0, 'cliente' => 0, 'potencial' => 0, 'dudoso' => 0, 'perdido' => 0];
+        $contacts = Contact::accessibleByUser($user)->get(['email', 'last_contact_at']);
+        foreach ($contacts as $c) {
+            $n   = (int) ($apptCounts[strtolower((string) $c->email)] ?? 0);
+            $key = Contact::segmentFrom($n, $c->last_contact_at)['key'];
+            $segments[$key] = ($segments[$key] ?? 0) + 1;
+        }
+
+        // Embudo de conversión
+        $totalContactos = $contacts->count();
+        $agendaron      = $apptCounts->filter(fn ($n) => $n >= 1)->count();
+        $repiten        = $apptCounts->filter(fn ($n) => $n >= 2)->count();
+        $conversion     = $totalContactos > 0 ? round($agendaron / $totalContactos * 100, 1) : 0;
+
+        // Informe mensual de citas (últimos 6 meses)
+        $monthly = Meeting::where('user_id', $user->id)
+            ->where('scheduled_at', '>=', now()->subMonths(6)->startOfMonth())
+            ->selectRaw("DATE_FORMAT(scheduled_at, '%Y-%m') as mes, COUNT(*) as total, SUM(status = 'confirmed') as confirmadas, SUM(status = 'cancelled') as canceladas")
+            ->groupBy('mes')
+            ->orderBy('mes')
+            ->get();
+
+        return view('contacts.reports', compact('segments', 'totalContactos', 'agendaron', 'repiten', 'conversion', 'monthly'));
     }
 
     /**

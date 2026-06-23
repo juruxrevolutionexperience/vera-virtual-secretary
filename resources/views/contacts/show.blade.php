@@ -40,6 +40,16 @@
                             @if($contact->is_blocked)
                                 <span class="px-3 py-1 text-sm font-bold bg-red-100 text-red-800 rounded-full">Bloqueado</span>
                             @endif
+                            @php
+                                $segStyle = match($segment['color']) {
+                                    'green'  => 'background:#dcfce7;color:#166534;',
+                                    'blue'   => 'background:#dbeafe;color:#1e40af;',
+                                    'amber'  => 'background:#fef3c7;color:#92400e;',
+                                    'orange' => 'background:#ffedd5;color:#9a3412;',
+                                    default  => 'background:#f3f4f6;color:#374151;',
+                                };
+                            @endphp
+                            <span class="px-3 py-1 text-sm font-bold rounded-full" style="{{ $segStyle }}">{{ $segment['label'] }}</span>
                         </div>
 
                         <p class="text-lg text-gray-600 mb-1">{{ $contact->email }}</p>

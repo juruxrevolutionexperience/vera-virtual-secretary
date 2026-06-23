@@ -293,6 +293,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/frequent', [ContactController::class, 'frequent'])->name('frequent');
         Route::get('/vip', [ContactController::class, 'vip'])->name('vip');
         Route::get('/stats', [ContactController::class, 'stats'])->name('stats');
+        Route::get('/informes', [ContactController::class, 'reports'])->name('reports');
         Route::get('/{contact}', [ContactController::class, 'show'])->name('show');
         Route::put('/{contact}', [ContactController::class, 'update'])->name('update');
         Route::delete('/{contact}', [ContactController::class, 'destroy'])->name('destroy');
