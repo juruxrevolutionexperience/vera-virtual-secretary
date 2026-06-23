@@ -27,14 +27,17 @@ class BillingController extends Controller
     {
         $user = $request->user();
 
-        $plans = [
-            'essentials'   => env('STRIPE_PRICE_ESSENTIALS'),
-            'professional' => env('STRIPE_PRICE_PROFESSIONAL'),
-            'business'     => env('STRIPE_PRICE_BUSINESS'),
-        ];
+        // Los price IDs se leen de config() (NO env() directo): con la config cacheada
+        // en producción env() devuelve null y reventaba el checkout.
+        $prices  = config('services.stripe.prices', []);
+        $plan    = $request->input('plan', 'essentials');
+        $priceId = $prices[$plan] ?? null;
 
-        $plan = $request->input('plan', 'essentials');
-        $priceId = $plans[$plan] ?? $plans['essentials'];
+        // Guard: si el plan no está configurado en Stripe, no reventamos con un 500.
+        if (! $priceId) {
+            return redirect()->route('billing')
+                ->with('error', 'Ese plan no está disponible ahora mismo. Inténtalo en un momento o contáctanos.');
+        }
 
         return $user->newSubscription('default', $priceId)->checkout([
             'success_url' => route('vera.dashboard') . '?welcome=1',

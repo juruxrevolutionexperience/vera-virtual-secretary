@@ -71,4 +71,14 @@ return [
         'whisper_model' => env('GROQ_WHISPER_MODEL', 'whisper-large-v3'),
     ],
 
+    // Stripe — IDs de precio de cada plan. Se leen vía config() (no env() directo),
+    // porque con la config cacheada en producción env() devuelve null.
+    'stripe' => [
+        'prices' => [
+            'essentials'   => env('STRIPE_PRICE_ESSENTIALS'),
+            'professional' => env('STRIPE_PRICE_PROFESSIONAL'),
+            'business'     => env('STRIPE_PRICE_BUSINESS'),
+        ],
+    ],
+
 ];
