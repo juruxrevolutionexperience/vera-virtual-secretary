@@ -1183,14 +1183,14 @@
                                     <!-- Name & Price -->
                                     <h3 class="text-xl font-bold text-gray-900 mb-1" x-text="plan.name"></h3>
                                     <div class="mb-4">
-                                        <span class="text-3xl font-bold text-gray-900" x-text="'$' + plan.price"></span>
+                                        <span class="text-3xl font-bold text-gray-900" x-text="plan.price + '€'"></span>
                                         <span class="text-gray-600 text-sm">/mes</span>
                                     </div>
 
-                                    <!-- Email Limit -->
+                                    <!-- Límite de mensajes -->
                                     <div class="mb-4 p-3 bg-gray-50 rounded-lg">
-                                        <div class="text-gray-600 text-xs mb-0.5">Emails con IA mensuales</div>
-                                        <div class="text-2xl font-bold text-gray-900" x-text="plan.email_limit"></div>
+                                        <div class="text-gray-600 text-xs mb-0.5">Mensajes con IA al mes</div>
+                                        <div class="text-2xl font-bold text-gray-900" x-text="Number(plan.email_limit).toLocaleString('es-ES')"></div>
                                     </div>
 
                                     <!-- Features -->
@@ -1218,8 +1218,7 @@
                                         @click="updatePlan(planKey, plan.name, plan.price, plan.email_limit)"
                                         class="w-full bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors text-sm"
                                         :id="'btn-' + planKey">
-                                        <span
-                                            x-text="planKey === 'basic' ? 'Cambiar a Basic' : 'Actualizar a ' + plan.name"></span>
+                                        <span x-text="'Cambiar a ' + plan.name"></span>
                                     </button>
                                 </div>
                             </div>
@@ -1496,43 +1495,44 @@
                     this.plansData = {
                         plans: {
                             basic: {
-                                name: 'Basic',
-                                price: 5,
-                                email_limit: 100,
+                                name: 'Básico',
+                                price: 49,
+                                email_limit: 500,
                                 features: [
-                                    'Análisis automático de emails',
-                                    'Respuestas sugeridas',
-                                    'Reglas básicas de filtrado',
-                                    'Soporte por email (48h)'
+                                    '500 mensajes/mes con IA',
+                                    'WhatsApp + Email + Google Calendar',
+                                    'Agendado, recordatorios y cancelaciones',
+                                    'Quejas e incidencias',
+                                    '1 profesional'
                                 ],
                                 is_current: user.plan_type === 'basic'
                             },
-                            starter: {
-                                name: 'Starter',
-                                price: 15,
-                                email_limit: 250,
-                                features: [
-                                    'Todo de Basic',
-                                    'Respuestas automáticas',
-                                    'Análisis semanal',
-                                    'Perfiles de comunicación',
-                                    'Soporte prioritario (24h)'
-                                ],
-                                is_current: user.plan_type === 'starter',
-                                popular: true
-                            },
                             pro: {
                                 name: 'Pro',
-                                price: 30,
-                                email_limit: 450,
+                                price: 89,
+                                email_limit: 2000,
                                 features: [
-                                    'Todo de Starter',
-                                    'Reglas ilimitadas',
-                                    'API access',
-                                    'Analytics avanzados',
-                                    'Soporte 24/7'
+                                    'Todo lo de Básico',
+                                    '2.000 mensajes/mes',
+                                    'CRM básico (ficha + historial + notas)',
+                                    'Hasta 3 profesionales',
+                                    'Informes mensuales'
                                 ],
-                                is_current: user.plan_type === 'pro'
+                                is_current: user.plan_type === 'pro',
+                                popular: true
+                            },
+                            enterprise: {
+                                name: 'Centro',
+                                price: 149,
+                                email_limit: 10000,
+                                features: [
+                                    'Todo lo de Pro',
+                                    '10.000 mensajes/mes',
+                                    'CRM completo (segmentación + informes)',
+                                    'Hasta 10 profesionales',
+                                    'Soporte prioritario + onboarding'
+                                ],
+                                is_current: user.plan_type === 'enterprise'
                             }
                         },
                         currentUsage
@@ -1544,7 +1544,7 @@
             },
 
             async updatePlan(planKey, planName, planPrice, emailLimit) {
-                const confirmed = confirm(`¿Confirmas el cambio al plan ${planName} ($${planPrice}/mes - ${emailLimit} emails)?\n\nTu límite se reiniciará inmediatamente.`);
+                const confirmed = confirm(`¿Confirmas el cambio al plan ${planName} (${planPrice}€/mes - ${emailLimit} mensajes)?\n\nTu límite se reiniciará inmediatamente.`);
                 if (!confirmed) return;
 
                 const button = document.getElementById(`btn-${planKey}`);
