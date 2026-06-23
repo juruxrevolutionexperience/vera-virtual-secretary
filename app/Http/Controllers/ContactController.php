@@ -71,7 +71,21 @@ class ContactController extends Controller implements HasMiddleware
             $sortOrder = $request->get('sort_order', 'desc');
             $query->orderBy($sortBy, $sortOrder);
 
-            $contacts = $query->paginate($request->get('per_page', 20));
+            $contacts = $query->paginate($request->get('per_page', 50));
+
+            // Enriquecer cada contacto con su SEGMENTO + nº de citas (sin N+1: un map por email).
+            $apptCounts = Meeting::where('user_id', $user->id)
+                ->whereNotNull('contact_email')
+                ->selectRaw('LOWER(contact_email) as email, COUNT(*) as total')
+                ->groupBy('email')
+                ->pluck('total', 'email');
+
+            $contacts->getCollection()->transform(function ($c) use ($apptCounts) {
+                $n = (int) ($apptCounts[strtolower((string) $c->email)] ?? 0);
+                $c->appointments_count = $n;
+                $c->segment = Contact::segmentFrom($n, $c->last_contact_at);
+                return $c;
+            });
 
             return response()->json($contacts);
         }

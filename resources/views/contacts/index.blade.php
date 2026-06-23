@@ -124,6 +124,15 @@
                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
             </div>
             <div class="flex items-center gap-2 w-full md:w-auto">
+                <select x-model="filters.segment"
+                        class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <option value="">Todos los segmentos</option>
+                    <option value="habitual">Cliente habitual</option>
+                    <option value="cliente">Cliente</option>
+                    <option value="potencial">Potencial</option>
+                    <option value="dudoso">Dudoso</option>
+                    <option value="perdido">Perdido</option>
+                </select>
                 <select x-model="filters.priority"
                         @change="loadContacts()"
                         class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
@@ -175,122 +184,68 @@
     </div>
 
     <!-- Contacts Grid -->
-    <div x-show="!loading && contacts.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <template x-for="contact in contacts" :key="contact.id">
-            <div class="bg-white rounded-lg border border-gray-200 hover:border-purple-300 hover:shadow-lg transition-all p-6 relative">
-                <!-- Priority Badge -->
-                <div class="absolute top-4 right-4 flex items-center gap-2">
-                    <span x-show="contact.is_starred"
-                          class="inline-flex items-center">
-                        <svg class="w-5 h-5 fill-yellow-400" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                    </span>
-                    <span x-show="contact.priority === 'vip'"
-                          class="px-2 py-0.5 text-xs font-bold bg-yellow-100 text-yellow-800 rounded-full">
-                        VIP
-                    </span>
-                    <span x-show="contact.is_blocked"
-                          class="px-2 py-0.5 text-xs font-bold bg-red-100 text-red-800 rounded-full">
-                        Bloqueado
-                    </span>
-                </div>
-
-                <!-- Avatar -->
-                <div class="flex items-start gap-4 mb-4">
-                    <div class="flex-shrink-0">
-                        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white text-2xl font-bold">
-                            <span x-text="getInitials(contact.name || contact.email)"></span>
-                        </div>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h3 class="text-lg font-semibold text-gray-900 truncate" x-text="contact.name || 'Sin nombre'"></h3>
-                        <p class="text-sm text-gray-600 truncate" x-text="contact.email"></p>
-                        <p x-show="contact.company" class="text-xs text-gray-500 truncate mt-1" x-text="contact.company"></p>
-                    </div>
-                </div>
-
-                <!-- Stats -->
-                <div class="grid grid-cols-2 gap-4 mb-4 pt-4 border-t border-gray-200">
-                    <div class="text-center">
-                        <p class="text-2xl font-bold text-green-600" x-text="contact.emails_received || 0"></p>
-                        <p class="text-xs text-gray-600">Recibidos</p>
-                    </div>
-                    <div class="text-center">
-                        <p class="text-2xl font-bold text-blue-600" x-text="contact.emails_sent || 0"></p>
-                        <p class="text-xs text-gray-600">Enviados</p>
-                    </div>
-                </div>
-
-                <!-- Last Contact -->
-                <div class="mb-4 pb-4 border-b border-gray-200">
-                    <p class="text-xs text-gray-500">
-                        Último contacto:
-                        <span x-text="formatDate(contact.last_contact_at)"></span>
-                    </p>
-                </div>
-
-                <!-- Actions -->
-                <div class="flex items-center gap-2">
-                    <button @click="toggleStar(contact)"
-                            :title="contact.is_starred ? 'Quitar favorito' : 'Marcar como favorito'"
-                            class="flex-1 px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" :class="contact.is_starred ? 'fill-yellow-400' : 'fill-none'" stroke="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                    </button>
-                    <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open"
-                                class="px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                            <svg class="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                            </svg>
-                        </button>
-                        <div x-show="open" @click.away="open = false"
-                             class="absolute right-0 bottom-full mb-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
-                            <button @click="viewContact(contact); open = false"
-                                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 rounded-t-lg">
-                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                Ver Historial
-                            </button>
-                            <button @click="openEditModal(contact); open = false"
-                                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                                Editar
-                            </button>
-                            <button @click="markAsVip(contact); open = false"
-                                    x-show="contact.priority !== 'vip'"
-                                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                                Marcar como VIP
-                            </button>
-                            <button @click="toggleBlock(contact); open = false"
-                                    class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                                    :class="contact.is_blocked ? 'text-green-600' : 'text-red-600'">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                </svg>
-                                <span x-text="contact.is_blocked ? 'Desbloquear' : 'Bloquear'"></span>
-                            </button>
-                            <button @click="deleteContact(contact); open = false"
-                                    class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 rounded-b-lg">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                                Eliminar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </template>
+    <div x-show="!loading && filteredContacts().length > 0" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                <tr>
+                    <th class="text-left font-medium px-5 py-3">Cliente</th>
+                    <th class="text-left font-medium px-5 py-3">Segmento</th>
+                    <th class="text-center font-medium px-5 py-3">Citas</th>
+                    <th class="text-left font-medium px-5 py-3">Último contacto</th>
+                    <th class="text-right font-medium px-5 py-3">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="contact in filteredContacts()" :key="contact.id">
+                    <tr class="border-t border-gray-100 hover:bg-gray-50">
+                        <!-- Cliente -->
+                        <td class="px-5 py-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                                    <span x-text="getInitials(contact.name || contact.email)"></span>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-gray-900 truncate flex items-center gap-1.5">
+                                        <span x-text="contact.name || 'Sin nombre'"></span>
+                                        <svg x-show="contact.is_starred" class="w-3.5 h-3.5 fill-yellow-400 flex-shrink-0" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                                        <span x-show="contact.is_blocked" class="text-xs font-bold bg-red-100 text-red-700 px-1.5 rounded">bloq.</span>
+                                    </p>
+                                    <p class="text-xs text-gray-500 truncate" x-text="contact.email"></p>
+                                </div>
+                            </div>
+                        </td>
+                        <!-- Segmento -->
+                        <td class="px-5 py-3">
+                            <span x-show="contact.segment" class="text-xs font-semibold px-2.5 py-1 rounded-full" :style="segmentStyle(contact.segment && contact.segment.color)" x-text="contact.segment && contact.segment.label"></span>
+                        </td>
+                        <!-- Citas -->
+                        <td class="px-5 py-3 text-center font-semibold text-gray-900" x-text="contact.appointments_count || 0"></td>
+                        <!-- Último contacto -->
+                        <td class="px-5 py-3 text-gray-600 whitespace-nowrap" x-text="formatDate(contact.last_contact_at)"></td>
+                        <!-- Acciones -->
+                        <td class="px-5 py-3">
+                            <div class="flex items-center justify-end gap-2">
+                                <button @click="viewContact(contact)" class="px-3 py-1.5 text-xs font-medium text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 whitespace-nowrap">Ver ficha</button>
+                                <div class="relative" x-data="{ open: false }">
+                                    <button @click="open = !open" class="p-1.5 text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" /></svg>
+                                    </button>
+                                    <div x-show="open" @click.away="open = false" x-cloak class="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-xl border border-gray-200 z-20 py-1">
+                                        <button @click="toggleStar(contact); open = false" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" x-text="contact.is_starred ? 'Quitar favorito' : 'Marcar favorito'"></button>
+                                        <button @click="openEditModal(contact); open = false" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Editar</button>
+                                        <button @click="markAsVip(contact); open = false" x-show="contact.priority !== 'vip'" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Marcar como VIP</button>
+                                        <button @click="toggleBlock(contact); open = false" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50" :class="contact.is_blocked ? 'text-green-600' : 'text-red-600'" x-text="contact.is_blocked ? 'Desbloquear' : 'Bloquear'"></button>
+                                        <button @click="deleteContact(contact); open = false" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Eliminar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+        </div>
     </div>
 
     <!-- Pagination -->
@@ -336,6 +291,7 @@ function contactsApp() {
             priority: '',
             starred: false,
             blocked: false,
+            segment: '',
         },
         pagination: {
             current_page: 1,
@@ -637,6 +593,24 @@ function contactsApp() {
             }
 
             return pages;
+        },
+
+        // Filtro por segmento (cliente-side, sobre la página cargada)
+        filteredContacts() {
+            if (!this.filters.segment) return this.contacts;
+            return this.contacts.filter(c => c.segment && c.segment.key === this.filters.segment);
+        },
+
+        // Color del badge de segmento (estilo en línea → no depende del build de Tailwind)
+        segmentStyle(color) {
+            const map = {
+                green:  'background:#dcfce7;color:#166534;',
+                blue:   'background:#dbeafe;color:#1e40af;',
+                amber:  'background:#fef3c7;color:#92400e;',
+                orange: 'background:#ffedd5;color:#9a3412;',
+                gray:   'background:#f3f4f6;color:#374151;',
+            };
+            return map[color] || map.gray;
         },
 
         // Helpers
