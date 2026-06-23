@@ -64,14 +64,32 @@
                             </div>
 
                             <!-- Features List -->
+                            @php
+                                $featureLabels = [
+                                    'basic_analysis'    => 'Análisis de mensajes con IA',
+                                    'sentiment'         => 'Detección de quejas e incidencias',
+                                    'weekly_learning'   => 'Aprendizaje semanal',
+                                    'suggested_replies' => 'Respuestas sugeridas',
+                                    'auto_response'     => 'Modo autónomo (responde sola)',
+                                    'analytics'         => 'Analíticas',
+                                    'organizations'     => 'Multi-sede / multi-profesional',
+                                    'priority_support'  => 'Soporte prioritario',
+                                    'crm_basic'         => 'CRM básico (ficha + historial + notas)',
+                                    'crm_advanced'      => 'CRM completo (segmentación + informes)',
+                                ];
+                            @endphp
                             <div class="flex-grow mb-6">
                                 <div class="space-y-3">
+                                    <div class="flex items-start">
+                                        <svg class="w-5 h-5 text-violet-500 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        <span class="text-gray-700 text-sm font-medium">{{ number_format($plan['email_limit']) }} mensajes/mes · WhatsApp + Email + Agenda</span>
+                                    </div>
                                     @foreach($plan['features'] as $feature)
                                         <div class="flex items-start">
                                             <svg class="w-5 h-5 text-violet-500 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                             </svg>
-                                            <span class="text-gray-700 text-sm">{{ $feature }}</span>
+                                            <span class="text-gray-700 text-sm">{{ $featureLabels[$feature] ?? $feature }}</span>
                                         </div>
                                     @endforeach
                                 </div>
@@ -88,11 +106,7 @@
                                     class="w-full bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
                                     id="btn-{{ $planKey }}"
                                 >
-                                    @if($planKey === 'basic')
-                                        Cambiar a Basic
-                                    @else
-                                        Actualizar a {{ $plan['name'] }}
-                                    @endif
+                                    Cambiar a {{ $plan['name'] }}
                                 </button>
                             @endif
                         </div>
