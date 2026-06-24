@@ -67,14 +67,7 @@
             </a>
             @endif
 
-            <a href="{{ route('vera.chat.index') }}"
-                class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('vera.chat.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                <span class="flex-1">Chat Vera</span>
-            </a>
+            {{-- Chat Vera oculto: sin uso para el cliente por ahora (se puede reactivar) --}}
 
             <a href="{{ route('vera.calendar.index') }}"
                 class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('vera.calendar.*') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">

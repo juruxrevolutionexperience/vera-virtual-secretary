@@ -279,7 +279,7 @@
                 </div>
 
                 <!-- Stats Grid - Enhanced -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                     <!-- Stat Card 1 - Enhanced -->
                     <div class="bg-white border border-gray-200 rounded-lg p-5 hover-lift cursor-pointer group">
                         <div class="flex items-center justify-between mb-3">
@@ -321,8 +321,6 @@
                         </div>
                     </div>
 
-                    <!-- Stat Card 3 - Tokens IA (datos reales) -->
-                    <x-tokens-widget />
                 </div>
 
                 <!-- Main Grid Layout -->
@@ -652,87 +650,6 @@
                     <div class="lg:col-span-1 space-y-6" x-data="usageWidget()">
                         <!-- Vera Weekly Insights -->
                         <x-vera-weekly-insights />
-
-                        <!-- Usage Widget - NEW -->
-                        <div class="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-5 hover-lift cursor-pointer"
-                             @click="openUsageModal()">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-                                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                                        </svg>
-                                    </div>
-                                    <h3 class="text-sm font-semibold text-gray-900">Uso de Vera</h3>
-                                </div>
-                                <span x-text="statusBadge"
-                                      :class="`text-xs px-2 py-0.5 rounded-full font-semibold ${statusBadgeClass}`"></span>
-                            </div>
-
-                            <!-- Loading State -->
-                            <div x-show="loading" class="flex justify-center py-4">
-                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-                            </div>
-
-                            <!-- Content -->
-                            <div x-show="!loading" class="space-y-3">
-                                <div class="flex justify-between items-baseline">
-                                    <span class="text-xs text-gray-600">Este mes</span>
-                                    <span class="text-2xl font-bold text-gray-900" x-text="`${emailsProcessed}/${emailLimit}`"></span>
-                                </div>
-
-                                <!-- Progress Bar -->
-                                <div>
-                                    <div class="w-full bg-white rounded-full h-2.5 overflow-hidden shadow-inner">
-                                        <div class="h-full transition-all duration-500"
-                                             :class="progressBarColor"
-                                             :style="`width: ${Math.min(usagePercentage, 100)}%`"></div>
-                                    </div>
-                                    <div class="flex justify-between items-center mt-1">
-                                        <span class="text-xs text-gray-600" x-text="`${usagePercentage}% utilizado`"></span>
-                                        <span class="text-xs font-semibold"
-                                              :class="emailsRemaining < 10 ? 'text-red-600' : 'text-gray-700'"
-                                              x-text="`${emailsRemaining} restantes`"></span>
-                                    </div>
-                                </div>
-
-                                <!-- CTA -->
-                                <button class="w-full mt-3 text-xs text-purple-700 hover:text-purple-800 font-medium flex items-center justify-center gap-1 py-2 hover:bg-purple-100 rounded-md transition-colors">
-                                    <span>Ver detalles</span>
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Chat Widget - Enhanced -->
-                        <div class="bg-white border border-gray-200 rounded-lg p-5 hover-lift">
-                            <div class="flex items-center gap-3 mb-4">
-                                <div
-                                    class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <span class="text-white font-semibold text-sm">V</span>
-                                </div>
-                                <div>
-                                    <h3 class="text-sm font-semibold text-gray-900">Chat con Vera</h3>
-                                    <div class="flex items-center gap-1.5">
-                                        <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                                        <p class="text-xs text-gray-500">Online · Responde en segundos</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <p class="text-xs text-gray-600 mb-4 leading-relaxed">Pregúntame lo que necesites. Puedo
-                                ayudarte a buscar emails, agendar reuniones o consultar tu agenda.</p>
-                            <button
-                                class="w-full bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium py-2.5 px-3 rounded-md transition-all hover:shadow-md flex items-center justify-center gap-2 group">
-                                <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                </svg>
-                                Abrir chat
-                            </button>
-                        </div>
 
                         <!-- Próximos Eventos eliminado — datos fake reemplazados por reuniones reales en columna izquierda -->
                         @if(false)

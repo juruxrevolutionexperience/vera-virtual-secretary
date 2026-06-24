@@ -55,7 +55,11 @@ Route::get('/dashboard', function () {
         ->whereMonth('scheduled_at', now()->month)->confirmed()->count();
     $meetingsThisWeek = \App\Models\Meeting::forUser($user->id)
         ->whereBetween('scheduled_at', [now()->startOfWeek(), now()->endOfWeek()])->confirmed()->count();
+    // Solo acciones con valor para el dueño — excluimos el "spam ignorado" (metadata.ignored).
     $recentActivity = \App\Models\VeraActivityLog::where('user_id', $user->id)
+        ->where(function ($q) {
+            $q->whereNull('metadata->ignored')->orWhere('metadata->ignored', false);
+        })
         ->latest()->limit(5)->get();
     $upcomingMeetings = \App\Models\Meeting::forUser($user->id)
         ->upcoming()->confirmed()->limit(4)->get();
