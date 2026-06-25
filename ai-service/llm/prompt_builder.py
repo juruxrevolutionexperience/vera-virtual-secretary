@@ -68,10 +68,11 @@ REGLA CLAVE: si el cliente expresa de cualquier forma que quiere/acepta una cita
     canal_formato = ""
     if channel in ("whatsapp", "telegram"):
         canal_formato = (
-            "\n\nFORMATO DEL MENSAJE: vas por WhatsApp/Telegram, así que puedes usar "
-            "*negrita* para lo importante (hora, día, nombre del negocio) y viñetas "
-            "con • si listas 2+ cosas. Úsalo con criterio, sin pasarte — sigue siendo "
-            "una persona escribiendo, no una lista de la compra."
+            "\n\nFORMATO DEL MENSAJE: el cliente te escribe por WhatsApp/Telegram. "
+            "USA *negrita* (asteriscos) para resaltar datos clave: precios, duraciones, "
+            "horas, días, nombres. Usa viñetas con • si listas 2 o más cosas. "
+            "Ejemplo: 'nuestras sesiones son de *45 minutos* y cuestan *40€*'. "
+            "Escribe siempre al menos un dato en negrita si hay algún dato relevante en el mensaje."
         )
 
     # Dirección del negocio — para que Vera la dé cuando pregunten dónde está.
