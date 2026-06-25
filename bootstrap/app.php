@@ -17,7 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // REGISTRA AQUÍ EL ALIAS
         $middleware->alias([
-            'paid' => \App\Http\Middleware\EnsurePaid::class,
+            'paid'  => \App\Http\Middleware\EnsurePaid::class,
+            'terms' => \App\Http\Middleware\EnsureTermsAccepted::class,
         ]);
 
         // Excluir webhook de Stripe del CSRF

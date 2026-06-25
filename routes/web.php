@@ -12,6 +12,13 @@ use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CancellationController;
+use App\Http\Controllers\TermsAcceptanceController;
+
+// Aceptación de Términos y Condiciones (auth, pero sin 'terms' para no hacer bucle)
+Route::middleware('auth')->group(function () {
+    Route::get('/terms/accept',  [TermsAcceptanceController::class, 'show'])->name('terms.accept');
+    Route::post('/terms/accept', [TermsAcceptanceController::class, 'accept'])->name('terms.accept.store');
+});
 
 // Google OAuth login
 Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])->name('auth.google');
@@ -72,10 +79,10 @@ Route::get('/dashboard', function () {
         ->with('contact')
         ->latest()->get();
     return view('dashboard', compact('meetingsThisMonth', 'meetingsThisWeek', 'recentActivity', 'upcomingMeetings', 'pendingMeetings', 'escalations'));
-})->middleware(['auth', 'verified', 'subscribed'])->name('dashboard');
+})->middleware(['auth', 'verified', 'subscribed', 'terms'])->name('dashboard');
 
 // Confirmación / rechazo de reservas pendientes + gestión de incidencias
-Route::middleware(['auth', 'verified', 'subscribed'])->group(function () {
+Route::middleware(['auth', 'verified', 'subscribed', 'terms'])->group(function () {
     Route::post('/meetings/{meeting}/confirm', [\App\Http\Controllers\MeetingConfirmController::class, 'confirm'])->name('meetings.confirm');
     Route::post('/meetings/{meeting}/reject',  [\App\Http\Controllers\MeetingConfirmController::class, 'reject'])->name('meetings.reject');
     Route::post('/incidencias/{meetingRequest}/gestionada', [\App\Http\Controllers\MeetingConfirmController::class, 'resolveEscalation'])->name('incidencias.gestionada');
