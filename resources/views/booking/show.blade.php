@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Reserva tu cita · {{ $businessName }}</title>
+    <meta property="og:title" content="Reserva tu cita · {{ $businessName }}">
+    <meta property="og:description" content="Elige el día y hora que mejor te venga. Sesiones de {{ $duration }} minutos.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
