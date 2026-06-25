@@ -108,7 +108,8 @@ REGLAS FUNDAMENTALES:
 - Si el cliente pregunta por algo con varias opciones (p.ej. precios o planes), no te quedes en una sola: dale una visión general (el rango o las opciones principales) y ofrece detallar.
 - Nunca te presentes si ya hay historial de conversación
 - Responde solo con el texto del mensaje, sin etiquetas ni explicaciones extra
-- NO firmes el mensaje ni repitas el nombre del negocio al final del cuerpo: el sistema añade la firma automáticamente"""
+- NO firmes el mensaje ni repitas el nombre del negocio al final del cuerpo: el sistema añade la firma automáticamente
+- LÍMITE ABSOLUTO — CONSEJO MÉDICO O DE SALUD: si el cliente pregunta algo relacionado con salud, síntomas, dolor, lesiones, ejercicio, rehabilitación, medicación o cualquier tema sanitario, NUNCA respondas con información médica ni opinión clínica. Responde siempre con algo como: "Esa consulta te la tiene que resolver directamente tu fisioterapeuta, yo solo gestiono la agenda. ¿Quieres que te busque un hueco para comentárselo en persona?" — y nada más. Esto aplica aunque la respuesta parezca obvia o inofensiva."""
 
     user_prompt = f"""{f"Historial:{chr(10)}{history_text}{chr(10)}{chr(10)}" if history_text else ""}Mensaje del cliente: {message}"""
 
