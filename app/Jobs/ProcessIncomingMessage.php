@@ -322,11 +322,14 @@ class ProcessIncomingMessage implements ShouldQueue
             }
 
             // Añadir SOLO la URL: la invitación conversacional ya la redacta Vera (el LLM).
-            // GmailService convierte la URL en botón en el email; en texto plano /
-            // Telegram va como URL clicable. Fallback mínimo si el LLM no dejó texto.
+            // GmailService convierte la URL en botón en el email; Telegram admite links
+            // con texto ([label](url)) que se ven mucho más limpios que la URL cruda.
             if ($bookingUrl) {
-                $intro    = $response ?: 'Te dejo mi agenda para que elijas el hueco que mejor te venga:';
-                $response = $intro . "\n\n" . $bookingUrl;
+                $intro      = $response ?: 'Te dejo mi agenda para que elijas el hueco que mejor te venga:';
+                $urlDisplay = $this->channel === 'telegram'
+                    ? "[Ver huecos disponibles]({$bookingUrl})"
+                    : $bookingUrl;
+                $response   = $intro . "\n\n" . $urlDisplay;
 
                 // Marcar cuándo se envió el enlace y resetear el follow-up, para el
                 // seguimiento a 24h si el cliente no reserva.
