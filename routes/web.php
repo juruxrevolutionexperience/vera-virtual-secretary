@@ -79,10 +79,10 @@ Route::get('/dashboard', function () {
         ->with('contact')
         ->latest()->get();
     return view('dashboard', compact('meetingsThisMonth', 'meetingsThisWeek', 'recentActivity', 'upcomingMeetings', 'pendingMeetings', 'escalations'));
-})->middleware(['auth', 'verified', 'subscribed', 'terms'])->name('dashboard');
+})->middleware(['auth', 'verified', 'subscribed'])->name('dashboard');
 
 // Confirmación / rechazo de reservas pendientes + gestión de incidencias
-Route::middleware(['auth', 'verified', 'subscribed', 'terms'])->group(function () {
+Route::middleware(['auth', 'verified', 'subscribed'])->group(function () {
     Route::post('/meetings/{meeting}/confirm', [\App\Http\Controllers\MeetingConfirmController::class, 'confirm'])->name('meetings.confirm');
     Route::post('/meetings/{meeting}/reject',  [\App\Http\Controllers\MeetingConfirmController::class, 'reject'])->name('meetings.reject');
     Route::post('/incidencias/{meetingRequest}/gestionada', [\App\Http\Controllers\MeetingConfirmController::class, 'resolveEscalation'])->name('incidencias.gestionada');
