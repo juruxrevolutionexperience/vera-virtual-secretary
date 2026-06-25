@@ -291,8 +291,8 @@
                         <div class="border border-gray-200 rounded-lg p-4 relative">
                             <button type="button" @click="removeService(idx)"
                                     class="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-lg leading-none">×</button>
-                            <div class="grid grid-cols-3 gap-3 mb-3">
-                                <div class="col-span-2">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                                <div class="sm:col-span-2">
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Nombre del servicio</label>
                                     <input type="text" x-model="service.name" placeholder="Ej: Desarrollo web a medida"
                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">

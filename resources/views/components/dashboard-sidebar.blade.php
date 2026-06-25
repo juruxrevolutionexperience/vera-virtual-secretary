@@ -186,7 +186,7 @@
             x-transition:leave="transition ease-in duration-150"
             x-transition:leave-start="opacity-100 transform translate-y-0"
             x-transition:leave-end="opacity-0 transform translate-y-2" @click.away="userMenuOpen = false"
-            class="absolute bottom-full left-0 right-0 mb-2 mx-3 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden z-50"
+            class="absolute bottom-full left-0 right-0 mb-2 mx-3 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 max-h-[70vh] overflow-y-auto"
             style="display: none;">
 
             <!-- User Info Header -->

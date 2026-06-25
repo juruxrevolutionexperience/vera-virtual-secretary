@@ -190,9 +190,9 @@
             <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
                 <tr>
                     <th class="text-left font-medium px-5 py-3">Cliente</th>
-                    <th class="text-left font-medium px-5 py-3">Segmento</th>
+                    <th class="hidden sm:table-cell text-left font-medium px-5 py-3">Segmento</th>
                     <th class="text-center font-medium px-5 py-3">Citas</th>
-                    <th class="text-left font-medium px-5 py-3">Último contacto</th>
+                    <th class="hidden sm:table-cell text-left font-medium px-5 py-3">Último contacto</th>
                     <th class="text-right font-medium px-5 py-3">Acciones</th>
                 </tr>
             </thead>
@@ -216,13 +216,13 @@
                             </div>
                         </td>
                         <!-- Segmento -->
-                        <td class="px-5 py-3">
+                        <td class="hidden sm:table-cell px-5 py-3">
                             <span x-show="contact.segment" class="text-xs font-semibold px-2.5 py-1 rounded-full" :style="segmentStyle(contact.segment && contact.segment.color)" x-text="contact.segment && contact.segment.label"></span>
                         </td>
                         <!-- Citas -->
                         <td class="px-5 py-3 text-center font-semibold text-gray-900" x-text="contact.appointments_count || 0"></td>
                         <!-- Último contacto -->
-                        <td class="px-5 py-3 text-gray-600 whitespace-nowrap" x-text="formatDate(contact.last_contact_at)"></td>
+                        <td class="hidden sm:table-cell px-5 py-3 text-gray-600 whitespace-nowrap" x-text="formatDate(contact.last_contact_at)"></td>
                         <!-- Acciones -->
                         <td class="px-5 py-3">
                             <div class="flex items-center justify-end gap-2">

@@ -11,7 +11,7 @@
 
     <!-- Modal Panel -->
     <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[85vh] flex" @click.away="closeModal()"
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] sm:h-[85vh] flex flex-col lg:flex-row overflow-hidden" @click.away="closeModal()"
             x-show="isOpen" x-transition:enter="ease-out duration-300"
             x-transition:enter-start="opacity-0 transform scale-95"
             x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="ease-in duration-200"
@@ -19,10 +19,10 @@
             x-transition:leave-end="opacity-0 transform scale-95">
 
             <!-- Sidebar -->
-            <div class="w-80 bg-gray-50 border-r border-gray-200 rounded-l-2xl p-6 flex flex-col">
+            <div class="w-full lg:w-80 flex-shrink-0 bg-gray-50 border-b lg:border-b-0 lg:border-r border-gray-200 p-4 lg:p-6 flex flex-col">
                 <!-- Close Button -->
                 <button @click="closeModal()"
-                    class="self-start mb-8 text-gray-400 hover:text-gray-600 transition-colors">
+                    class="self-start mb-3 lg:mb-8 text-gray-400 hover:text-gray-600 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M6 18L18 6M6 6l12 12" />
@@ -30,7 +30,7 @@
                 </button>
 
                 <!-- Categories -->
-                <nav class="flex-1 space-y-2">
+                <nav class="flex-1 space-y-2 max-h-[35vh] lg:max-h-none overflow-y-auto">
                     <button @click="activeCategory = 'general'"
                         :class="activeCategory === 'general' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'"
                         class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all">
@@ -134,7 +134,7 @@
             </div>
 
             <!-- Content Area -->
-            <div class="flex-1 overflow-y-auto p-8 bg-white">
+            <div class="flex-1 overflow-y-auto p-4 lg:p-8 bg-white min-h-0">
                 <!-- General Settings -->
                 <div x-show="activeCategory === 'general'" class="space-y-6">
                     <h2 class="text-2xl font-bold text-gray-900 mb-6">General</h2>

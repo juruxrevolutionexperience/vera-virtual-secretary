@@ -36,7 +36,7 @@
                         <!-- Plan Card -->
                         <div class="bg-white rounded-lg shadow-lg p-6 h-full flex flex-col
                             {{ $plan['is_current'] ? 'ring-2 ring-violet-500' : '' }}
-                            {{ isset($plan['popular']) && $plan['popular'] ? 'transform scale-105' : '' }}">
+                            {{ isset($plan['popular']) && $plan['popular'] ? 'md:transform md:scale-105' : '' }}">
 
                             <!-- Current Plan Badge -->
                             @if($plan['is_current'])
