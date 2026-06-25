@@ -176,7 +176,10 @@ class ProcessIncomingMessage implements ShouldQueue
                     'prompt_tokens'     => 0,
                     'completion_tokens' => 0,
                     'total_tokens'      => $tokensUsed,
-                    'model'             => 'llama-3.3-70b-versatile',
+                    // Modelo que realmente atendió (Groq o fallback Gemini) — antes
+                    // se daba por hecho que siempre era Groq, lo que falseaba el
+                    // coste real (Gemini es ~6x más barato por token).
+                    'model'             => $aiResponse['model_used'] ?? 'llama-3.3-70b-versatile',
                 ],
                 metadata: ['channel' => $this->channel, 'contact' => $this->contactIdentifier],
             ));

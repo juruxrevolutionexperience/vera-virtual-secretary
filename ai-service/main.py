@@ -68,6 +68,7 @@ class ProcessResponse(BaseModel):
     confidence: float
     suggested_slots: list[str] = []
     tokens_used: int
+    model_used: str = "llama-3.3-70b-versatile"   # qué LLM atendió de verdad (groq | gemini fallback | none)
     escalation_reason: Optional[str] = None
     # Intención de cita estructurada — Laravel reserva la hora EXACTA con esto
     intent_action: str = "ninguna"      # confirmar | proponer | rechazar | ninguna
@@ -121,12 +122,13 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
             meeting_state=request.meeting_state,
             shown_slots=request.shown_slots,
             customer_profile=request.customer_profile,
+            channel=request.channel,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     # 3. Una sola llamada LLM — devuelve modo + respuesta + tokens + intención de cita
-    mode, response_text, tokens_used, intent = call_llm_with_tools(user_prompt, system_prompt)
+    mode, response_text, tokens_used, intent, model_used = call_llm_with_tools(user_prompt, system_prompt)
     intent = intent or {"fecha": "", "hora": "", "intencion_cita": "ninguna"}
 
     # Cortocircuito — mensaje irrelevante detectado por el LLM
@@ -138,6 +140,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
             confidence=1.0,
             suggested_slots=[],
             tokens_used=tokens_used,
+            model_used=model_used,
             escalation_reason=None,
         )
 
@@ -173,6 +176,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
         confidence=0.9,
         suggested_slots=[],
         tokens_used=tokens_used,
+        model_used=model_used,
         escalation_reason=escalation_reason,
         intent_action=intent.get("intencion_cita", "ninguna"),
         intent_date=intent.get("fecha") or None,

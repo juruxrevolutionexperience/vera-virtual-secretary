@@ -187,8 +187,9 @@ _EMPTY_INTENT = {"fecha": "", "hora": "", "intencion_cita": "ninguna"}
 
 
 def call_llm_with_tools(prompt, system, temperature=0.7):
-    """Una sola llamada LLM que devuelve (modo, texto, tokens, intent).
-    intent = {fecha, hora, intencion_cita} con la cita estructurada que pide el cliente."""
+    """Una sola llamada LLM que devuelve (modo, texto, tokens, intent, model_used).
+    intent = {fecha, hora, intencion_cita} con la cita estructurada que pide el cliente.
+    model_used = "llama-3.3-70b-versatile" | "gemini-2.5-flash-lite" | "none" (todo falló)."""
     if not _is_circuit_open():
         try:
             response = groq_client.chat.completions.create(
@@ -203,7 +204,7 @@ def call_llm_with_tools(prompt, system, temperature=0.7):
             )
             modo, texto, intent = _parse_groq_tool_call(response)
             _record_success()
-            return modo, texto, _extract_tokens(response), intent
+            return modo, texto, _extract_tokens(response), intent, "llama-3.3-70b-versatile"
         except Exception as e:
             logger.warning("Groq tool calling falló, cayendo a Gemini: %s", e)
             _record_failure()
@@ -221,12 +222,12 @@ def call_llm_with_tools(prompt, system, temperature=0.7):
         tokens = _extract_tokens(response)
         parsed = _parse_gemini_json(response.text or "")
         if parsed:
-            return parsed[0], parsed[1], tokens, parsed[2]
+            return parsed[0], parsed[1], tokens, parsed[2], "gemini-2.5-flash-lite"
         logger.warning("Gemini no devolvió JSON parseable. Texto crudo: %s", (response.text or "")[:200])
-        return "respuesta", response.text or "", tokens, dict(_EMPTY_INTENT)
+        return "respuesta", response.text or "", tokens, dict(_EMPTY_INTENT), "gemini-2.5-flash-lite"
     except Exception as e:
         logger.error("Gemini fallback también falló: %s", e)
-        return "respuesta", "Déjame consultarlo y te respondo en breve.", 0, dict(_EMPTY_INTENT)
+        return "respuesta", "Déjame consultarlo y te respondo en breve.", 0, dict(_EMPTY_INTENT), "none"
 
 
 def call_llm(prompt, system, temperature=0.7, model="llama-3.3-70b-versatile"):   # llama a Groq con fallback a Gemini si falla — nunca deja a Vera sin respuesta
