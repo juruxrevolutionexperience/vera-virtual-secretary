@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Mail\BookingReminderMail;
 use App\Models\Meeting;
+use App\Services\TelegramService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -58,26 +59,74 @@ class SendBookingReminders extends Command
 
     private function sendReminder(Meeting $meeting, string $kind): bool
     {
+        $channel = $meeting->source_channel ?? 'email';
+
+        if ($channel === 'telegram') {
+            return $this->sendTelegramReminder($meeting, $kind);
+        }
+
+        // email (y whatsapp como fallback hasta que esté activo)
+        return $this->sendEmailReminder($meeting, $kind);
+    }
+
+    private function sendEmailReminder(Meeting $meeting, string $kind): bool
+    {
         $email = $meeting->contact_email;
         if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return false; // sin email válido no hay a quién recordar
+            return false;
         }
 
         try {
             Mail::to($email)->send(new BookingReminderMail($meeting, $kind));
-            Log::info('📅 Recordatorio de cita enviado', [
+            Log::info('Recordatorio de cita enviado por email', [
                 'meeting_id' => $meeting->id,
                 'kind'       => $kind,
                 'to'         => $email,
             ]);
             return true;
         } catch (\Throwable $e) {
-            Log::warning('No se pudo enviar recordatorio de cita', [
+            Log::warning('No se pudo enviar recordatorio por email', [
                 'meeting_id' => $meeting->id,
                 'kind'       => $kind,
                 'error'      => $e->getMessage(),
             ]);
             return false;
         }
+    }
+
+    private function sendTelegramReminder(Meeting $meeting, string $kind): bool
+    {
+        $contact  = $meeting->contact;
+        $chatId   = $contact?->telegram_id;
+        $config   = $meeting->user?->veraConfig;
+        $botToken = $config?->telegram_bot_token;
+
+        if (!$chatId || !$botToken) {
+            Log::warning('Recordatorio Telegram: faltan datos', [
+                'meeting_id' => $meeting->id,
+                'has_chat_id'  => (bool) $chatId,
+                'has_token'    => (bool) $botToken,
+            ]);
+            return false;
+        }
+
+        $label    = $kind === '24h' ? '24 horas' : '1 hora';
+        $date     = \Carbon\Carbon::parse($meeting->scheduled_at)
+                        ->setTimezone($config->timezone ?? 'Europe/Madrid')
+                        ->format('d/m/Y \a \l\a\s H:i');
+        $business = $config->business_name ?? 'tu cita';
+
+        $text = "Recordatorio: tienes cita con *{$business}* en *{$date}* (en {$label}).";
+
+        $ok = (new TelegramService())->sendMessage($botToken, $chatId, $text);
+
+        Log::info('Recordatorio de cita enviado por Telegram', [
+            'meeting_id' => $meeting->id,
+            'kind'       => $kind,
+            'chat_id'    => $chatId,
+            'ok'         => $ok,
+        ]);
+
+        return $ok;
     }
 }
