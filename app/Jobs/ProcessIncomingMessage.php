@@ -51,6 +51,8 @@ class ProcessIncomingMessage implements ShouldQueue
     public int $tries   = 1;
     public int $timeout = 60;
 
+    private ?string $bookingButtonUrl = null;
+
     public function __construct(
         public readonly int     $userId,
         public readonly string  $channel,
@@ -322,14 +324,17 @@ class ProcessIncomingMessage implements ShouldQueue
             }
 
             // Añadir SOLO la URL: la invitación conversacional ya la redacta Vera (el LLM).
-            // GmailService convierte la URL en botón en el email; Telegram admite links
-            // con texto ([label](url)) que se ven mucho más limpios que la URL cruda.
+            // GmailService convierte la URL en botón HTML en el email.
+            // Telegram: guardamos la URL aparte para enviarla como botón inline nativo.
+            // WhatsApp: URL en el texto (no hay otra opción sin plantillas aprobadas).
             if ($bookingUrl) {
-                $intro      = $response ?: 'Te dejo mi agenda para que elijas el hueco que mejor te venga:';
-                $urlDisplay = $this->channel === 'telegram'
-                    ? "[Ver huecos disponibles]({$bookingUrl})"
-                    : $bookingUrl;
-                $response   = $intro . "\n\n" . $urlDisplay;
+                $intro    = $response ?: 'Te dejo mi agenda para que elijas el hueco que mejor te venga:';
+                if ($this->channel === 'telegram') {
+                    $this->bookingButtonUrl = $bookingUrl;
+                    $response = $intro;
+                } else {
+                    $response = $intro . "\n\n" . $bookingUrl;
+                }
 
                 // Marcar cuándo se envió el enlace y resetear el follow-up, para el
                 // seguimiento a 24h si el cliente no reserva.
@@ -1264,7 +1269,15 @@ class ProcessIncomingMessage implements ShouldQueue
             }
 
             $telegram = new TelegramService();
-            $ok       = $telegram->sendMessage($config->telegram_bot_token, $chatId, $response);
+            $ok       = $this->bookingButtonUrl
+                ? $telegram->sendMessageWithButton(
+                    $config->telegram_bot_token,
+                    $chatId,
+                    $response,
+                    '📅 Ver huecos disponibles',
+                    $this->bookingButtonUrl
+                )
+                : $telegram->sendMessage($config->telegram_bot_token, $chatId, $response);
 
             Log::info($ok ? '✈️ Telegram enviado por Vera' : '⚠️ Telegram envío parcial/fallido', [
                 'user_id' => $user->id,

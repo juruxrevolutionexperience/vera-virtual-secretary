@@ -67,6 +67,61 @@ class TelegramService
         return $allOk;
     }
 
+    public function sendMessageWithButton(
+        string $botToken,
+        int|string $chatId,
+        string $text,
+        string $buttonLabel,
+        string $buttonUrl
+    ): bool {
+        $markup = json_encode([
+            'inline_keyboard' => [[
+                ['text' => $buttonLabel, 'url' => $buttonUrl],
+            ]],
+        ]);
+
+        try {
+            $response = Http::timeout(10)->post(
+                "https://api.telegram.org/bot{$botToken}/sendMessage",
+                [
+                    'chat_id'                  => $chatId,
+                    'text'                     => $text,
+                    'parse_mode'               => 'Markdown',
+                    'disable_web_page_preview' => true,
+                    'reply_markup'             => $markup,
+                ]
+            );
+
+            if (!$response->successful()) {
+                // Reintentamos sin Markdown manteniendo el botón
+                $response = Http::timeout(10)->post(
+                    "https://api.telegram.org/bot{$botToken}/sendMessage",
+                    [
+                        'chat_id'      => $chatId,
+                        'text'         => $text,
+                        'reply_markup' => $markup,
+                    ]
+                );
+            }
+
+            if (!$response->successful()) {
+                Log::error('Telegram sendMessageWithButton falló', [
+                    'chat_id' => $chatId,
+                    'status'  => $response->status(),
+                ]);
+                return false;
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Telegram sendMessageWithButton error de red', [
+                'chat_id' => $chatId,
+                'error'   => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
     private function splitText(string $text): array
     {
         if (mb_strlen($text) <= self::MAX_LEN) {
