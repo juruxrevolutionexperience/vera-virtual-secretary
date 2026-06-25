@@ -16,7 +16,7 @@ def _hoy_str(timezone: str | None) -> str:
     return f"{_DIAS_SEMANA[ahora.weekday()]} {ahora.date().isoformat()}"
 
 
-def build_prompt(brain, message, history, user_id, mode="agenda", requested_time=None, requested_slot_available=False, booking_confirmed=False, confirmed_slot_label=None, meeting_state=None, shown_slots=None, customer_profile=None):
+def build_prompt(brain, message, history, user_id, mode="agenda", requested_time=None, requested_slot_available=False, booking_confirmed=False, confirmed_slot_label=None, meeting_state=None, shown_slots=None, customer_profile=None, channel="email"):
     if not brain.get("tone"):
         raise ValueError("tone está vacío — Vera no puede responder sin tono configurado")
 
@@ -62,6 +62,18 @@ REGLA CLAVE: si el cliente expresa de cualquier forma que quiere/acepta una cita
     customer_block = _build_customer_context(customer_profile)
     hoy = _hoy_str(brain.get("timezone"))
 
+    # WhatsApp y Telegram interpretan *negrita*/_cursiva_ de forma nativa (gratis,
+    # mismo nº de tokens). El email ya tiene su propio HTML con botones — un asterisco
+    # ahí se vería literal, así que solo se activa en estos dos canales.
+    canal_formato = ""
+    if channel in ("whatsapp", "telegram"):
+        canal_formato = (
+            "\n\nFORMATO DEL MENSAJE: vas por WhatsApp/Telegram, así que puedes usar "
+            "*negrita* para lo importante (hora, día, nombre del negocio) y viñetas "
+            "con • si listas 2+ cosas. Úsalo con criterio, sin pasarte — sigue siendo "
+            "una persona escribiendo, no una lista de la compra."
+        )
+
     # Dirección del negocio — para que Vera la dé cuando pregunten dónde está.
     # El sistema añade aparte un botón "Cómo llegar" con el enlace de Google Maps.
     direccion_block = ""
@@ -78,7 +90,7 @@ FECHA DE HOY: {hoy}
 INFORMACIÓN DEL NEGOCIO:
 {rag_context if rag_context else "Todavía no tienes información del negocio cargada."}
 
-{f"HORARIO DE TRABAJO: {working_hours}" if working_hours else "El horario de trabajo aún no está configurado."}{direccion_block}{customer_block}
+{f"HORARIO DE TRABAJO: {working_hours}" if working_hours else "El horario de trabajo aún no está configurado."}{direccion_block}{customer_block}{canal_formato}
 
 SITUACIÓN ACTUAL:
 {situacion}{modo_instruccion}

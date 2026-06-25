@@ -21,9 +21,31 @@ class TelegramService
                     [
                         'chat_id'                  => $chatId,
                         'text'                     => $chunk,
+                        // 'Markdown' (no V2) interpreta *negrita*/_cursiva_ sin exigir
+                        // escapar cada símbolo especial — el texto de Vera ya viene así.
+                        'parse_mode'               => 'Markdown',
                         'disable_web_page_preview' => true,
                     ]
                 );
+
+                // Un asterisco o guion bajo suelto (sin pareja) en el texto hace que
+                // Telegram rechace el mensaje ENTERO con error 400. Reintentamos sin
+                // formato para no perder el mensaje, mejor sin negrita que sin nada.
+                if (!$response->successful()) {
+                    Log::warning('Telegram: fallo con Markdown, reintentando sin formato', [
+                        'chat_id' => $chatId,
+                        'status'  => $response->status(),
+                    ]);
+
+                    $response = Http::timeout(10)->post(
+                        "https://api.telegram.org/bot{$botToken}/sendMessage",
+                        [
+                            'chat_id'                  => $chatId,
+                            'text'                     => $chunk,
+                            'disable_web_page_preview' => true,
+                        ]
+                    );
+                }
 
                 if (!$response->successful()) {
                     $allOk = false;
