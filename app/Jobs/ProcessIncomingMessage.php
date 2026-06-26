@@ -234,7 +234,7 @@ class ProcessIncomingMessage implements ShouldQueue
 
         if ($escalate) {
             $this->handleEscalation($user, $meetingRequest, $aiResponse);
-            $this->sendResponse($user, $response ?? $config->unknown_response ?? 'Déjame consultarlo y te respondo en breve.', $config);
+            $this->sendResponse($user, 'He recibido tu mensaje y lo he trasladado al equipo. En breve se pondrán en contacto contigo personalmente.', $config);
             $this->dispatchSynthesis($meetingRequest);
             return;
         }
