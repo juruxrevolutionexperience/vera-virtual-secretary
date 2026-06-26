@@ -405,7 +405,10 @@ class ProcessIncomingMessage implements ShouldQueue
 
     private function getOrCreateMeetingRequest(User $user, VeraConfig $config): MeetingRequest
     {
-        // Buscar solicitud activa (incluye escalated para mantener el silencio)
+        // Buscar solicitud activa del mismo contacto en este canal.
+        // Las escaladas sin gestionar se recuperan para mantener el silencio.
+        // Las escaladas ya gestionadas se ignoran: se creará conversación nueva
+        // limpia para que el historial de la queja no contamine al LLM.
         $existing = MeetingRequest::forUser($user->id)
             ->where(function ($q) {
                 $q->active()->orWhere('state', 'escalated');
@@ -414,6 +417,11 @@ class ProcessIncomingMessage implements ShouldQueue
             ->where('contact_identifier', $this->contactIdentifier)
             ->latest()
             ->first();
+
+        // Si está escalada Y ya gestionada → descartarla, empezar conversación nueva
+        if ($existing && $existing->state === 'escalated' && !empty($existing->context['handled_at'])) {
+            $existing = null;
+        }
 
         if ($existing) {
             return $existing;
