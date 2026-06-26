@@ -466,11 +466,8 @@ class ProcessIncomingMessage implements ShouldQueue
 
         $insights = $contact->metadata['vera_insights'] ?? null;
 
-        if (!$insights && !$contact->name) {
-            return null;
-        }
-
         return [
+            'is_returning'             => true,   // el contacto ya existe — no es la primera vez
             'name'                     => $contact->name,
             'preferred_times'          => $insights['preferred_times']          ?? null,
             'communication_style'      => $insights['communication_style']      ?? null,

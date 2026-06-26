@@ -160,10 +160,14 @@ def _build_customer_context(profile):
     last_summary = profile.get("last_interaction_summary")
     quirks = profile.get("quirks")
 
-    # Si solo tenemos el nombre, mostrarlo igual — Vera puede saludar por nombre
+    is_returning = profile.get("is_returning", False)
     has_insights = any([preferred_times, style, past_topics, last_summary, quirks])
-    if not name and not has_insights:
+    if not name and not has_insights and not is_returning:
         return ""
+
+    # Contacto conocido pero sin insights todavía — solo la señal de no saludar
+    if is_returning and not name and not has_insights:
+        return "\n\nCLIENTE QUE TE ESCRIBE — ya ha contactado antes contigo. NO lo saludes con 'Hola [nombre]', ve directo al punto."
 
     lines = []
     if name:
