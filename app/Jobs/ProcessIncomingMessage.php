@@ -150,6 +150,16 @@ class ProcessIncomingMessage implements ShouldQueue
         // ── 1. Crear o recuperar la solicitud de reunión en curso ─────────────
         $meetingRequest = $this->getOrCreateMeetingRequest($user, $config);
 
+        // ── 2. Silencio total si hay una queja escalada sin resolver ─────────
+        // Vera ya mandó el aviso cuando detectó la queja. Mientras el dueño
+        // no la marque como "gestionada" (context->handled_at), Vera no interviene.
+        // Una vez gestionada, Vera vuelve a responder con normalidad.
+        $escaladaSinResolver = $meetingRequest->state === 'escalated'
+            && empty($meetingRequest->context['handled_at']);
+        if ($escaladaSinResolver) {
+            return;
+        }
+
         // ── 3. Cargar historial de la conversación ────────────────────────────
         $history = $this->loadConversationHistory($meetingRequest);
 
