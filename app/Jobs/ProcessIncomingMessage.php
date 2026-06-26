@@ -405,9 +405,11 @@ class ProcessIncomingMessage implements ShouldQueue
 
     private function getOrCreateMeetingRequest(User $user, VeraConfig $config): MeetingRequest
     {
-        // Buscar solicitud activa del mismo contacto en este canal
+        // Buscar solicitud activa (incluye escalated para mantener el silencio)
         $existing = MeetingRequest::forUser($user->id)
-            ->active()
+            ->where(function ($q) {
+                $q->active()->orWhere('state', 'escalated');
+            })
             ->where('channel', $this->channel)
             ->where('contact_identifier', $this->contactIdentifier)
             ->latest()
