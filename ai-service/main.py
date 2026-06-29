@@ -68,6 +68,8 @@ class ProcessResponse(BaseModel):
     confidence: float
     suggested_slots: list[str] = []
     tokens_used: int
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
     model_used: str = "llama-3.3-70b-versatile"   # qué LLM atendió de verdad (groq | gemini fallback | none)
     escalation_reason: Optional[str] = None
     # Intención de cita estructurada — Laravel reserva la hora EXACTA con esto
@@ -128,7 +130,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
         raise HTTPException(status_code=400, detail=str(e))
 
     # 3. Una sola llamada LLM — devuelve modo + respuesta + tokens + intención de cita
-    mode, response_text, tokens_used, intent, model_used = call_llm_with_tools(user_prompt, system_prompt)
+    mode, response_text, token_data, intent, model_used = call_llm_with_tools(user_prompt, system_prompt)
     intent = intent or {"fecha": "", "hora": "", "intencion_cita": "ninguna"}
 
     # Cortocircuito — mensaje irrelevante detectado por el LLM
@@ -139,7 +141,9 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
             escalate=False,
             confidence=1.0,
             suggested_slots=[],
-            tokens_used=tokens_used,
+            tokens_used=token_data["total"],
+            prompt_tokens=token_data["prompt"],
+            completion_tokens=token_data["completion"],
             model_used=model_used,
             escalation_reason=None,
         )
@@ -175,7 +179,9 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
         escalate=escalate,
         confidence=0.9,
         suggested_slots=[],
-        tokens_used=tokens_used,
+        tokens_used=token_data["total"],
+        prompt_tokens=token_data["prompt"],
+        completion_tokens=token_data["completion"],
         model_used=model_used,
         escalation_reason=escalation_reason,
         intent_action=intent.get("intencion_cita", "ninguna"),

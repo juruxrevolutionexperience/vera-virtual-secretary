@@ -174,28 +174,19 @@ class ProcessIncomingMessage implements ShouldQueue
         $aiResponse = $this->callAiService($user, $config, $history, $meetingRequest, $requestedTime, $requestedSlotAvailable);
 
         // ── 4.1 Registrar consumo de tokens del procesamiento ─────────────────
-        // Cubre TODAS las ramas (irrelevante, respuesta, agenda, escalation) porque
-        // va antes de bifurcar. Fail-safe: si no hay dato (0), no dispara nada y el
-        // flujo sigue igual. El listener RecordTokenUsage está en cola y try/catch.
-        $tokensUsed = (int) ($aiResponse['tokens_used'] ?? 0);
-        if ($tokensUsed > 0) {
-            event(new VeraTokensConsumed(
-                userId: $user->id,
-                // 'response_generation' es un valor válido del enum action_type.
-                // El canal (email/whatsapp/telegram) queda en metadata para distinguir.
-                actionType: 'response_generation',
-                tokenData: [
-                    'prompt_tokens'     => 0,
-                    'completion_tokens' => 0,
-                    'total_tokens'      => $tokensUsed,
-                    // Modelo que realmente atendió (Groq o fallback Gemini) — antes
-                    // se daba por hecho que siempre era Groq, lo que falseaba el
-                    // coste real (Gemini es ~6x más barato por token).
-                    'model'             => $aiResponse['model_used'] ?? 'llama-3.3-70b-versatile',
-                ],
-                metadata: ['channel' => $this->channel, 'contact' => $this->contactIdentifier],
-            ));
-        }
+        // Siempre dispara — incluso con 0 tokens (fallo de red, modo irrelevante)
+        // para tener trazabilidad completa. El coste calculado sera 0 en ese caso.
+        event(new VeraTokensConsumed(
+            userId: $user->id,
+            actionType: 'response_generation',
+            tokenData: [
+                'prompt_tokens'     => (int) ($aiResponse['prompt_tokens']     ?? 0),
+                'completion_tokens' => (int) ($aiResponse['completion_tokens'] ?? 0),
+                'total_tokens'      => (int) ($aiResponse['tokens_used']       ?? 0),
+                'model'             => $aiResponse['model_used'] ?? 'unknown',
+            ],
+            metadata: ['channel' => $this->channel, 'contact' => $this->contactIdentifier],
+        ));
 
         // ── 5. Interpretar respuesta ──────────────────────────────────────────
         $mode      = $aiResponse['mode']      ?? 'respuesta';

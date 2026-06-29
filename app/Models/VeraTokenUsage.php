@@ -153,36 +153,43 @@ class VeraTokenUsage extends Model
     }
 
     /**
-     * Precios reales por modelo (verificados 2026-06-25, ver memoria
-     * project_coste_real_por_cliente):
-     *   - llama-3.3-70b-versatile (Groq, modelo principal): $0.59/M input, $0.79/M output
-     *   - gemini-2.5-flash-lite (fallback automático): $0.10/M input, $0.40/M output
-     *
-     * Antes esta función asumía siempre precio Gemini, aunque la mayoría de
-     * llamadas reales van por Groq (más caro), subestimando el coste real.
+     * Precios por modelo en $/M tokens (verificados 2026-06-29):
+     *   - llama-3.3-70b-versatile (Groq):       $0.59 input / $0.79 output
+     *   - gemini-2.5-flash-lite (fallback):      $0.075 input / $0.30 output
+     *   - gemini-2.5-flash (candidato primary):  $0.15 input / $0.60 output
+     *   - claude-haiku-4-5 (candidato fallback): $1.00 input / $5.00 output
      */
+    private static function modelRates(string $model): array
+    {
+        if (str_contains($model, 'llama')) {
+            return ['input' => 0.59, 'output' => 0.79];
+        }
+        if (str_contains($model, 'haiku')) {
+            return ['input' => 1.00, 'output' => 5.00];
+        }
+        if (str_contains($model, 'gemini-2.5-flash') && !str_contains($model, 'lite')) {
+            return ['input' => 0.15, 'output' => 0.60];
+        }
+        // gemini-2.5-flash-lite o cualquier Gemini desconocido
+        return ['input' => 0.075, 'output' => 0.30];
+    }
+
     public static function calculateCost(
         int $promptTokens = 0,
         int $completionTokens = 0,
         int $totalTokens = 0,
-        string $model = 'gemini-1.5-flash'
+        string $model = 'gemini-2.5-flash-lite'
     ): float {
-        $isGroq = str_contains($model, 'llama');
-        $inputRate  = $isGroq ? 0.59 : 0.075;
-        $outputRate = $isGroq ? 0.79 : 0.300;
-        // Promedio ponderado para cuando solo tenemos el total (sin desglose
-        // input/output) — asume ~85% input / 15% output, igual que el resto
-        // de proyecciones de este modelo.
-        $blendedRate = $inputRate * 0.85 + $outputRate * 0.15;
+        $rates = self::modelRates($model);
+        // Promedio ponderado para cuando solo tenemos total (asume 85% input / 15% output)
+        $blendedRate = $rates['input'] * 0.85 + $rates['output'] * 0.15;
 
-        // Si tenemos desglose input/output, usamos precios diferenciados
         if ($promptTokens > 0 || $completionTokens > 0) {
-            $inputCost  = ($promptTokens     / 1_000_000) * $inputRate;
-            $outputCost = ($completionTokens / 1_000_000) * $outputRate;
+            $inputCost  = ($promptTokens     / 1_000_000) * $rates['input'];
+            $outputCost = ($completionTokens / 1_000_000) * $rates['output'];
             return round($inputCost + $outputCost, 8);
         }
 
-        // Si solo tenemos total, usamos el precio promedio ponderado del modelo
         return round(($totalTokens / 1_000_000) * $blendedRate, 8);
     }
 
