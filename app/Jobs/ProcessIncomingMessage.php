@@ -253,7 +253,9 @@ class ProcessIncomingMessage implements ShouldQueue
                           ->orWhereRaw('LOWER(contact_email) = ?', [$email])
                           ->orWhere('contact_email', 'like', '%<' . $email . '>%');
                     } else {
-                        $q->where('contact_phone', $this->contactIdentifier);
+                        $q->where('contact_phone', $this->contactIdentifier)
+                          ->orWhere('contact_name', $this->contactIdentifier)
+                          ->orWhere('contact_name', $this->contactName ?? $this->contactIdentifier);
                     }
                 })
                 ->exists();
