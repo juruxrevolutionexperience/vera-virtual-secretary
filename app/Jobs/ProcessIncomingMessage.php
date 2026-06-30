@@ -235,6 +235,12 @@ class ProcessIncomingMessage implements ShouldQueue
         // cuál cita si el cliente tiene varias). Manda el ENLACE de cancelación: el
         // cliente ve SUS citas y elige cuál anular en la página /cancelar/{token}.
         if ($mode === 'cancelacion') {
+            Log::info('[CANCELACION] modo detectado', [
+                'channel'    => $this->channel,
+                'contact'    => $this->contactIdentifier,
+                'user_id'    => $user->id,
+            ]);
+
             $hasUpcoming = Meeting::where('user_id', $user->id)
                 ->whereIn('status', ['confirmed', 'pending'])
                 ->where('scheduled_at', '>', now())
@@ -252,12 +258,15 @@ class ProcessIncomingMessage implements ShouldQueue
                 })
                 ->exists();
 
+            Log::info('[CANCELACION] busqueda cita', [
+                'has_upcoming' => $hasUpcoming,
+                'channel'      => $this->channel,
+                'contact'      => $this->contactIdentifier,
+            ]);
+
             if ($hasUpcoming) {
-                // RED DE SEGURIDAD determinista: Vera NO cancela — lo hace el cliente en
-                // la página /cancelar. Si el LLM afirma que la cancela ella ("te cancelo
-                // la cita"), descartamos su texto y caemos al intro neutral correcto.
                 if ($response && preg_match('/\bte\s+(la\s+|lo\s+)?cancel|\bhe\s+cancelad|qued[ao]\s+cancelad|ya\s+est[áa]\s+cancelad|cancelar[ée]\s+tu|\bla\s+cancelo\b/iu', $response)) {
-                    Log::info('Falsa confirmación de cancelación neutralizada', ['contact' => $this->contactIdentifier]);
+                    Log::info('[CANCELACION] falsa confirmacion neutralizada', ['contact' => $this->contactIdentifier]);
                     $response = null;
                 }
 
@@ -267,8 +276,17 @@ class ProcessIncomingMessage implements ShouldQueue
                 $cancelUrl = rtrim(config('app.url'), '/') . '/cancelar/' . $token;
                 $intro     = $response ?: 'Claro, puedes cancelar tu cita desde aquí:';
                 $response  = trim((string) $intro) . "\n\n" . $cancelUrl;
+
+                Log::info('[CANCELACION] enlace generado', [
+                    'token'      => $token,
+                    'cancel_url' => $cancelUrl,
+                ]);
             } else {
-                // No tiene citas activas: lo tratamos con naturalidad (sin enlace de cancelar).
+                Log::warning('[CANCELACION] no se encontro cita futura', [
+                    'channel' => $this->channel,
+                    'contact' => $this->contactIdentifier,
+                    'user_id' => $user->id,
+                ]);
                 $response = $response ?: 'No encuentro ninguna cita próxima a tu nombre. Si quieres reservar una nueva, dímelo y te ayudo.';
             }
         }
