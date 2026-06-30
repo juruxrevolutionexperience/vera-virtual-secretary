@@ -239,12 +239,16 @@ class ProcessIncomingMessage implements ShouldQueue
                 ->whereIn('status', ['confirmed', 'pending'])
                 ->where('scheduled_at', '>', now())
                 ->where(function ($q) {
-                    $email = preg_match('/<(.+?)>/', $this->contactIdentifier, $m)
-                        ? strtolower(trim($m[1]))
-                        : strtolower(trim($this->contactIdentifier));
-                    $q->where('contact_email', $this->contactIdentifier)
-                      ->orWhereRaw('LOWER(contact_email) = ?', [$email])
-                      ->orWhere('contact_email', 'like', '%<' . $email . '>%');
+                    if ($this->channel === 'email') {
+                        $email = preg_match('/<(.+?)>/', $this->contactIdentifier, $m)
+                            ? strtolower(trim($m[1]))
+                            : strtolower(trim($this->contactIdentifier));
+                        $q->where('contact_email', $this->contactIdentifier)
+                          ->orWhereRaw('LOWER(contact_email) = ?', [$email])
+                          ->orWhere('contact_email', 'like', '%<' . $email . '>%');
+                    } else {
+                        $q->where('contact_phone', $this->contactIdentifier);
+                    }
                 })
                 ->exists();
 
@@ -927,6 +931,7 @@ class ProcessIncomingMessage implements ShouldQueue
                 'user_id'            => $user->id,
                 'contact_name'       => $this->contactName ?? $this->contactIdentifier,
                 'contact_email'      => $this->channel === 'email' ? $this->contactIdentifier : null,
+                'contact_phone'      => $this->channel !== 'email' ? $this->contactIdentifier : null,
                 'scheduled_at'       => $slotStart,
                 'duration_minutes'   => $config->meeting_duration ?? 45,
                 'timezone'           => $timezone,
@@ -1067,6 +1072,7 @@ class ProcessIncomingMessage implements ShouldQueue
                 'user_id'            => $user->id,
                 'contact_name'       => $this->contactName ?? $this->contactIdentifier,
                 'contact_email'      => $this->channel === 'email' ? $this->contactIdentifier : null,
+                'contact_phone'      => $this->channel !== 'email' ? $this->contactIdentifier : null,
                 'scheduled_at'       => $start,
                 'duration_minutes'   => $config->meeting_duration ?? 45,
                 'timezone'           => $timezone,
