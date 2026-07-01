@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Reserva tu cita · {{ $businessName }}</title>
     <meta property="og:title" content="Reserva tu cita · {{ $businessName }}">
-    <meta property="og:description" content="Elige el día y hora que mejor te venga. Sesiones de {{ $duration }} minutos.">
+    <meta property="og:description" content="Elige el servicio, día y hora que mejor te venga.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">
     <style>
@@ -22,6 +22,15 @@
         .head p{font-size:14px;color:#c7d2fe}
         .body{padding:24px}
         h2{font-size:14px;font-weight:600;color:#334155;margin-bottom:12px}
+        /* Servicios */
+        .svc-list{display:flex;flex-direction:column;gap:10px;margin-bottom:4px}
+        .svc-card{display:flex;align-items:center;justify-content:space-between;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;cursor:default}
+        .svc-info .svc-name{font-size:15px;font-weight:600;color:#1e293b}
+        .svc-info .svc-meta{font-size:13px;color:#64748b;margin-top:2px}
+        .svc-price{font-size:15px;font-weight:700;color:#1e293b;margin-right:12px;white-space:nowrap}
+        .svc-btn{background:#4f46e5;color:#fff;border:none;border-radius:8px;padding:9px 18px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s}
+        .svc-btn:hover{background:#4338ca}
+        /* Calendario */
         .calnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
         .calnav button{border:1px solid #e2e8f0;background:#fff;border-radius:8px;width:36px;height:36px;cursor:pointer;font-size:18px;color:#475569}
         .calnav button:disabled{opacity:.3;cursor:default}
@@ -47,6 +56,7 @@
         .pick{border-radius:12px;background:#eef2ff;border:1px solid #e0e7ff;padding:16px;margin-bottom:12px}
         .pick .lbl{font-size:13px;color:#64748b}
         .pick .val{font-size:18px;font-weight:600;color:#4338ca}
+        .pick .val-sub{font-size:13px;color:#6366f1;margin-top:2px}
         textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font:inherit;font-size:14px;color:#0f172a;resize:vertical;margin-bottom:12px}
         textarea:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
         .btn{width:100%;background:#4f46e5;color:#fff;font-weight:600;font-size:15px;padding:13px;border:none;border-radius:12px;cursor:pointer;transition:background .15s}
@@ -61,6 +71,8 @@
         .done h2{font-size:20px;color:#1e293b;margin-bottom:8px}
         .done p{color:#64748b;font-size:14px}
         .foot{text-align:center;font-size:12px;color:#94a3b8;margin-top:20px}
+        .back-link{font-size:13px;color:#64748b;background:none;border:none;cursor:pointer;padding:0;margin-bottom:16px;display:flex;align-items:center;gap:4px}
+        .back-link:hover{color:#4f46e5}
     </style>
 </head>
 <body>
@@ -69,12 +81,44 @@
             <div class="head">
                 <p class="tag">Reserva de cita</p>
                 <h1>{{ $businessName }}</h1>
-                <p>Elige el día y la hora que mejor te venga · {{ $duration }} min</p>
-                <p style="font-size:13px;opacity:.85;margin-top:6px;">🕒 Horas en {{ $tzLabel }}</p>
+                <p id="head-sub">Elige el servicio, día y hora</p>
+                <p style="font-size:13px;opacity:.85;margin-top:6px;">Horas en {{ $tzLabel }}</p>
             </div>
             <div class="body">
-                <div id="step-day">
-                    <h2>1. Elige un día</h2>
+
+                @if($services->isNotEmpty())
+                <!-- PASO 0: Selección de servicio -->
+                <div id="step-service">
+                    <h2>Elige el servicio</h2>
+                    <div class="svc-list">
+                        @foreach($services as $svc)
+                        <div class="svc-card">
+                            <div class="svc-info">
+                                <div class="svc-name">{{ $svc->name }}</div>
+                                <div class="svc-meta">{{ $svc->duration_minutes }} min</div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px">
+                                @if($svc->price)
+                                <span class="svc-price">{{ $svc->price }}</span>
+                                @endif
+                                <button class="svc-btn" type="button"
+                                        onclick="pickService({{ $svc->id }}, '{{ addslashes($svc->name) }}', {{ $svc->duration_minutes }})">
+                                    Reservar
+                                </button>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                <!-- PASO 1: Calendario -->
+                <div id="step-day" {{ $services->isNotEmpty() ? 'class="sect hidden"' : '' }}>
+                    <div id="svc-back-wrap" class="hidden">
+                        <button class="back-link" type="button" onclick="backToServices()">← Cambiar servicio</button>
+                    </div>
+                    <div id="svc-selected-badge" class="hidden" style="margin-bottom:10px;padding:10px 14px;background:#eef2ff;border:1px solid #e0e7ff;border-radius:10px;font-size:13px;color:#4338ca;font-weight:600"></div>
+                    <h2>{{ $services->isNotEmpty() ? '1. Elige el día' : '1. Elige un día' }}</h2>
                     <div class="calnav">
                         <button id="prev-m" type="button">‹</button>
                         <span id="mlabel" class="mlabel"></span>
@@ -84,6 +128,7 @@
                     <div id="calgrid" class="calgrid"></div>
                 </div>
 
+                <!-- PASO 2: Hora -->
                 <div id="step-time" class="sect hidden">
                     <h2>2. Elige la hora <span id="day-label" style="color:#4f46e5"></span></h2>
                     <div id="slots" class="grid"></div>
@@ -92,17 +137,20 @@
                     <p id="legend" class="legend hidden">Las horas tachadas ya están ocupadas.</p>
                 </div>
 
+                <!-- PASO 3: Confirmar -->
                 <div id="step-confirm" class="sect hidden">
                     <h2>3. Confirma tu cita</h2>
                     <div class="pick">
                         <p class="lbl">Cita seleccionada</p>
                         <p id="confirm-label" class="val"></p>
+                        <p id="confirm-service" class="val-sub hidden"></p>
                     </div>
                     <textarea id="note" rows="2" maxlength="500" placeholder="¿Algo que quieras añadir? (opcional)"></textarea>
                     <button id="confirm-btn" class="btn" type="button">Reservar cita</button>
                     <button id="back-btn" class="btn-link" type="button">← Cambiar</button>
                 </div>
 
+                <!-- PASO 4: Hecho -->
                 <div id="step-done" class="done hidden">
                     <div class="check">✓</div>
                     <h2 id="done-title"></h2>
@@ -116,13 +164,17 @@
     </div>
 
     <script>
-    const TOKEN = @json($token);
-    const CSRF  = document.querySelector('meta[name=csrf-token]').content;
-    const DIAS  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-    const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-    let selectedIso = null;
+    const TOKEN      = @json($token);
+    const CSRF       = document.querySelector('meta[name=csrf-token]').content;
+    const DIAS       = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    const MESES      = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const HAS_SVCS   = @json($services->isNotEmpty());
+    let selectedIso  = null;
+    let selectedSvcId   = null;
+    let selectedSvcName = null;
+    let selectedSvcDur  = null;
 
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today   = new Date(); today.setHours(0,0,0,0);
     const maxDate = new Date(today.getFullYear(), 11, 31);
     let viewY = today.getFullYear(), viewM = today.getMonth();
 
@@ -132,9 +184,33 @@
     const clearError = () => $('error-msg').classList.add('hidden');
     const iso = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 
+    function pickService(id, name, dur) {
+        selectedSvcId   = id;
+        selectedSvcName = name;
+        selectedSvcDur  = dur;
+        show('step-service', false);
+        show('step-day', true);
+        show('svc-back-wrap', true);
+        show('svc-selected-badge', true);
+        $('svc-selected-badge').textContent = name + ' · ' + dur + ' min';
+        $('head-sub').textContent = name + ' · ' + dur + ' min';
+    }
+
+    function backToServices() {
+        selectedSvcId = null; selectedSvcName = null; selectedSvcDur = null;
+        selectedIso   = null;
+        show('step-service', true);
+        show('step-day', false);
+        show('step-time', false);
+        show('step-confirm', false);
+        show('svc-back-wrap', false);
+        show('svc-selected-badge', false);
+        $('head-sub').textContent = 'Elige el servicio, día y hora';
+    }
+
     function renderMonth(){
         $('mlabel').textContent = MESES[viewM] + ' ' + viewY;
-        const startDow = (new Date(viewY, viewM, 1).getDay() + 6) % 7; // lunes=0
+        const startDow = (new Date(viewY, viewM, 1).getDay() + 6) % 7;
         const dim = new Date(viewY, viewM+1, 0).getDate();
         const grid = $('calgrid'); grid.innerHTML='';
         for (let i=0;i<startDow;i++){ const e=document.createElement('div'); e.className='day empty'; grid.appendChild(e); }
@@ -159,10 +235,9 @@
         $('slots').innerHTML=''; show('no-slots',false); show('legend',false); show('slots-loading',true);
         $('step-time').scrollIntoView({behavior:'smooth',block:'nearest'});
         try{
-            // Retry una vez si falla (los 502 transitorios de Cloudflare/nginx
-            // afectan a la app entera, no solo a este endpoint — pre-existente)
-            let r = await fetch('/reservar/'+TOKEN+'/slots?date='+isoDate,{headers:{'Accept':'application/json'}});
-            if(!r.ok){ await new Promise(rs=>setTimeout(rs,500)); r = await fetch('/reservar/'+TOKEN+'/slots?date='+isoDate,{headers:{'Accept':'application/json'}}); }
+            const svcParam = selectedSvcId ? '&service_id=' + selectedSvcId : '';
+            let r = await fetch('/reservar/'+TOKEN+'/slots?date='+isoDate+svcParam,{headers:{'Accept':'application/json'}});
+            if(!r.ok){ await new Promise(rs=>setTimeout(rs,500)); r = await fetch('/reservar/'+TOKEN+'/slots?date='+isoDate+svcParam,{headers:{'Accept':'application/json'}}); }
             const data=await r.json();
             show('slots-loading',false);
             const slots=data.slots||[];
@@ -183,7 +258,12 @@
     }
 
     function pickSlot(isoVal, label){
-        selectedIso=isoVal; $('confirm-label').textContent=label;
+        selectedIso=isoVal;
+        $('confirm-label').textContent=label;
+        if (selectedSvcName) {
+            $('confirm-service').textContent = selectedSvcName + ' · ' + selectedSvcDur + ' min';
+            show('confirm-service', true);
+        }
         show('step-confirm',true);
         $('step-confirm').scrollIntoView({behavior:'smooth',block:'center'});
     }
@@ -195,14 +275,16 @@
         clearError();
         const btn=$('confirm-btn'); btn.disabled=true; btn.textContent='Reservando…';
         try{
+            const body = { datetime: selectedIso, note: $('note').value };
+            if (selectedSvcId) body.service_id = selectedSvcId;
             const r=await fetch('/reservar/'+TOKEN,{
                 method:'POST',
                 headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':CSRF},
-                body:JSON.stringify({datetime:selectedIso,note:$('note').value}),
+                body:JSON.stringify(body),
             });
             const data=await r.json();
             if(!r.ok||!data.ok){throw new Error(data.error||'No se pudo reservar.');}
-            ['step-day','step-time','step-confirm'].forEach(s=>show(s,false));
+            ['step-service','step-day','step-time','step-confirm'].forEach(s=>show(s,false));
             const pending=data.status==='pending';
             $('done-title').textContent=pending?'Reserva solicitada':'¡Cita confirmada!';
             $('done-sub').textContent=pending

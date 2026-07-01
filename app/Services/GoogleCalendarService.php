@@ -175,7 +175,7 @@ class GoogleCalendarService
      *
      * @return array<int, array{time:string, iso:string, free:bool}>
      */
-    public function getDayAvailability(User $user, string $date): array
+    public function getDayAvailability(User $user, string $date, ?int $duration = null): array
     {
         $config = VeraConfig::where('user_id', $user->id)->first();
         if (!$config || !$config->hasCalendarConnected()) {
@@ -183,7 +183,7 @@ class GoogleCalendarService
         }
 
         $tz       = $config->timezone ?: config('app.timezone', 'Europe/Madrid');
-        $duration = $config->meeting_duration ?? 45;
+        $duration = $duration ?? $config->meeting_duration ?? 45;
         $buffer   = $config->buffer_minutes ?? 15;
         $wh       = $config->working_hours ?? [];
 

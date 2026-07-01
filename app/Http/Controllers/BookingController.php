@@ -8,6 +8,7 @@ use App\Models\Meeting;
 use App\Models\MeetingRequest;
 use App\Models\VeraActivityLog;
 use App\Models\VeraConfig;
+use App\Models\VeraService;
 use App\Services\GoogleCalendarService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -38,13 +39,19 @@ class BookingController extends Controller
             return response()->view('booking.invalid', ['reason' => 'expired'], 200);
         }
 
-        $config = VeraConfig::where('user_id', $req->user_id)->first();
+        $config   = VeraConfig::where('user_id', $req->user_id)->first();
+        $services = VeraService::where('user_id', $req->user_id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['id', 'name', 'duration_minutes', 'price']);
 
         return view('booking.show', [
             'token'        => $token,
             'businessName' => $config->business_name ?? 'el negocio',
             'duration'     => $config->meeting_duration ?? 45,
             'tzLabel'      => VeraConfig::humanTimezone($config->timezone ?? null),
+            'services'     => $services,
         ]);
     }
 
@@ -56,18 +63,24 @@ class BookingController extends Controller
             return response()->json(['slots' => [], 'error' => 'enlace no válido'], 410);
         }
 
-        $date = (string) $request->query('date', '');
+        $date      = (string) $request->query('date', '');
+        $serviceId = (int) $request->query('service_id', 0);
+
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             return response()->json(['slots' => []]);
         }
 
+        // Duración: usa el servicio elegido si existe; si no, el valor por defecto del config
+        $serviceDuration = null;
+        if ($serviceId) {
+            $svc = VeraService::where('id', $serviceId)->where('user_id', $req->user_id)->first();
+            $serviceDuration = $svc?->duration_minutes;
+        }
+
         try {
-            // Caché 60s por (negocio, día): reduce drásticamente las llamadas a
-            // Google Calendar API cuando el cliente navega días → evita los 502
-            // por saturación de workers PHP-FPM.
-            $cacheKey = "booking-slots-{$req->user_id}-{$date}";
-            $slots = Cache::remember($cacheKey, 60, function () use ($req, $date) {
-                return (new GoogleCalendarService())->getDayAvailability($req->user, $date);
+            $cacheKey = "booking-slots-{$req->user_id}-{$date}-" . ($serviceDuration ?? 'def');
+            $slots = Cache::remember($cacheKey, 60, function () use ($req, $date, $serviceDuration) {
+                return (new GoogleCalendarService())->getDayAvailability($req->user, $date, $serviceDuration);
             });
             return response()->json(['slots' => $slots]);
         } catch (\Throwable $e) {
@@ -85,15 +98,23 @@ class BookingController extends Controller
         }
 
         $data = $request->validate([
-            'datetime' => ['required', 'date'],
-            'note'     => ['nullable', 'string', 'max:500'],
+            'datetime'   => ['required', 'date'],
+            'note'       => ['nullable', 'string', 'max:500'],
+            'service_id' => ['nullable', 'integer'],
         ]);
 
         $user   = $req->user;
         $config = VeraConfig::where('user_id', $user->id)->first();
         $tz     = $config->timezone ?: config('app.timezone', 'Europe/Madrid');
         $start  = Carbon::parse($data['datetime'])->setTimezone($tz);
-        $end    = $start->copy()->addMinutes($config->meeting_duration ?? 45);
+
+        // Resolución de duración: servicio elegido > config global
+        $serviceId       = (int) ($data['service_id'] ?? 0);
+        $selectedService = $serviceId
+            ? VeraService::where('id', $serviceId)->where('user_id', $user->id)->first()
+            : null;
+        $duration = $selectedService?->duration_minutes ?? $config->meeting_duration ?? 45;
+        $end      = $start->copy()->addMinutes($duration);
 
         // Revalidar disponibilidad en servidor (anti doble-booking / manipulación del cliente)
         $calendar = new GoogleCalendarService();
@@ -108,11 +129,13 @@ class BookingController extends Controller
             'contact_name'       => $req->contact?->name ?? $req->contact_identifier,
             'contact_email'      => $req->channel === 'email' ? $req->contact_identifier : null,
             'scheduled_at'       => $start,
-            'duration_minutes'   => $config->meeting_duration ?? 45,
+            'duration_minutes'   => $duration,
             'timezone'           => $tz,
             'status'             => $autoConfirm ? 'confirmed' : 'pending',
             'source_channel'     => $req->channel,
             'meeting_request_id' => $req->id,
+            'service_name'       => $selectedService?->name,
+            'service_duration'   => $selectedService?->duration_minutes,
         ]);
 
         // Bloquea el hueco en el Calendar del negocio (evita que otro lo coja).

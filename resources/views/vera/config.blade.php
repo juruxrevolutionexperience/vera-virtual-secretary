@@ -306,14 +306,117 @@
                 <p class="text-xs text-gray-400 mt-1.5">Vera usará esto para contextualizar sus respuestas en el RAG</p>
             </div>
 
-            <!-- ── SECCIÓN 4b: Servicios y precios ─────────────── -->
+            <!-- ── SECCIÓN 4b: Servicios de cita (con duración) ──── -->
+            <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm"
+                 x-data="veraServicesManager()">
+                <div class="flex items-center justify-between mb-1">
+                    <div>
+                        <h2 class="text-base font-bold text-gray-900">Servicios de cita</h2>
+                        <p class="text-sm text-gray-500 mt-0.5">Cada servicio tiene su duración real. Vera bloqueará el tiempo exacto en el calendario y el cliente lo elegirá al reservar.</p>
+                    </div>
+                </div>
+
+                <!-- Plantillas de negocio -->
+                <div class="mt-4 mb-5 flex flex-wrap gap-2">
+                    <span class="text-xs text-gray-500 self-center mr-1">Plantilla:</span>
+                    @foreach($serviceTemplates as $key => $tpl)
+                    <button type="button" @click="applyTemplate('{{ $key }}')"
+                            class="text-xs px-3 py-1.5 rounded-full border border-gray-300 hover:border-purple-400 hover:text-purple-600 transition-colors">
+                        {{ $tpl['label'] }}
+                    </button>
+                    @endforeach
+                </div>
+
+                <!-- Lista de servicios -->
+                <div class="space-y-2 mb-4">
+                    <template x-for="svc in veraServices" :key="svc.id">
+                        <div class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3">
+                            <div class="flex-1 min-w-0">
+                                <template x-if="!svc.editing">
+                                    <div class="flex items-center gap-3">
+                                        <span class="font-medium text-gray-800 text-sm truncate" x-text="svc.name"></span>
+                                        <span class="text-xs text-gray-400" x-text="svc.duration_minutes + ' min'"></span>
+                                        <span x-show="svc.price" class="text-xs text-purple-600 font-medium" x-text="svc.price"></span>
+                                    </div>
+                                </template>
+                                <template x-if="svc.editing">
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <div class="sm:col-span-1">
+                                            <input type="text" x-model="svc.name" placeholder="Nombre"
+                                                   class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none">
+                                        </div>
+                                        <div>
+                                            <div class="flex items-center gap-1">
+                                                <input type="number" x-model.number="svc.duration_minutes" min="5" max="480"
+                                                       class="w-20 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none">
+                                                <span class="text-xs text-gray-500">min</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <input type="text" x-model="svc.price" placeholder="Precio (opcional)"
+                                                   class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none">
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <template x-if="!svc.editing">
+                                    <button type="button" @click="svc.editing = true"
+                                            class="text-xs text-gray-400 hover:text-purple-600 px-2 py-1 rounded hover:bg-purple-50">Editar</button>
+                                </template>
+                                <template x-if="svc.editing">
+                                    <button type="button" @click="saveService(svc)"
+                                            class="text-xs text-white bg-purple-600 hover:bg-purple-700 px-2.5 py-1 rounded font-medium">Guardar</button>
+                                </template>
+                                <button type="button" @click="deleteService(svc)"
+                                        class="text-xs text-gray-400 hover:text-red-500 px-1.5 py-1 rounded hover:bg-red-50">✕</button>
+                            </div>
+                        </div>
+                    </template>
+                    <p x-show="veraServices.length === 0" class="text-xs text-gray-400 py-2">Sin servicios configurados. Usa una plantilla o añade uno manualmente.</p>
+                </div>
+
+                <!-- Formulario añadir -->
+                <div x-show="showAdd" x-cloak class="border border-dashed border-purple-300 rounded-xl px-4 py-3 mb-3 bg-purple-50/40">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+                        <div class="sm:col-span-1">
+                            <input type="text" x-model="newSvc.name" placeholder="Nombre del servicio"
+                                   class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none bg-white">
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-1">
+                                <input type="number" x-model.number="newSvc.duration_minutes" min="5" max="480" placeholder="45"
+                                       class="w-20 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none bg-white">
+                                <span class="text-xs text-gray-500">min</span>
+                            </div>
+                        </div>
+                        <div>
+                            <input type="text" x-model="newSvc.price" placeholder="Precio (opcional)"
+                                   class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none bg-white">
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" @click="createService()"
+                                class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-purple-700">Añadir</button>
+                        <button type="button" @click="showAdd = false; newSvc = {name:'', duration_minutes:45, price:''}"
+                                class="text-xs text-gray-500 px-3 py-1.5 rounded-lg hover:bg-gray-100">Cancelar</button>
+                    </div>
+                </div>
+
+                <button type="button" @click="showAdd = !showAdd" x-show="!showAdd"
+                        class="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
+                    <span>+</span> <span>Añadir servicio</span>
+                </button>
+            </div>
+
+            <!-- ── SECCIÓN 4b-rag: Info de servicios para Vera (RAG) ── -->
             <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
                 <div class="flex items-center justify-between mb-1">
-                    <h2 class="text-base font-bold text-gray-900">Servicios y precios</h2>
+                    <h2 class="text-base font-bold text-gray-900">Servicios y precios (descripcion para Vera)</h2>
                     <button type="button" @click="addService()"
-                            class="text-xs font-medium text-purple-600 hover:text-purple-700 px-2.5 py-1 rounded-md hover:bg-purple-50">+ Añadir servicio</button>
+                            class="text-xs font-medium text-purple-600 hover:text-purple-700 px-2.5 py-1 rounded-md hover:bg-purple-50">+ Añadir</button>
                 </div>
-                <p class="text-sm text-gray-500 mb-5">Vera responderá con esta info cuando un cliente pregunte qué ofreces o cuánto cuesta.</p>
+                <p class="text-sm text-gray-500 mb-5">Vera usa esto cuando un cliente pregunta qué ofreces o cuánto cuesta (sin entrar en el calendario).</p>
 
                 <div class="space-y-4">
                     <template x-for="(service, idx) in services" :key="idx">
@@ -339,7 +442,7 @@
                             </div>
                         </div>
                     </template>
-                    <p x-show="services.length === 0" class="text-xs text-gray-400">Aún no has añadido servicios. Pulsa "+ Añadir servicio".</p>
+                    <p x-show="services.length === 0" class="text-xs text-gray-400">Aún no has añadido servicios.</p>
                 </div>
             </div>
 
@@ -605,6 +708,62 @@ function veraConfig() {
 
             this.saving = false;
         }
+    };
+}
+
+function veraServicesManager() {
+    return {
+        veraServices: @json($veraServices->map(fn($s) => ['id' => $s->id, 'name' => $s->name, 'duration_minutes' => $s->duration_minutes, 'price' => $s->price ?? '', 'editing' => false])),
+        showAdd: false,
+        newSvc:  { name: '', duration_minutes: 45, price: '' },
+
+        async applyTemplate(key) {
+            if (!confirm('Se borrarán los servicios actuales y se aplicará la plantilla. ¿Continuar?')) return;
+            const r = await fetch('/vera/services/template', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
+                body: JSON.stringify({ template: key }),
+            });
+            const data = await r.json();
+            if (data.ok) {
+                this.veraServices = data.services.map(s => ({ ...s, price: s.price ?? '', editing: false }));
+            }
+        },
+
+        async createService() {
+            if (!this.newSvc.name.trim() || !this.newSvc.duration_minutes) return;
+            const r = await fetch('/vera/services', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
+                body: JSON.stringify(this.newSvc),
+            });
+            const data = await r.json();
+            if (data.ok) {
+                this.veraServices.push({ ...data.service, price: data.service.price ?? '', editing: false });
+                this.showAdd = false;
+                this.newSvc  = { name: '', duration_minutes: 45, price: '' };
+            }
+        },
+
+        async saveService(svc) {
+            const r = await fetch('/vera/services/' + svc.id, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
+                body: JSON.stringify({ name: svc.name, duration_minutes: svc.duration_minutes, price: svc.price || null }),
+            });
+            const data = await r.json();
+            if (data.ok) svc.editing = false;
+        },
+
+        async deleteService(svc) {
+            if (!confirm('Eliminar "' + svc.name + '"?')) return;
+            const r = await fetch('/vera/services/' + svc.id, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
+            });
+            const data = await r.json();
+            if (data.ok) this.veraServices = this.veraServices.filter(s => s.id !== svc.id);
+        },
     };
 }
 </script>

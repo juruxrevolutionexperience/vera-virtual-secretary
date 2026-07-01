@@ -6,6 +6,7 @@ use App\Models\Meeting;
 use App\Models\VeraActivityLog;
 use App\Models\VeraConfig;
 use App\Models\VeraMemoryChunk;
+use App\Models\VeraService;
 use App\Services\VeraMemoryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -240,7 +241,14 @@ class VeraController extends Controller
                 return ['question' => $c->title, 'answer' => $answer];
             })->values();
 
-        return view('vera.config', compact('config', 'businessDescription', 'services', 'faqs'));
+        $veraServices = VeraService::where('user_id', $user->id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $serviceTemplates = VeraService::templates();
+
+        return view('vera.config', compact('config', 'businessDescription', 'services', 'faqs', 'veraServices', 'serviceTemplates'));
     }
 
     public function updateConfig(Request $request)
@@ -397,6 +405,72 @@ class VeraController extends Controller
         return response()->json([
             'needs_onboarding' => $needsOnboarding,
         ]);
+    }
+
+    // ─── Servicios ────────────────────────────────────────────────────────────
+
+    public function storeService(Request $request)
+    {
+        $user = Auth::user();
+        $data = $request->validate([
+            'name'             => 'required|string|max:120',
+            'duration_minutes' => 'required|integer|min:5|max:480',
+            'price'            => 'nullable|string|max:60',
+        ]);
+
+        $sort = VeraService::where('user_id', $user->id)->max('sort_order') + 1;
+        $svc  = VeraService::create(array_merge($data, ['user_id' => $user->id, 'sort_order' => $sort]));
+
+        return response()->json(['ok' => true, 'service' => $svc]);
+    }
+
+    public function updateService(Request $request, VeraService $service)
+    {
+        $user = Auth::user();
+        if ($service->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'name'             => 'sometimes|string|max:120',
+            'duration_minutes' => 'sometimes|integer|min:5|max:480',
+            'price'            => 'nullable|string|max:60',
+            'is_active'        => 'sometimes|boolean',
+            'sort_order'       => 'sometimes|integer',
+        ]);
+
+        $service->update($data);
+        return response()->json(['ok' => true]);
+    }
+
+    public function destroyService(VeraService $service)
+    {
+        $user = Auth::user();
+        if ($service->user_id !== $user->id) {
+            abort(403);
+        }
+        $service->delete();
+        return response()->json(['ok' => true]);
+    }
+
+    public function applyServiceTemplate(Request $request)
+    {
+        $user = Auth::user();
+        $data = $request->validate(['template' => 'required|string']);
+        $templates = VeraService::templates();
+
+        if (!isset($templates[$data['template']])) {
+            return response()->json(['error' => 'Plantilla no válida'], 422);
+        }
+
+        // Elimina los servicios actuales y aplica la plantilla
+        VeraService::where('user_id', $user->id)->delete();
+        foreach ($templates[$data['template']]['services'] as $i => $svc) {
+            VeraService::create(array_merge($svc, ['user_id' => $user->id, 'sort_order' => $i]));
+        }
+
+        $services = VeraService::where('user_id', $user->id)->orderBy('sort_order')->get();
+        return response()->json(['ok' => true, 'services' => $services]);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

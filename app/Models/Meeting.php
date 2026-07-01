@@ -24,6 +24,8 @@ class Meeting extends Model
         'notes',
         'reminder_1_sent_at',
         'reminder_2_sent_at',
+        'service_name',
+        'service_duration',
     ];
 
     protected $casts = [
@@ -31,6 +33,7 @@ class Meeting extends Model
         'duration_minutes'   => 'integer',
         'reminder_1_sent_at' => 'datetime',
         'reminder_2_sent_at' => 'datetime',
+        'service_duration'   => 'integer',
     ];
 
     public function user(): BelongsTo

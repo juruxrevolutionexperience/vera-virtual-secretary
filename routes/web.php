@@ -185,6 +185,12 @@ Route::middleware(['auth', 'subscribed'])->prefix('vera')->name('vera.')->group(
 
     // Perfil del usuario para el RAG
     Route::post('/user-profile', [VeraController::class, 'saveUserProfile'])->name('user-profile.save');
+
+    // Servicios (CRUD)
+    Route::post('/services',              [VeraController::class, 'storeService'])->name('services.store');
+    Route::patch('/services/{service}',   [VeraController::class, 'updateService'])->name('services.update');
+    Route::delete('/services/{service}',  [VeraController::class, 'destroyService'])->name('services.destroy');
+    Route::post('/services/template',     [VeraController::class, 'applyServiceTemplate'])->name('services.template');
 });
 
 // ========================================
