@@ -244,7 +244,14 @@ class VeraController extends Controller
         $veraServices = VeraService::where('user_id', $user->id)
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->map(fn($s) => [
+                'id'               => $s->id,
+                'name'             => $s->name,
+                'duration_minutes' => $s->duration_minutes,
+                'price'            => $s->price ?? '',
+                'editing'          => false,
+            ])->values();
 
         $serviceTemplates = VeraService::templates();
 

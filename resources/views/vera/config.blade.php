@@ -713,7 +713,7 @@ function veraConfig() {
 
 function veraServicesManager() {
     return {
-        veraServices: @json($veraServices->map(fn($s) => ['id' => $s->id, 'name' => $s->name, 'duration_minutes' => $s->duration_minutes, 'price' => $s->price ?? '', 'editing' => false])),
+        veraServices: @json($veraServices),
         showAdd: false,
         newSvc:  { name: '', duration_minutes: 45, price: '' },
 
