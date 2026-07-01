@@ -418,43 +418,6 @@
                 </button>
             </div>
 
-            <!-- ── SECCIÓN 4b-rag: Info de servicios para Vera (RAG) ── -->
-            <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <div class="flex items-center justify-between mb-1">
-                    <h2 class="text-base font-bold text-gray-900">Servicios y precios (descripcion para Vera)</h2>
-                    <button type="button" @click="addService()"
-                            class="text-xs font-medium text-purple-600 hover:text-purple-700 px-2.5 py-1 rounded-md hover:bg-purple-50">+ Añadir</button>
-                </div>
-                <p class="text-sm text-gray-500 mb-5">Vera usa esto cuando un cliente pregunta qué ofreces o cuánto cuesta (sin entrar en el calendario).</p>
-
-                <div class="space-y-4">
-                    <template x-for="(service, idx) in services" :key="idx">
-                        <div class="border border-gray-200 rounded-lg p-4 relative">
-                            <button type="button" @click="removeService(idx)"
-                                    class="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-lg leading-none">×</button>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                                <div class="sm:col-span-2">
-                                    <label class="block text-xs font-medium text-gray-600 mb-1">Nombre del servicio</label>
-                                    <input type="text" x-model="service.name" placeholder="Ej: Desarrollo web a medida"
-                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-600 mb-1">Precio</label>
-                                    <input type="text" x-model="service.price" placeholder="Ej: desde 1.500€"
-                                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
-                                <textarea x-model="service.description" rows="2" placeholder="Breve descripción de qué incluye"
-                                          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none resize-none"></textarea>
-                            </div>
-                        </div>
-                    </template>
-                    <p x-show="services.length === 0" class="text-xs text-gray-400">Aún no has añadido servicios.</p>
-                </div>
-            </div>
-
             <!-- ── SECCIÓN 4c: Preguntas frecuentes (FAQs) ─────── -->
             <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
                 <div class="flex items-center justify-between mb-1">
@@ -689,7 +652,6 @@ function veraConfig() {
                 working_hours:        this.buildWorkingHours(),
                 escalation_triggers:  this.triggers,
                 auto_confirm_bookings: document.querySelector('[name="auto_confirm_bookings"][type="checkbox"]')?.checked ?? false,
-                services:             this.services.filter(s => (s.name || '').trim() !== ''),
                 faqs:                 this.faqs.filter(f => (f.question || '').trim() !== '' && (f.answer || '').trim() !== ''),
             };
 
