@@ -312,7 +312,7 @@
                 <div class="flex items-center justify-between mb-1">
                     <div>
                         <h2 class="text-base font-bold text-gray-900">Servicios de cita</h2>
-                        <p class="text-sm text-gray-500 mt-0.5">Cada servicio tiene su duración real. Vera bloqueará el tiempo exacto en el calendario y el cliente lo elegirá al reservar.</p>
+                        <p class="text-sm text-gray-500 mt-0.5">Cada servicio tiene su duración real. Vera bloqueará el tiempo exacto en el calendario y el cliente lo elegirá al reservar. Añade precio y descripción para que Vera también sepa informar cuando un cliente pregunte.</p>
                     </div>
                 </div>
 
@@ -333,29 +333,36 @@
                         <div class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3">
                             <div class="flex-1 min-w-0">
                                 <template x-if="!svc.editing">
-                                    <div class="flex items-center gap-3">
-                                        <span class="font-medium text-gray-800 text-sm truncate" x-text="svc.name"></span>
-                                        <span class="text-xs text-gray-400" x-text="svc.duration_minutes + ' min'"></span>
-                                        <span x-show="svc.price" class="text-xs text-purple-600 font-medium" x-text="svc.price"></span>
+                                    <div>
+                                        <div class="flex items-center gap-3">
+                                            <span class="font-medium text-gray-800 text-sm" x-text="svc.name"></span>
+                                            <span class="text-xs text-gray-400" x-text="svc.duration_minutes + ' min'"></span>
+                                            <span x-show="svc.price" class="text-xs text-purple-600 font-medium" x-text="svc.price"></span>
+                                        </div>
+                                        <p x-show="svc.description" class="text-xs text-gray-400 mt-0.5" x-text="svc.description"></p>
                                     </div>
                                 </template>
                                 <template x-if="svc.editing">
-                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                        <div class="sm:col-span-1">
-                                            <input type="text" x-model="svc.name" placeholder="Nombre"
-                                                   class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none">
-                                        </div>
-                                        <div>
-                                            <div class="flex items-center gap-1">
-                                                <input type="number" x-model.number="svc.duration_minutes" min="5" max="480"
-                                                       class="w-20 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none">
-                                                <span class="text-xs text-gray-500">min</span>
+                                    <div class="space-y-2 w-full">
+                                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                            <div class="sm:col-span-1">
+                                                <input type="text" x-model="svc.name" placeholder="Nombre"
+                                                       class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none">
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-1">
+                                                    <input type="number" x-model.number="svc.duration_minutes" min="5" max="480"
+                                                           class="w-20 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none">
+                                                    <span class="text-xs text-gray-500">min</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <input type="text" x-model="svc.price" placeholder="Precio (opcional)"
+                                                       class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none">
                                             </div>
                                         </div>
-                                        <div>
-                                            <input type="text" x-model="svc.price" placeholder="Precio (opcional)"
-                                                   class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none">
-                                        </div>
+                                        <textarea x-model="svc.description" rows="2" placeholder="Descripción breve para que Vera pueda explicar este servicio (opcional)"
+                                                  class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none resize-none"></textarea>
                                     </div>
                                 </template>
                             </div>
@@ -377,8 +384,8 @@
                 </div>
 
                 <!-- Formulario añadir -->
-                <div x-show="showAdd" x-cloak class="border border-dashed border-purple-300 rounded-xl px-4 py-3 mb-3 bg-purple-50/40">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+                <div x-show="showAdd" x-cloak class="border border-dashed border-purple-300 rounded-xl px-4 py-3 mb-3 bg-purple-50/40 space-y-2">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div class="sm:col-span-1">
                             <input type="text" x-model="newSvc.name" placeholder="Nombre del servicio"
                                    class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none bg-white">
@@ -395,10 +402,12 @@
                                    class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none bg-white">
                         </div>
                     </div>
+                    <textarea x-model="newSvc.description" rows="2" placeholder="Descripción breve para que Vera pueda explicar este servicio (opcional)"
+                              class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none resize-none bg-white"></textarea>
                     <div class="flex gap-2">
                         <button type="button" @click="createService()"
                                 class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-purple-700">Añadir</button>
-                        <button type="button" @click="showAdd = false; newSvc = {name:'', duration_minutes:45, price:''}"
+                        <button type="button" @click="showAdd = false; newSvc = {name:'', duration_minutes:45, price:'', description:''}"
                                 class="text-xs text-gray-500 px-3 py-1.5 rounded-lg hover:bg-gray-100">Cancelar</button>
                     </div>
                 </div>
@@ -712,21 +721,24 @@ function veraConfig() {
 }
 
 function veraServicesManager() {
+    const csrf = () => document.querySelector('meta[name=csrf-token]').content;
+    const jsonHeaders = () => ({ 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf(), 'Accept': 'application/json' });
+
     return {
         veraServices: @json($veraServices),
         showAdd: false,
-        newSvc:  { name: '', duration_minutes: 45, price: '' },
+        newSvc:  { name: '', duration_minutes: 45, price: '', description: '' },
 
         async applyTemplate(key) {
             if (!confirm('Se borrarán los servicios actuales y se aplicará la plantilla. ¿Continuar?')) return;
             const r = await fetch('/vera/services/template', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
+                headers: jsonHeaders(),
                 body: JSON.stringify({ template: key }),
             });
             const data = await r.json();
             if (data.ok) {
-                this.veraServices = data.services.map(s => ({ ...s, price: s.price ?? '', editing: false }));
+                this.veraServices = data.services.map(s => ({ ...s, price: s.price ?? '', description: s.description ?? '', editing: false }));
             }
         },
 
@@ -734,22 +746,22 @@ function veraServicesManager() {
             if (!this.newSvc.name.trim() || !this.newSvc.duration_minutes) return;
             const r = await fetch('/vera/services', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
+                headers: jsonHeaders(),
                 body: JSON.stringify(this.newSvc),
             });
             const data = await r.json();
             if (data.ok) {
-                this.veraServices.push({ ...data.service, price: data.service.price ?? '', editing: false });
+                this.veraServices.push({ ...data.service, price: data.service.price ?? '', description: data.service.description ?? '', editing: false });
                 this.showAdd = false;
-                this.newSvc  = { name: '', duration_minutes: 45, price: '' };
+                this.newSvc  = { name: '', duration_minutes: 45, price: '', description: '' };
             }
         },
 
         async saveService(svc) {
             const r = await fetch('/vera/services/' + svc.id, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
-                body: JSON.stringify({ name: svc.name, duration_minutes: svc.duration_minutes, price: svc.price || null }),
+                headers: jsonHeaders(),
+                body: JSON.stringify({ name: svc.name, duration_minutes: svc.duration_minutes, price: svc.price || null, description: svc.description || null }),
             });
             const data = await r.json();
             if (data.ok) svc.editing = false;
@@ -759,7 +771,7 @@ function veraServicesManager() {
             if (!confirm('Eliminar "' + svc.name + '"?')) return;
             const r = await fetch('/vera/services/' + svc.id, {
                 method: 'DELETE',
-                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
+                headers: { 'X-CSRF-TOKEN': csrf(), 'Accept': 'application/json' },
             });
             const data = await r.json();
             if (data.ok) this.veraServices = this.veraServices.filter(s => s.id !== svc.id);

@@ -261,6 +261,7 @@ class VeraController extends Controller
                 'name'             => $s->name,
                 'duration_minutes' => $s->duration_minutes,
                 'price'            => $s->price ?? '',
+                'description'      => $s->description ?? '',
                 'editing'          => false,
             ])->values();
 
@@ -434,10 +435,13 @@ class VeraController extends Controller
             'name'             => 'required|string|max:120',
             'duration_minutes' => 'required|integer|min:5|max:480',
             'price'            => 'nullable|string|max:60',
+            'description'      => 'nullable|string|max:500',
         ]);
 
         $sort = VeraService::where('user_id', $user->id)->max('sort_order') + 1;
         $svc  = VeraService::create(array_merge($data, ['user_id' => $user->id, 'sort_order' => $sort]));
+
+        $this->syncServicesToMemory($user);
 
         return response()->json(['ok' => true, 'service' => $svc]);
     }
@@ -453,11 +457,13 @@ class VeraController extends Controller
             'name'             => 'sometimes|string|max:120',
             'duration_minutes' => 'sometimes|integer|min:5|max:480',
             'price'            => 'nullable|string|max:60',
+            'description'      => 'nullable|string|max:500',
             'is_active'        => 'sometimes|boolean',
             'sort_order'       => 'sometimes|integer',
         ]);
 
         $service->update($data);
+        $this->syncServicesToMemory($user);
         return response()->json(['ok' => true]);
     }
 
@@ -468,6 +474,7 @@ class VeraController extends Controller
             abort(403);
         }
         $service->delete();
+        $this->syncServicesToMemory($user);
         return response()->json(['ok' => true]);
     }
 
@@ -480,6 +487,7 @@ class VeraController extends Controller
         // Caso especial: limpiar todos los servicios sin aplicar plantilla
         if ($data['template'] === '__clear__') {
             VeraService::where('user_id', $user->id)->delete();
+            $this->syncServicesToMemory($user);
             return response()->json(['ok' => true, 'services' => []]);
         }
 
@@ -493,8 +501,51 @@ class VeraController extends Controller
             VeraService::create(array_merge($svc, ['user_id' => $user->id, 'sort_order' => $i]));
         }
 
+        $this->syncServicesToMemory($user);
+
         $services = VeraService::where('user_id', $user->id)->orderBy('sort_order')->get();
         return response()->json(['ok' => true, 'services' => $services]);
+    }
+
+    private function syncServicesToMemory($user): void
+    {
+        // Desactiva los chunks previos generados desde VeraService
+        VeraMemoryChunk::where('user_id', $user->id)
+            ->where('type', 'product_info')
+            ->where('source', 'vera_service')
+            ->update(['is_active' => false]);
+
+        $services = VeraService::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+
+        foreach ($services as $svc) {
+            $parts = [];
+            if ($svc->description) $parts[] = $svc->description;
+            $parts[] = 'Duracion: ' . $svc->duration_minutes . ' minutos.';
+            if ($svc->price) $parts[] = 'Precio: ' . $svc->price . '.';
+
+            $content = implode(' ', $parts);
+
+            VeraMemoryChunk::create([
+                'user_id'        => $user->id,
+                'type'           => 'product_info',
+                'title'          => $svc->name,
+                'content'        => $content,
+                'keywords_text'  => $svc->name . ' ' . ($svc->description ?? ''),
+                'relevance_tags' => [],
+                'source'         => 'vera_service',
+                'is_active'      => true,
+            ]);
+        }
+
+        try {
+            \Illuminate\Support\Facades\Artisan::queue('vera:sync-memory-to-chroma', ['--user' => (string) $user->id]);
+            \Illuminate\Support\Facades\Artisan::queue('vera:cleanup-chroma', ['--user' => (string) $user->id]);
+        } catch (\Throwable $e) {
+            \Log::warning('syncServicesToMemory: error al encolar sync', ['error' => $e->getMessage()]);
+        }
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

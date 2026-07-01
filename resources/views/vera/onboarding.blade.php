@@ -242,10 +242,14 @@
                     <div class="grid grid-cols-2 gap-2 mb-2">
                         <input type="text" x-model="newOnboardingSvc.name" placeholder="Nombre del servicio"
                                class="col-span-2 sm:col-span-1 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none bg-white">
-                        <div class="flex items-center gap-1">
-                            <input type="number" x-model.number="newOnboardingSvc.duration_minutes" min="5" max="480" placeholder="45"
-                                   class="w-20 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none bg-white">
-                            <span class="text-xs text-gray-500">min</span>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <div class="flex items-center gap-1">
+                                <input type="number" x-model.number="newOnboardingSvc.duration_minutes" min="5" max="480" placeholder="45"
+                                       class="w-20 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none bg-white">
+                                <span class="text-xs text-gray-500">min</span>
+                            </div>
+                            <input type="text" x-model="newOnboardingSvc.price" placeholder="Precio (ej: 40€)"
+                                   class="w-28 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none bg-white">
                         </div>
                     </div>
                     <div class="flex gap-2">
@@ -474,7 +478,7 @@ function veraOnboarding() {
         steps: ['Negocio', 'Horario', 'Servicios', 'Personalidad', 'Canales'],
         onboardingServices: [],
         showAddOnboarding: false,
-        newOnboardingSvc: { name: '', duration_minutes: 45 },
+        newOnboardingSvc: { name: '', duration_minutes: 45, price: '' },
         triggerInput: '',
         workingHoursStart: '09:00',
         workingHoursEnd: '18:00',
@@ -649,7 +653,7 @@ function veraOnboarding() {
         addOnboardingService() {
             if (!this.newOnboardingSvc.name.trim() || !this.newOnboardingSvc.duration_minutes) return;
             this.onboardingServices.push({ ...this.newOnboardingSvc });
-            this.newOnboardingSvc = { name: '', duration_minutes: 45 };
+            this.newOnboardingSvc = { name: '', duration_minutes: 45, price: '' };
             this.showAddOnboarding = false;
         },
 
@@ -666,7 +670,7 @@ function veraOnboarding() {
                 await fetch('{{ route('vera.services.store') }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                    body: JSON.stringify({ name: svc.name, duration_minutes: svc.duration_minutes }),
+                    body: JSON.stringify({ name: svc.name, duration_minutes: svc.duration_minutes, price: svc.price || null }),
                 }).catch(() => {});
             }
         },

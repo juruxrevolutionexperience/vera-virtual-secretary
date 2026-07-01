@@ -44,7 +44,7 @@ class BookingController extends Controller
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->get(['id', 'name', 'duration_minutes', 'price']);
+            ->get(['id', 'name', 'duration_minutes', 'price', 'description']);
 
         return view('booking.show', [
             'token'        => $token,

@@ -95,6 +95,9 @@
                         <div class="svc-card">
                             <div class="svc-info">
                                 <div class="svc-name">{{ $svc->name }}</div>
+                                @if($svc->description)
+                                <div class="svc-meta" style="margin-top:2px;color:#64748b">{{ $svc->description }}</div>
+                                @endif
                                 <div class="svc-meta">{{ $svc->duration_minutes }} min</div>
                             </div>
                             <div style="display:flex;align-items:center;gap:8px">
