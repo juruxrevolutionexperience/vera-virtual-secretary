@@ -1,3 +1,4 @@
+@use('App\Models\VeraService')
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -28,7 +29,7 @@
             <span class="text-xl font-bold text-gray-900">Vera</span>
         </div>
         <h1 class="text-3xl font-bold text-gray-900 mb-2">Configura tu secretaria de agenda</h1>
-        <p class="text-gray-500">Solo 4 pasos para que Vera empiece a gestionar tus reuniones</p>
+        <p class="text-gray-500">Solo 5 pasos para que Vera empiece a gestionar tus reuniones</p>
     </div>
 
     <!-- Progress Steps -->
@@ -200,8 +201,71 @@
             </div>
         </div>
 
-        <!-- ── PASO 3: Personalidad ────────────────────────────── -->
+        <!-- ── PASO 3: Servicios ──────────────────────────────────── -->
         <div x-show="currentStep === 3" x-transition>
+            <div class="px-8 pt-8 pb-2">
+                <h2 class="text-lg font-bold text-gray-900">¿Qué servicios ofreces?</h2>
+                <p class="text-sm text-gray-500 mt-1">Vera mostrará estos servicios al cliente cuando reserve cita. Cada uno bloquea el tiempo exacto en tu calendario.</p>
+            </div>
+            <div class="px-8 py-6 space-y-4">
+
+                <!-- Plantillas -->
+                <div>
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Elige una plantilla para empezar</p>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach(VeraService::templates() as $key => $tpl)
+                        <button type="button" @click="applyOnboardingTemplate('{{ $key }}')"
+                                class="text-sm px-3 py-1.5 rounded-full border border-gray-300 hover:border-purple-400 hover:text-purple-600 transition-colors">
+                            {{ $tpl['label'] }}
+                        </button>
+                        @endforeach
+                    </div>
+                </div>
+
+                <!-- Lista de servicios -->
+                <div class="space-y-2 min-h-[60px]">
+                    <template x-for="(svc, idx) in onboardingServices" :key="idx">
+                        <div class="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3">
+                            <div class="flex-1 text-sm">
+                                <span class="font-medium text-gray-800" x-text="svc.name"></span>
+                                <span class="text-gray-400 ml-2" x-text="svc.duration_minutes + ' min'"></span>
+                            </div>
+                            <button type="button" @click="onboardingServices.splice(idx, 1)"
+                                    class="text-gray-400 hover:text-red-500 text-lg leading-none px-1">×</button>
+                        </div>
+                    </template>
+                    <p x-show="onboardingServices.length === 0" class="text-xs text-gray-400 py-2">Sin servicios. Usa una plantilla o añade uno manualmente.</p>
+                </div>
+
+                <!-- Añadir manual -->
+                <div x-show="showAddOnboarding" x-cloak class="border border-dashed border-purple-300 rounded-xl px-4 py-3 bg-purple-50/40">
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <input type="text" x-model="newOnboardingSvc.name" placeholder="Nombre del servicio"
+                               class="col-span-2 sm:col-span-1 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none bg-white">
+                        <div class="flex items-center gap-1">
+                            <input type="number" x-model.number="newOnboardingSvc.duration_minutes" min="5" max="480" placeholder="45"
+                                   class="w-20 border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none bg-white">
+                            <span class="text-xs text-gray-500">min</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" @click="addOnboardingService()"
+                                class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-purple-700">Añadir</button>
+                        <button type="button" @click="showAddOnboarding = false"
+                                class="text-xs text-gray-500 px-3 py-1.5 rounded-lg hover:bg-gray-100">Cancelar</button>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <button type="button" @click="showAddOnboarding = !showAddOnboarding" x-show="!showAddOnboarding"
+                            class="text-sm text-purple-600 hover:text-purple-700 font-medium">+ Añadir servicio</button>
+                    <p class="text-xs text-gray-400">Puedes editarlos después en Configuración</p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ── PASO 4: Personalidad ───────────────────────────────── -->
+        <div x-show="currentStep === 4" x-transition>
             <div class="px-8 pt-8 pb-2">
                 <h2 class="text-lg font-bold text-gray-900">Personaliza el comportamiento de Vera</h2>
                 <p class="text-sm text-gray-500 mt-1">Cuanto más sepa Vera de ti, mejor gestionará tus reuniones.</p>
@@ -262,8 +326,8 @@
             </div>
         </div>
 
-        <!-- ── PASO 4: Canales ─────────────────────────────────── -->
-        <div x-show="currentStep === 4" x-transition>
+        <!-- ── PASO 5: Canales ─────────────────────────────────── -->
+        <div x-show="currentStep === 5" x-transition>
             <div class="px-8 pt-8 pb-2">
                 <h2 class="text-lg font-bold text-gray-900">Conecta tu cuenta de Google</h2>
                 <p class="text-sm text-gray-500 mt-1">Una sola conexión da a Vera acceso a tu agenda y a tu email.</p>
@@ -380,18 +444,18 @@
             </button>
             <div x-show="currentStep === 1" class="flex-1"></div>
 
-            <!-- Pasos 1-3: Siguiente -->
+            <!-- Pasos 1-4: Siguiente -->
             <button type="button" @click="nextStep()"
-                    x-show="currentStep < 4"
+                    x-show="currentStep < 5"
                     :disabled="saving"
                     class="ml-auto px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-60">
                 <span x-show="!saving">Continuar →</span>
                 <span x-show="saving">Guardando...</span>
             </button>
 
-            <!-- Paso 4: Finalizar -->
+            <!-- Paso 5: Finalizar -->
             <button type="button" @click="finish()"
-                    x-show="currentStep === 4"
+                    x-show="currentStep === 5"
                     :disabled="saving"
                     class="ml-auto px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-60">
                 <span x-show="!saving">Empezar con Vera →</span>
@@ -407,7 +471,10 @@ function veraOnboarding() {
     return {
         currentStep: 1,
         saving: false,
-        steps: ['Negocio', 'Horario', 'Personalidad', 'Canales'],
+        steps: ['Negocio', 'Horario', 'Servicios', 'Personalidad', 'Canales'],
+        onboardingServices: [],
+        showAddOnboarding: false,
+        newOnboardingSvc: { name: '', duration_minutes: 45 },
         triggerInput: '',
         workingHoursStart: '09:00',
         workingHoursEnd: '18:00',
@@ -451,6 +518,10 @@ function veraOnboarding() {
             this.form.vera_signature = '{{ $config->vera_signature ?? '' }}';
             this.form.unknown_response = '{{ addslashes($config->unknown_response ?? '') }}';
             this.form.escalation_triggers = @json($config->escalation_triggers ?? []);
+            @endif
+            // Pre-fill existing services
+            @if(!empty($existingOnboardingServices))
+            this.onboardingServices = @json($existingOnboardingServices);
             @endif
         },
 
@@ -521,6 +592,10 @@ function veraOnboarding() {
                 payload.meeting_duration = this.form.meeting_duration;
                 payload.buffer_minutes = this.form.buffer_minutes;
             } else if (step === 3) {
+                // Paso de servicios: guardar via API y avanzar
+                await this.saveOnboardingServices();
+                return true;
+            } else if (step === 4) {
                 payload.unknown_response = this.form.unknown_response;
                 payload.escalation_triggers = this.form.escalation_triggers;
                 payload.vera_signature = this.form.vera_signature;
@@ -565,6 +640,37 @@ function veraOnboarding() {
             if (this.currentStep > 1) this.currentStep--;
         },
 
+        applyOnboardingTemplate(key) {
+            const templates = @json($onboardingServiceTemplates);
+            const svcs = templates[key] || [];
+            this.onboardingServices = svcs.map(s => ({ name: s.name, duration_minutes: s.duration_minutes }));
+        },
+
+        addOnboardingService() {
+            if (!this.newOnboardingSvc.name.trim() || !this.newOnboardingSvc.duration_minutes) return;
+            this.onboardingServices.push({ ...this.newOnboardingSvc });
+            this.newOnboardingSvc = { name: '', duration_minutes: 45 };
+            this.showAddOnboarding = false;
+        },
+
+        async saveOnboardingServices() {
+            // Borra los existentes y crea los nuevos
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            await fetch('{{ route('vera.services.template') }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: JSON.stringify({ template: '__clear__' }),
+            }).catch(() => {});
+
+            for (const svc of this.onboardingServices) {
+                await fetch('{{ route('vera.services.store') }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    body: JSON.stringify({ name: svc.name, duration_minutes: svc.duration_minutes }),
+                }).catch(() => {});
+            }
+        },
+
         async finish() {
             this.saving = true;
             try {
@@ -576,7 +682,7 @@ function veraOnboarding() {
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
-                    body: JSON.stringify({ step: 4 }),
+                    body: JSON.stringify({ step: 5 }),
                 });
                 const data = await resp.json();
                 if (data.success && data.redirect) {

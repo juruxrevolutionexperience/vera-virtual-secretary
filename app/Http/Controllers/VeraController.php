@@ -73,9 +73,19 @@ class VeraController extends Controller
             if ($config->business_name)   $startStep = 2;
             if ($config->working_hours)   $startStep = 3;
             if ($config->vera_signature || $config->unknown_response) $startStep = 4;
+            if ($startStep >= 4) $startStep = 5; // canales es el paso final
         }
 
-        return view('vera.onboarding', compact('config', 'startStep'));
+        $onboardingServiceTemplates = collect(VeraService::templates())
+            ->mapWithKeys(fn($t, $k) => [$k => $t['services']])
+            ->toArray();
+
+        $existingOnboardingServices = VeraService::where('user_id', $user->id)
+            ->orderBy('sort_order')->orderBy('id')
+            ->get(['name', 'duration_minutes'])
+            ->toArray();
+
+        return view('vera.onboarding', compact('config', 'startStep', 'onboardingServiceTemplates', 'existingOnboardingServices'));
     }
 
     public function saveOnboarding(Request $request)
@@ -86,8 +96,9 @@ class VeraController extends Controller
         return match ((int) $step) {
             1 => $this->saveOnboardingStep1($request, $user),
             2 => $this->saveOnboardingStep2($request, $user),
-            3 => $this->saveOnboardingStep3($request, $user),
-            4 => $this->saveOnboardingStep4($request, $user),
+            3 => response()->json(['success' => true]), // servicios guardados via /vera/services
+            4 => $this->saveOnboardingStep3($request, $user),
+            5 => $this->saveOnboardingStep4($request, $user),
             default => back()->withErrors(['step' => 'Paso no válido']),
         };
     }
@@ -465,6 +476,12 @@ class VeraController extends Controller
         $user = Auth::user();
         $data = $request->validate(['template' => 'required|string']);
         $templates = VeraService::templates();
+
+        // Caso especial: limpiar todos los servicios sin aplicar plantilla
+        if ($data['template'] === '__clear__') {
+            VeraService::where('user_id', $user->id)->delete();
+            return response()->json(['ok' => true, 'services' => []]);
+        }
 
         if (!isset($templates[$data['template']])) {
             return response()->json(['error' => 'Plantilla no válida'], 422);
