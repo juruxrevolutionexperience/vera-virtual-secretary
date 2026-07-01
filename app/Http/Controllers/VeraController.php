@@ -259,6 +259,8 @@ class VeraController extends Controller
             'working_hours'        => 'sometimes|array',
             'meeting_duration'     => 'sometimes|integer|in:30,45,60',
             'buffer_minutes'       => 'sometimes|integer|in:0,10,15,30',
+            'reminder_1_hours'     => 'sometimes|integer|in:12,24,48,72',
+            'reminder_2_hours'     => 'sometimes|integer|in:1,2,3',
             'unknown_response'     => 'nullable|string|max:500',
             'escalation_triggers'  => 'nullable|array',
             'escalation_triggers.*'=> 'string|max:50',

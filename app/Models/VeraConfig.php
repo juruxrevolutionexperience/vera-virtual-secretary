@@ -24,6 +24,8 @@ class VeraConfig extends Model
         'working_hours',
         'meeting_duration',
         'buffer_minutes',
+        'reminder_1_hours',
+        'reminder_2_hours',
 
         // Comportamiento de Vera
         'unknown_response',
@@ -76,6 +78,8 @@ class VeraConfig extends Model
         'google_token_expires_at' => 'datetime',
         'meeting_duration'        => 'integer',
         'buffer_minutes'          => 'integer',
+        'reminder_1_hours'        => 'integer',
+        'reminder_2_hours'        => 'integer',
         'auto_confirm_bookings'   => 'boolean',
         // Tokens sensibles — cifrados en reposo con APP_KEY
         'google_access_token'  => 'encrypted',

@@ -200,6 +200,35 @@
                     </div>
                 </div>
 
+                <!-- Recordatorios automáticos -->
+                <div class="mt-5 pt-5 border-t border-gray-100">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Recordatorios automáticos al cliente</label>
+                    <p class="text-xs text-gray-500 mb-3">
+                        Vera avisa al cliente antes de su cita. Si la cita es el mismo día, solo se envía el aviso cercano.
+                    </p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1.5">Aviso anticipado</label>
+                            <select name="reminder_1_hours"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
+                                <option value="12" {{ ($config->reminder_1_hours ?? 24) == 12 ? 'selected' : '' }}>12 horas antes</option>
+                                <option value="24" {{ ($config->reminder_1_hours ?? 24) == 24 ? 'selected' : '' }}>24 horas antes</option>
+                                <option value="48" {{ ($config->reminder_1_hours ?? 24) == 48 ? 'selected' : '' }}>48 horas antes</option>
+                                <option value="72" {{ ($config->reminder_1_hours ?? 24) == 72 ? 'selected' : '' }}>72 horas antes</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1.5">Aviso cercano</label>
+                            <select name="reminder_2_hours"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none">
+                                <option value="1" {{ ($config->reminder_2_hours ?? 1) == 1 ? 'selected' : '' }}>1 hora antes</option>
+                                <option value="2" {{ ($config->reminder_2_hours ?? 1) == 2 ? 'selected' : '' }}>2 horas antes</option>
+                                <option value="3" {{ ($config->reminder_2_hours ?? 1) == 3 ? 'selected' : '' }}>3 horas antes</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Confirmación de reservas (web de reservas) -->
                 <div class="mt-5 pt-5 border-t border-gray-100">
                     <label class="flex items-start gap-3 cursor-pointer">
