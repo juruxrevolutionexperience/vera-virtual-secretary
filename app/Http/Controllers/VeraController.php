@@ -509,13 +509,25 @@ class VeraController extends Controller
 
     private function syncServicesToMemory($user): void
     {
-        // Desactiva TODOS los chunks product_info (vera_service + manual legacy)
-        // Los manual legacy son de la sección "Servicios y precios" eliminada;
-        // dejarlos activos junto a los nuevos vera_service genera datos contradictorios en el RAG.
+        $aiUrl    = config('services.ai_service.url');
+        $aiSecret = config('services.ai_service.secret');
+
+        // 1. Borrar FÍSICAMENTE todos los product_info de ChromaDB (incluye huérfanos
+        //    que ya no están en MySQL pero siguen activos en el vector store).
+        try {
+            \Illuminate\Support\Facades\Http::timeout(8)
+                ->withHeaders(['X-Service-Token' => $aiSecret])
+                ->delete("{$aiUrl}/memory/type/{$user->id}/product_info");
+        } catch (\Throwable $e) {
+            \Log::warning('syncServicesToMemory: no se pudo limpiar product_info en ChromaDB', ['error' => $e->getMessage()]);
+        }
+
+        // 2. Desactivar en MySQL y eliminar registros previos de product_info
         VeraMemoryChunk::where('user_id', $user->id)
             ->where('type', 'product_info')
-            ->update(['is_active' => false]);
+            ->delete();
 
+        // 3. Crear chunks frescos desde VeraService
         $services = VeraService::where('user_id', $user->id)
             ->where('is_active', true)
             ->orderBy('sort_order')
@@ -527,13 +539,11 @@ class VeraController extends Controller
             $parts[] = 'Duracion: ' . $svc->duration_minutes . ' minutos.';
             if ($svc->price) $parts[] = 'Precio: ' . $svc->price . '.';
 
-            $content = implode(' ', $parts);
-
             VeraMemoryChunk::create([
                 'user_id'        => $user->id,
                 'type'           => 'product_info',
                 'title'          => $svc->name,
-                'content'        => $content,
+                'content'        => implode(' ', $parts),
                 'keywords_text'  => $svc->name . ' ' . ($svc->description ?? ''),
                 'relevance_tags' => [],
                 'source'         => 'vera_service',
@@ -541,9 +551,9 @@ class VeraController extends Controller
             ]);
         }
 
+        // 4. Sincronizar los chunks nuevos a ChromaDB (vía queue — no bloquea la respuesta)
         try {
             \Illuminate\Support\Facades\Artisan::queue('vera:sync-memory-to-chroma', ['--user' => (string) $user->id]);
-            \Illuminate\Support\Facades\Artisan::queue('vera:cleanup-chroma', ['--user' => (string) $user->id]);
         } catch (\Throwable $e) {
             \Log::warning('syncServicesToMemory: error al encolar sync', ['error' => $e->getMessage()]);
         }

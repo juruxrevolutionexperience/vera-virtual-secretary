@@ -226,6 +226,20 @@ async def deactivate_memory_chunk(user_id: str, chunk_id: str):
     return {"status": "deactivated", "chunk_id": chunk_id}
 
 
+@app.delete("/memory/type/{user_id}/{chunk_type}", dependencies=[__import__('fastapi').Depends(verify_token)])
+async def delete_memory_by_type(user_id: str, chunk_type: str):
+    """Borra físicamente de ChromaDB todos los chunks de un tipo para un usuario.
+    Usado antes de re-sincronizar servicios para garantizar que no quedan huérfanos."""
+    from rag.embeddings import get_collection
+    try:
+        col = get_collection(user_id)
+        if col.count() > 0:
+            col.delete(where={"type": chunk_type})
+    except Exception:
+        pass
+    return {"status": "deleted", "user_id": user_id, "chunk_type": chunk_type}
+
+
 @app.delete("/memory/user/{user_id}", dependencies=[__import__('fastapi').Depends(verify_token)])
 async def delete_user_memory(user_id: str):
     """Elimina toda la memoria vectorial de un usuario (GDPR / baja de cuenta)."""
