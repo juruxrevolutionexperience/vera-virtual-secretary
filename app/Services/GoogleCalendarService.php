@@ -224,9 +224,9 @@ class GoogleCalendarService
             $slots  = [];
             $now    = now();
             $cursor = $dayStart->copy();
-            // Separación real entre huecos: duración + buffer entre reuniones
-            // (config del negocio). Si el buffer es 15 y la cita 45, paso = 60.
-            $step = $duration + $buffer;
+            // Granularidad fija de 15 min: se ofrecen huecos cada 15 min y
+            // isSlotFree comprueba si el bloque (duración + buffer) está libre.
+            $step = 15;
 
             while ($cursor->copy()->addMinutes($duration)->lessThanOrEqualTo($dayEnd)) {
                 $slotEnd = $cursor->copy()->addMinutes($duration);

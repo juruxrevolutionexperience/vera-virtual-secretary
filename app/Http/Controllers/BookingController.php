@@ -46,12 +46,23 @@ class BookingController extends Controller
             ->orderBy('id')
             ->get(['id', 'name', 'duration_minutes', 'price', 'description']);
 
+        $wh = $config->working_hours ?? [];
+        $dayMap = ['monday'=>1,'tuesday'=>2,'wednesday'=>3,'thursday'=>4,'friday'=>5,'saturday'=>6,'sunday'=>0];
+        $enabledDays = collect($wh)
+            ->filter(fn($d) => $d['enabled'] ?? false)
+            ->keys()
+            ->map(fn($k) => $dayMap[$k] ?? null)
+            ->filter()
+            ->values()
+            ->toArray();
+
         return view('booking.show', [
             'token'        => $token,
             'businessName' => $config->business_name ?? 'el negocio',
             'duration'     => $config->meeting_duration ?? 45,
             'tzLabel'      => VeraConfig::humanTimezone($config->timezone ?? null),
             'services'     => $services,
+            'enabledDays'  => $enabledDays,
         ]);
     }
 
