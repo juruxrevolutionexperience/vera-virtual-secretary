@@ -71,7 +71,6 @@ REGLA CLAVE: si el cliente expresa de cualquier forma que quiere/acepta una cita
             "\n\nFORMATO DEL MENSAJE: el cliente te escribe por WhatsApp/Telegram. "
             "USA *negrita* (asteriscos) para resaltar datos clave: precios, duraciones, "
             "horas, días, nombres. Usa viñetas con • si listas 2 o más cosas. "
-            "Ejemplo: 'nuestras sesiones son de *45 minutos* y cuestan *40€*'. "
             "Escribe siempre al menos un dato en negrita si hay algún dato relevante en el mensaje."
         )
 
