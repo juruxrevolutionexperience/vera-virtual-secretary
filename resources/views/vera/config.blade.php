@@ -357,7 +357,7 @@
                                                 </div>
                                             </div>
                                             <div>
-                                                <input type="text" x-model="svc.price" placeholder="Precio (opcional)"
+                                                <input type="text" x-model="svc.price" placeholder="ej: 45€"
                                                        class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none">
                                             </div>
                                         </div>
@@ -398,7 +398,7 @@
                             </div>
                         </div>
                         <div>
-                            <input type="text" x-model="newSvc.price" placeholder="Precio (opcional)"
+                            <input type="text" x-model="newSvc.price" placeholder="ej: 45€"
                                    class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:border-purple-500 outline-none bg-white">
                         </div>
                     </div>

@@ -537,7 +537,13 @@ class VeraController extends Controller
             $parts = [];
             if ($svc->description) $parts[] = $svc->description;
             $parts[] = 'Duracion: ' . $svc->duration_minutes . ' minutos.';
-            if ($svc->price) $parts[] = 'Precio: ' . $svc->price . '.';
+            if ($svc->price) {
+                $price = trim((string) $svc->price);
+                if ($price !== '' && !str_contains($price, '€') && !str_contains($price, 'euro')) {
+                    $price .= '€';
+                }
+                $parts[] = 'Precio: ' . $price . '.';
+            }
 
             VeraMemoryChunk::create([
                 'user_id'        => $user->id,
