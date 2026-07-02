@@ -509,10 +509,11 @@ class VeraController extends Controller
 
     private function syncServicesToMemory($user): void
     {
-        // Desactiva los chunks previos generados desde VeraService
+        // Desactiva TODOS los chunks product_info (vera_service + manual legacy)
+        // Los manual legacy son de la sección "Servicios y precios" eliminada;
+        // dejarlos activos junto a los nuevos vera_service genera datos contradictorios en el RAG.
         VeraMemoryChunk::where('user_id', $user->id)
             ->where('type', 'product_info')
-            ->where('source', 'vera_service')
             ->update(['is_active' => false]);
 
         $services = VeraService::where('user_id', $user->id)
