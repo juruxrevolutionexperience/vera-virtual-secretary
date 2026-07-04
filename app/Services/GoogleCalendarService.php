@@ -278,6 +278,52 @@ class GoogleCalendarService
         }
     }
 
+    /**
+     * Valida (lado servidor) que un inicio de cita cae dentro del horario laboral:
+     * día habilitado, hora dentro de [start, end] y alineada a la granularidad de 15 min.
+     *
+     * La web pública solo muestra huecos válidos, pero un cliente puede hacer POST
+     * directo con cualquier datetime. Este checkeo evita reservas fuera de horario
+     * (madrugadas, días cerrados) que ensuciarían la agenda del negocio.
+     */
+    public function isWithinWorkingHours(User $user, Carbon $start, int $duration): bool
+    {
+        $config = VeraConfig::where('user_id', $user->id)->first();
+        if (!$config) {
+            return false;
+        }
+
+        $tz  = $config->timezone ?: config('app.timezone', 'Europe/Madrid');
+        $wh  = $config->working_hours ?? [];
+        $loc = $start->copy()->setTimezone($tz);
+
+        $dayMap = [0 => 'sunday', 1 => 'monday', 2 => 'tuesday', 3 => 'wednesday', 4 => 'thursday', 5 => 'friday', 6 => 'saturday'];
+        $cfg    = $wh[$dayMap[$loc->dayOfWeek]] ?? null;
+
+        if (empty($cfg) || !($cfg['enabled'] ?? false)) {
+            return false; // día no laborable
+        }
+
+        $dayStart = $loc->copy()->setTimeFromTimeString(($cfg['start'] ?? '09:00') . ':00');
+        $endStr   = $cfg['end'] ?? '18:00';
+        $dayEnd   = $endStr === '00:00'
+            ? $loc->copy()->addDay()->startOfDay()
+            : $loc->copy()->setTimeFromTimeString($endStr . ':00');
+
+        // El inicio no puede ser anterior a la apertura, y el fin (inicio+duración)
+        // no puede pasar del cierre.
+        if ($loc->lessThan($dayStart) || $loc->copy()->addMinutes($duration)->greaterThan($dayEnd)) {
+            return false;
+        }
+
+        // La cita debe alinearse a la granularidad de 15 min desde la apertura.
+        if ($dayStart->diffInMinutes($loc) % 15 !== 0) {
+            return false;
+        }
+
+        return true;
+    }
+
     // ─── CRUD de eventos ──────────────────────────────────────────────────────
 
     /**

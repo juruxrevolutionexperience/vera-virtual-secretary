@@ -127,9 +127,15 @@ class BookingController extends Controller
         $duration = $selectedService?->duration_minutes ?? $config->meeting_duration ?? 45;
         $end      = $start->copy()->addMinutes($duration);
 
-        // Revalidar disponibilidad en servidor (anti doble-booking / manipulación del cliente)
+        // Revalidar en servidor (la web solo muestra huecos válidos, pero un POST
+        // directo podría pedir cualquier datetime):
+        // 1) que sea futuro, 2) dentro del horario laboral y alineado a la
+        // granularidad, 3) sin conflicto en el calendario.
         $calendar = new GoogleCalendarService();
-        if (!$start->isFuture() || !$calendar->checkConflicts($user, $start, $end)) {
+        if (!$start->isFuture() || !$calendar->isWithinWorkingHours($user, $start, $duration)) {
+            return response()->json(['error' => 'Esa hora no está disponible para reservar. Elige un hueco de los ofrecidos.'], 422);
+        }
+        if (!$calendar->checkConflicts($user, $start, $end)) {
             return response()->json(['error' => 'Ese hueco ya no está disponible. Recarga y elige otro.'], 409);
         }
 
