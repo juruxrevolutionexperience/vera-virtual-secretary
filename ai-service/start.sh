@@ -24,6 +24,7 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
-# Arrancar
+# Arrancar — bind SOLO a localhost: Laravel lo llama desde la misma máquina,
+# nunca debe ser accesible desde internet (defensa en profundidad además del token)
 echo "Arrancando Vera ai-service en puerto 8001..."
-"$VENV_PATH/bin/uvicorn" main:app --host 0.0.0.0 --port 8001 --workers 2
+"$VENV_PATH/bin/uvicorn" main:app --host 127.0.0.1 --port 8001 --workers 2

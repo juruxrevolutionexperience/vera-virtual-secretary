@@ -124,7 +124,7 @@ class ProcessIncomingMessage implements ShouldQueue
         if (RateLimiter::tooManyAttempts($rlContact, 12) || RateLimiter::tooManyAttempts($rlUser, 120)) {
             Log::warning('Vera: rate-limit alcanzado — mensaje descartado', [
                 'user_id' => $user->id,
-                'contact' => $this->contactIdentifier,
+                'contact' => $this->maskedContact(),
             ]);
             return;
         }
@@ -200,7 +200,7 @@ class ProcessIncomingMessage implements ShouldQueue
         if ($mode === 'irrelevante') {
             Log::info('📭 Mensaje irrelevante — Vera no responde', [
                 'user_id' => $user->id,
-                'contact' => $this->contactIdentifier,
+                'contact' => $this->maskedContact(),
                 'channel' => $this->channel,
             ]);
 
@@ -237,7 +237,7 @@ class ProcessIncomingMessage implements ShouldQueue
         if ($mode === 'cancelacion') {
             Log::info('[CANCELACION] modo detectado', [
                 'channel'    => $this->channel,
-                'contact'    => $this->contactIdentifier,
+                'contact'    => $this->maskedContact(),
                 'user_id'    => $user->id,
             ]);
 
@@ -263,12 +263,12 @@ class ProcessIncomingMessage implements ShouldQueue
             Log::info('[CANCELACION] busqueda cita', [
                 'has_upcoming' => $hasUpcoming,
                 'channel'      => $this->channel,
-                'contact'      => $this->contactIdentifier,
+                'contact'      => $this->maskedContact(),
             ]);
 
             if ($hasUpcoming) {
                 if ($response && preg_match('/\bte\s+(la\s+|lo\s+)?cancel|\bhe\s+cancelad|qued[ao]\s+cancelad|ya\s+est[áa]\s+cancelad|cancelar[ée]\s+tu|\bla\s+cancelo\b/iu', $response)) {
-                    Log::info('[CANCELACION] falsa confirmacion neutralizada', ['contact' => $this->contactIdentifier]);
+                    Log::info('[CANCELACION] falsa confirmacion neutralizada', ['contact' => $this->maskedContact()]);
                     $response = null;
                 }
 
@@ -280,13 +280,12 @@ class ProcessIncomingMessage implements ShouldQueue
                 $response  = trim((string) $intro) . "\n\n" . $cancelUrl;
 
                 Log::info('[CANCELACION] enlace generado', [
-                    'token'      => $token,
-                    'cancel_url' => $cancelUrl,
+                    'token_prefix' => substr((string) $token, 0, 6) . '…', // nunca el token completo: permitiría cancelar citas ajenas
                 ]);
             } else {
                 Log::warning('[CANCELACION] no se encontro cita futura', [
                     'channel' => $this->channel,
-                    'contact' => $this->contactIdentifier,
+                    'contact' => $this->maskedContact(),
                     'user_id' => $user->id,
                 ]);
                 $response = $response ?: 'No encuentro ninguna cita próxima a tu nombre. Si quieres reservar una nueva, dímelo y te ayudo.';
@@ -344,7 +343,7 @@ class ProcessIncomingMessage implements ShouldQueue
             // enlace), descartamos su texto y caemos al intro neutral. No depende de la
             // suerte del modelo: garantiza que el cliente nunca lea una falsa confirmación.
             if ($response && preg_match('/\bte\s+(lo\s+|la\s+)?reserv|\bte\s+(he\s+)?apunt|\bte\s+(he\s+)?agend|qued[ao]\s+(reservad|agendad|confirmad)|ya\s+est[áa]\s+(reservad|agendad|confirmad)|\bcita\s+(reservad|agendad|confirmad)|\bhe\s+(reservad|apuntad|agendad)/iu', $response)) {
-                Log::info('Falsa confirmación de reserva neutralizada en agenda', ['contact' => $this->contactIdentifier]);
+                Log::info('Falsa confirmación de reserva neutralizada en agenda', ['contact' => $this->maskedContact()]);
                 $response = null; // fuerza el intro neutral de abajo
             }
 
@@ -417,6 +416,24 @@ class ProcessIncomingMessage implements ShouldQueue
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Enmascara un identificador de contacto (email/teléfono) para logs.
+     * RGPD: los logs no deben contener datos personales en claro.
+     * "jose@gmail.com" → "jo***@g***", "+34612345678" → "+34***678"
+     */
+    private function maskedContact(): string
+    {
+        $id = (string) $this->contactIdentifier;
+        if (str_contains($id, '@')) {
+            [$local, $domain] = explode('@', $id, 2);
+            return substr($local, 0, 2) . '***@' . substr($domain, 0, 1) . '***';
+        }
+        if (strlen($id) > 6) {
+            return substr($id, 0, 3) . '***' . substr($id, -3);
+        }
+        return substr($id, 0, 2) . '***';
+    }
 
     private function getOrCreateMeetingRequest(User $user, VeraConfig $config): MeetingRequest
     {

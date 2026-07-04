@@ -1,6 +1,7 @@
 import re
 import json
 import os
+import hmac
 from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional
@@ -17,7 +18,8 @@ app = FastAPI(title="Vera ai-service", version="1.0.0")
 _SECRET = os.getenv("AI_SERVICE_SECRET", "")
 
 def verify_token(x_service_token: Optional[str] = Header(default=None)):
-    if not _SECRET or x_service_token != _SECRET:
+    # compare_digest evita timing attacks sobre el token
+    if not _SECRET or not hmac.compare_digest(x_service_token or "", _SECRET):
         raise HTTPException(status_code=401, detail="No autorizado")
 
 
@@ -226,10 +228,14 @@ async def deactivate_memory_chunk(user_id: str, chunk_id: str):
     return {"status": "deactivated", "chunk_id": chunk_id}
 
 
+_DELETABLE_CHUNK_TYPES = {"product_info", "faq", "business_info", "communication_style", "past_response"}
+
 @app.delete("/memory/type/{user_id}/{chunk_type}", dependencies=[__import__('fastapi').Depends(verify_token)])
 async def delete_memory_by_type(user_id: str, chunk_type: str):
     """Borra físicamente de ChromaDB todos los chunks de un tipo para un usuario.
     Usado antes de re-sincronizar servicios para garantizar que no quedan huérfanos."""
+    if chunk_type not in _DELETABLE_CHUNK_TYPES:
+        raise HTTPException(status_code=422, detail=f"chunk_type no permitido: {chunk_type}")
     from rag.embeddings import get_collection
     try:
         col = get_collection(user_id)
