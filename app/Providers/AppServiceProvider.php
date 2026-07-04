@@ -105,6 +105,13 @@ class AppServiceProvider extends ServiceProvider
             ->onSuccess(function () { \Log::info('✅ Límites mensuales de Vera reseteados'); })
             ->onFailure(function () { \Log::error('❌ Error reseteando límites mensuales de Vera'); });
 
+        // Retención RGPD: anonimizar conversaciones >24 meses — día 2 de cada mes a las 3:30 AM
+        Schedule::command('vera:retention-cleanup --months=24')
+            ->monthlyOn(2, '03:30')
+            ->name('vera-retention-cleanup')
+            ->onSuccess(function () { \Log::info('✅ Retención RGPD aplicada'); })
+            ->onFailure(function () { \Log::error('❌ Error aplicando retención RGPD'); });
+
         // Procesar solicitudes RGPD pendientes — diariamente a las 2 AM
         Schedule::command('security:process-gdpr')
             ->daily()
