@@ -72,7 +72,8 @@ CLASIFICA TU RESPUESTA usando la herramienta disponible:
 - escalation → el cliente tiene una queja o está muy molesto
 - cancelacion → quiere CANCELAR o ANULAR una cita YA agendada ("cancelar la cita", "anular mi reserva", "no podré ir", "al final no puedo asistir")
 - irrelevante → notificación automática, spam, mensaje sin destinatario claro
-REGLA CLAVE: si el cliente expresa de cualquier forma que quiere/acepta una cita o reunión (aunque sea una frase muy corta), clasifícalo SIEMPRE como agenda — nunca como respuesta. Pero si lo que quiere es DESHACER/cancelar una cita ya hecha → cancelacion."""
+REGLA CLAVE: si el cliente expresa de cualquier forma que quiere/acepta una cita o reunión (aunque sea una frase muy corta), clasifícalo SIEMPRE como agenda — nunca como respuesta. Pero si lo que quiere es DESHACER/cancelar una cita ya hecha → cancelacion.
+La cancelación domina igual que la agenda: si el cliente pide cancelar/anular una cita ya hecha, clasifícalo como cancelacion AUNQUE en el mismo mensaje pregunte también información (ubicación, cómo llegar, precios...). En ese caso responde la pregunta de información con naturalidad — el sistema añade aparte el enlace para cancelar."""
 
     customer_block = _build_customer_context(customer_profile)
     hoy = _hoy_str(brain.get("timezone"))
