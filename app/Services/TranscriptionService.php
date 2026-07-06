@@ -24,7 +24,13 @@ class TranscriptionService
                 ->timeout(30)
                 ->attach('file', $audioBytes, $filename)
                 ->post('https://api.groq.com/openai/v1/audio/transcriptions', [
-                    'model' => config('services.groq.whisper_model', 'whisper-large-v3'),
+                    'model'       => config('services.groq.whisper_model', 'whisper-large-v3'),
+                    // Idioma fijo + contexto del dominio: en audios cortos (1-3s) la
+                    // autodetección falla y Whisper confunde palabras clave ("reservar"
+                    // transcrito como "rechazar/cancelar" en pruebas reales 2026-07-06).
+                    'language'    => config('services.groq.whisper_language', 'es'),
+                    'prompt'      => 'Cliente hablando con la recepcionista de un negocio: reservar cita, cancelar cita, horarios, precios, ubicación, cómo llegar.',
+                    'temperature' => 0,
                 ]);
         } catch (\Throwable $e) {
             Log::warning('Whisper: excepción al transcribir', ['error' => $e->getMessage()]);
