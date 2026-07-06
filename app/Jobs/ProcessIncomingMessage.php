@@ -235,17 +235,29 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
-        // Red de seguridad determinista: el clasificador LLM falla en mensajes mixtos
-        // ("quiero cancelar mi cita ¿y cómo llego?") y los marca como respuesta — el
-        // cliente se queda sin su enlace. Si el mensaje pide claramente anular una
-        // cita, forzamos el flujo de cancelación (mismo patrón que el escalado por keyword).
-        if ($mode !== 'cancelacion'
-            && preg_match('/\b(cancelar?|anular?)\b[^.\n]{0,30}\b(cita|reserva|hora)\b|\bcancelaci[oó]n\b|no\s+podr[eé]\s+(ir|asistir)/iu', $this->message)) {
+        // Red de seguridad determinista: el clasificador LLM es poco fiable en mensajes
+        // mixtos y se deja arrastrar por el historial (una conversación que venía de
+        // cancelar hace que un "quiero reservar" salga como cancelacion, y viceversa).
+        // Si el mensaje dice claramente qué quiere el cliente, eso manda (mismo patrón
+        // que el escalado por keyword).
+        $asksCancel = (bool) preg_match('/\b(cancelar?|anular?)\b[^.\n]{0,30}\b(cita|reserva|hora)\b|\bcancelaci[oó]n\b|no\s+podr[eé]\s+(ir|asistir)/iu', $this->message);
+        $asksBook   = (bool) preg_match('/\b(reservar?|agendar?|apuntar(me)?|programar?)\b[^.\n]{0,40}\b(cita|hora|hueco|sesi[oó]n|reserva)\b|\b(quiero|quisiera|me\s+gustar[ií]a|necesito)\s+(una\s+|otra\s+)?(cita|hora|sesi[oó]n)\b/iu', $this->message);
+
+        if ($mode !== 'cancelacion' && $asksCancel) {
             Log::info('[CANCELACION] forzada por keyword (LLM clasifico ' . $mode . ')', [
                 'channel' => $this->channel,
                 'contact' => $this->maskedContact(),
             ]);
             $mode = 'cancelacion';
+        } elseif ($mode === 'cancelacion' && $asksBook && !$asksCancel) {
+            Log::info('[AGENDA] forzada por keyword (LLM clasifico cancelacion)', [
+                'channel' => $this->channel,
+                'contact' => $this->maskedContact(),
+            ]);
+            $mode = 'agenda';
+            // El texto del LLM venía pensado para cancelar — mejor el intro estándar
+            // de reservas que una frase que hable de cancelaciones.
+            $response = null;
         }
 
         // ── Cancelación de cita ────────────────────────────────────────────────
