@@ -84,6 +84,46 @@ class MeetingRequest extends Model
             && $this->cancel_token_expires_at->isFuture();
     }
 
+    /**
+     * Citas futuras (confirmadas/pendientes) de ESTE contacto, sea cual sea el canal.
+     *
+     * Única fuente de verdad para "¿qué citas puede cancelar este cliente?" — la usan
+     * la página /cancelar y el flujo de cancelación de ProcessIncomingMessage. Casa por:
+     * 1. La cadena de conversaciones del contacto (meeting_request_id): cubre las citas
+     *    reservadas desde la web de reservas, que no guardan email ni teléfono.
+     * 2. El identificador según canal: email (en sus variantes "Nombre <email>") o
+     *    teléfono/chat-id en canales de mensajería.
+     * A propósito NO casa por contact_name: dos clientes distintos pueden llamarse igual
+     * y uno vería (y podría cancelar) las citas del otro.
+     */
+    public function upcomingContactMeetings()
+    {
+        $raw   = (string) $this->contact_identifier;
+        $email = preg_match('/<(.+?)>/', $raw, $m)
+            ? strtolower(trim($m[1]))
+            : strtolower(trim($raw));
+
+        $requestIds = self::where('user_id', $this->user_id)
+            ->where('channel', $this->channel)
+            ->where('contact_identifier', $this->contact_identifier)
+            ->pluck('id');
+
+        return Meeting::where('user_id', $this->user_id)
+            ->whereIn('status', ['confirmed', 'pending'])
+            ->where('scheduled_at', '>', now())
+            ->where(function ($q) use ($raw, $email, $requestIds) {
+                $q->whereIn('meeting_request_id', $requestIds);
+                if ($this->channel === 'email') {
+                    $q->orWhere('contact_email', $raw)
+                      ->orWhereRaw('LOWER(contact_email) = ?', [$email])
+                      ->orWhere('contact_email', 'like', '%<' . $email . '>%');
+                } else {
+                    $q->orWhere('contact_phone', $raw);
+                }
+            })
+            ->orderBy('scheduled_at');
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

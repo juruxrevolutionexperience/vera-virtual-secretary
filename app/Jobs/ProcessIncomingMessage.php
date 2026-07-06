@@ -52,6 +52,7 @@ class ProcessIncomingMessage implements ShouldQueue
     public int $timeout = 60;
 
     private ?string $bookingButtonUrl = null;
+    private ?string $cancelButtonUrl  = null;
 
     public function __construct(
         public readonly int     $userId,
@@ -241,24 +242,9 @@ class ProcessIncomingMessage implements ShouldQueue
                 'user_id'    => $user->id,
             ]);
 
-            $hasUpcoming = Meeting::where('user_id', $user->id)
-                ->whereIn('status', ['confirmed', 'pending'])
-                ->where('scheduled_at', '>', now())
-                ->where(function ($q) {
-                    if ($this->channel === 'email') {
-                        $email = preg_match('/<(.+?)>/', $this->contactIdentifier, $m)
-                            ? strtolower(trim($m[1]))
-                            : strtolower(trim($this->contactIdentifier));
-                        $q->where('contact_email', $this->contactIdentifier)
-                          ->orWhereRaw('LOWER(contact_email) = ?', [$email])
-                          ->orWhere('contact_email', 'like', '%<' . $email . '>%');
-                    } else {
-                        $q->where('contact_phone', $this->contactIdentifier)
-                          ->orWhere('contact_name', $this->contactIdentifier)
-                          ->orWhere('contact_name', $this->contactName ?? $this->contactIdentifier);
-                    }
-                })
-                ->exists();
+            // Misma lógica que la página /cancelar (MeetingRequest::upcomingContactMeetings):
+            // si aquí decimos que hay cita, la página TIENE que encontrarla también.
+            $hasUpcoming = $meetingRequest->upcomingContactMeetings()->exists();
 
             Log::info('[CANCELACION] busqueda cita', [
                 'has_upcoming' => $hasUpcoming,
@@ -277,7 +263,15 @@ class ProcessIncomingMessage implements ShouldQueue
                     : $meetingRequest->generateCancelToken();
                 $cancelUrl = rtrim(config('app.url'), '/') . '/cancelar/' . $token;
                 $intro     = $response ?: 'Claro, puedes cancelar tu cita desde aquí:';
-                $response  = trim((string) $intro) . "\n\n" . $cancelUrl;
+
+                // Telegram: botón inline nativo (igual que el enlace de reservas).
+                // Email: GmailService ya lo pinta como botón. WhatsApp: URL en texto.
+                if ($this->channel === 'telegram') {
+                    $this->cancelButtonUrl = $cancelUrl;
+                    $response = trim((string) $intro);
+                } else {
+                    $response = trim((string) $intro) . "\n\n" . $cancelUrl;
+                }
 
                 Log::info('[CANCELACION] enlace generado', [
                     'token_prefix' => substr((string) $token, 0, 6) . '…', // nunca el token completo: permitiría cancelar citas ajenas
@@ -1319,14 +1313,15 @@ class ProcessIncomingMessage implements ShouldQueue
                 return;
             }
 
-            $telegram = new TelegramService();
-            $ok       = $this->bookingButtonUrl
+            $telegram  = new TelegramService();
+            $buttonUrl = $this->bookingButtonUrl ?? $this->cancelButtonUrl;
+            $ok        = $buttonUrl
                 ? $telegram->sendMessageWithButton(
                     $config->telegram_bot_token,
                     $chatId,
                     $response,
-                    '📅 Ver huecos disponibles',
-                    $this->bookingButtonUrl
+                    $this->bookingButtonUrl ? '📅 Ver huecos disponibles' : '🗓 Cancelar mi cita',
+                    $buttonUrl
                 )
                 : $telegram->sendMessage($config->telegram_bot_token, $chatId, $response);
 

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Meeting;
 use App\Models\MeetingRequest;
 use App\Models\VeraActivityLog;
 use App\Models\VeraConfig;
@@ -91,25 +90,12 @@ class CancellationController extends Controller
 
     /**
      * Citas confirmadas/pendientes y FUTURAS del contacto de esta solicitud.
-     * Casa el email en los formatos posibles de contact_email ("Nombre <email>",
-     * email plano o el identificador crudo).
+     * La lógica de matching vive en MeetingRequest::upcomingContactMeetings()
+     * (compartida con el flujo de cancelación del Job) — antes esta página solo
+     * casaba por email y a los clientes de Telegram/WhatsApp les salía vacía.
      */
     private function upcomingMeetings(MeetingRequest $req)
     {
-        $raw   = (string) $req->contact_identifier;
-        $email = preg_match('/<(.+?)>/', $raw, $m)
-            ? strtolower(trim($m[1]))
-            : strtolower(trim($raw));
-
-        return Meeting::where('user_id', $req->user_id)
-            ->whereIn('status', ['confirmed', 'pending'])
-            ->where('scheduled_at', '>', now())
-            ->where(function ($q) use ($raw, $email) {
-                $q->where('contact_email', $raw)
-                  ->orWhereRaw('LOWER(contact_email) = ?', [$email])
-                  ->orWhere('contact_email', 'like', '%<' . $email . '>%');
-            })
-            ->orderBy('scheduled_at')
-            ->get();
+        return $req->upcomingContactMeetings()->get();
     }
 }

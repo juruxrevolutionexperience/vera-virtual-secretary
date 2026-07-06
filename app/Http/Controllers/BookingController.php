@@ -145,6 +145,8 @@ class BookingController extends Controller
             'user_id'            => $user->id,
             'contact_name'       => $req->contact?->name ?? $req->contact_identifier,
             'contact_email'      => $req->channel === 'email' ? $req->contact_identifier : null,
+            'contact_phone'      => $req->channel !== 'email' ? $req->contact_identifier : null,
+            'contact_id'         => $req->contact_id,
             'scheduled_at'       => $start,
             'duration_minutes'   => $duration,
             'timezone'           => $tz,
