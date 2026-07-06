@@ -235,6 +235,19 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
+        // Red de seguridad determinista: el clasificador LLM falla en mensajes mixtos
+        // ("quiero cancelar mi cita ¿y cómo llego?") y los marca como respuesta — el
+        // cliente se queda sin su enlace. Si el mensaje pide claramente anular una
+        // cita, forzamos el flujo de cancelación (mismo patrón que el escalado por keyword).
+        if ($mode !== 'cancelacion'
+            && preg_match('/\b(cancelar?|anular?)\b[^.\n]{0,30}\b(cita|reserva|hora)\b|\bcancelaci[oó]n\b|no\s+podr[eé]\s+(ir|asistir)/iu', $this->message)) {
+            Log::info('[CANCELACION] forzada por keyword (LLM clasifico ' . $mode . ')', [
+                'channel' => $this->channel,
+                'contact' => $this->maskedContact(),
+            ]);
+            $mode = 'cancelacion';
+        }
+
         // ── Cancelación de cita ────────────────────────────────────────────────
         // Igual que con las reservas, Vera NO cancela desde el texto (sería adivinar
         // cuál cita si el cliente tiene varias). Manda el ENLACE de cancelación: el
@@ -286,7 +299,11 @@ class ProcessIncomingMessage implements ShouldQueue
                     'contact' => $this->maskedContact(),
                     'user_id' => $user->id,
                 ]);
-                $response = $response ?: 'No encuentro ninguna cita próxima a tu nombre. Si quieres reservar una nueva, dímelo y te ayudo.';
+                // Si el LLM prometió un enlace que no va a llegar ("te paso el enlace
+                // directo..."), mejor la verdad clara que una promesa vacía.
+                if (!$response || preg_match('/\benlace\b|\blink\b|te\s+(lo\s+|la\s+)?(paso|env[ií]o|mando|doy)|acceso\s+directo/iu', $response)) {
+                    $response = 'No encuentro ninguna cita próxima a tu nombre. Si quieres reservar una nueva, dímelo y te ayudo.';
+                }
             }
         }
 
