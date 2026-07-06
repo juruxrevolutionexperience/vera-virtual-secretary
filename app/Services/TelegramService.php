@@ -74,10 +74,24 @@ class TelegramService
         string $buttonLabel,
         string $buttonUrl
     ): bool {
+        return $this->sendMessageWithButtons($botToken, $chatId, $text, [
+            ['text' => $buttonLabel, 'url' => $buttonUrl],
+        ]);
+    }
+
+    /**
+     * Envía un mensaje con VARIOS botones inline de URL, uno por fila (reservar,
+     * cancelar, cómo llegar... según lo que pida la conversación).
+     * $buttons = [['text' => etiqueta, 'url' => enlace], ...]
+     */
+    public function sendMessageWithButtons(
+        string $botToken,
+        int|string $chatId,
+        string $text,
+        array $buttons
+    ): bool {
         $markup = json_encode([
-            'inline_keyboard' => [[
-                ['text' => $buttonLabel, 'url' => $buttonUrl],
-            ]],
+            'inline_keyboard' => array_map(fn ($b) => [$b], array_values($buttons)),
         ]);
 
         try {

@@ -51,8 +51,12 @@ class ProcessIncomingMessage implements ShouldQueue
     public int $tries   = 1;
     public int $timeout = 60;
 
-    private ?string $bookingButtonUrl = null;
-    private ?string $cancelButtonUrl  = null;
+    /**
+     * Botones inline que acumula la respuesta para Telegram (uno por fila):
+     * reservar, cancelar y/o cómo llegar, según lo que pida la conversación.
+     * [['text' => etiqueta, 'url' => enlace], ...]
+     */
+    private array $telegramButtons = [];
 
     public function __construct(
         public readonly int     $userId,
@@ -267,7 +271,7 @@ class ProcessIncomingMessage implements ShouldQueue
                 // Telegram: botón inline nativo (igual que el enlace de reservas).
                 // Email: GmailService ya lo pinta como botón. WhatsApp: URL en texto.
                 if ($this->channel === 'telegram') {
-                    $this->cancelButtonUrl = $cancelUrl;
+                    $this->telegramButtons[] = ['text' => '🗓 Cancelar mi cita', 'url' => $cancelUrl];
                     $response = trim((string) $intro);
                 } else {
                     $response = trim((string) $intro) . "\n\n" . $cancelUrl;
@@ -287,18 +291,24 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         // UBICACIÓN — si el cliente pregunta dónde está el negocio / cómo llegar y hay un
-        // enlace de Google Maps configurado, lo añadimos para que GmailService lo pinte
-        // como botón "Cómo llegar". Solo en info/respuesta (agenda y cancelación ya tienen
-        // su propio botón). La dirección en texto la dice Vera desde su cerebro.
+        // enlace de Google Maps configurado, lo añadimos. La dirección en texto la dice
+        // Vera desde su cerebro.
+        // Telegram: botón "Cómo llegar" que CONVIVE con el de reservar/cancelar (si el
+        // cliente pregunta cita+ubicación en el mismo mensaje, le llegan los dos botones).
+        // Email: solo en info/respuesta (GmailService pinta UN botón; agenda y cancelación
+        // ya tienen el suyo). WhatsApp: URL en el texto.
         if ($response
-            && !\in_array($mode, ['agenda', 'transicion', 'cancelacion'])
             && (!empty($config->maps_url) || !empty($config->business_address))
             && preg_match('/(\bubic|\bdirecci[oó]n|\blocalizaci[oó]n|d[oó]nde\s+est[aá]is|d[oó]nde\s+os\s|d[oó]nde\s+se\s|c[oó]mo\s+(lleg|llego|se\s+va)|en\s+qu[eé]\s+calle)/iu', $this->message)) {
             // Si el dueño no pegó un enlace, lo generamos GRATIS desde la dirección
-            // (enlace de búsqueda de Google Maps, sin API key). GmailService lo pinta como botón.
+            // (enlace de búsqueda de Google Maps, sin API key).
             $mapsLink = $config->maps_url
                 ?: 'https://www.google.com/maps/search/?api=1&query=' . urlencode($config->business_address);
-            $response = trim($response) . "\n\n" . $mapsLink;
+            if ($this->channel === 'telegram') {
+                $this->telegramButtons[] = ['text' => '📍 Cómo llegar', 'url' => $mapsLink];
+            } elseif (!\in_array($mode, ['agenda', 'transicion', 'cancelacion'])) {
+                $response = trim($response) . "\n\n" . $mapsLink;
+            }
         }
 
         if (\in_array($mode, ['agenda', 'transicion']) && !empty($slots)) {
@@ -348,7 +358,9 @@ class ProcessIncomingMessage implements ShouldQueue
             if ($bookingUrl) {
                 $intro    = $response ?: 'Te dejo mi agenda para que elijas el hueco que mejor te venga:';
                 if ($this->channel === 'telegram') {
-                    $this->bookingButtonUrl = $bookingUrl;
+                    // Al principio: la acción principal (reservar) va como primer botón,
+                    // por delante de "Cómo llegar" si también lo pidió.
+                    array_unshift($this->telegramButtons, ['text' => '📅 Ver huecos disponibles', 'url' => $bookingUrl]);
                     $response = $intro;
                 } else {
                     $response = $intro . "\n\n" . $bookingUrl;
@@ -1313,15 +1325,13 @@ class ProcessIncomingMessage implements ShouldQueue
                 return;
             }
 
-            $telegram  = new TelegramService();
-            $buttonUrl = $this->bookingButtonUrl ?? $this->cancelButtonUrl;
-            $ok        = $buttonUrl
-                ? $telegram->sendMessageWithButton(
+            $telegram = new TelegramService();
+            $ok       = $this->telegramButtons
+                ? $telegram->sendMessageWithButtons(
                     $config->telegram_bot_token,
                     $chatId,
                     $response,
-                    $this->bookingButtonUrl ? '📅 Ver huecos disponibles' : '🗓 Cancelar mi cita',
-                    $buttonUrl
+                    $this->telegramButtons
                 )
                 : $telegram->sendMessage($config->telegram_bot_token, $chatId, $response);
 
