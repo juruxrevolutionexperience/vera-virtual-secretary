@@ -169,6 +169,29 @@ class VeraNotificationService
     }
 
     /**
+     * Avisar al dueño de una consulta que Vera no supo responder (información que
+     * no está en su cerebro). Vera le dice al cliente que se la pasa al dueño —
+     * este aviso es lo que convierte esa frase en verdad y no en promesa vacía.
+     */
+    public function sendUnansweredQuestionAlert(User $user, string $contactName, string $question): ?VeraNotification
+    {
+        $resumen = mb_substr(trim(preg_replace('/\s+/', ' ', $question)), 0, 400);
+
+        $message = "Un cliente ha preguntado algo que no está en la información de Vera, y Vera le ha dicho que se lo pasabas tú personalmente.\n\n"
+            . "Pregunta de {$contactName}:\n\"{$resumen}\"\n\n"
+            . "Respóndele directamente. Y si es algo que van a preguntar más veces, añádelo a la información del negocio de Vera para que la próxima vez conteste ella sola.";
+
+        return $this->createNotification([
+            'user_id' => $user->id,
+            'type'    => 'escalation_alert',
+            'title'   => '❓ Consulta sin respuesta — ' . $contactName,
+            'message' => $message,
+            'data'    => ['contact' => $contactName, 'question' => $resumen],
+            'channel' => 'both',
+        ]);
+    }
+
+    /**
      * Crear notificación
      */
     protected function createNotification(array $data): VeraNotification

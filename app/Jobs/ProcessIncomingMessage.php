@@ -235,6 +235,50 @@ class ProcessIncomingMessage implements ShouldQueue
             return;
         }
 
+        // ── Consulta sin respuesta ─────────────────────────────────────────────
+        // Vera no tiene el dato que le piden. Antes soltaba "déjame consultarlo y
+        // te respondo en breve" — promesa vacía: nadie iba a responder jamás. Ahora
+        // deriva DE VERDAD: aviso al dueño (push + email + in-app) y el cliente
+        // recibe una explicación honesta. El LLM marca estos casos con [CONSULTA];
+        // la regex de promesas es la red de seguridad por si no marca.
+        if ($response) {
+            $marked  = (bool) preg_match('/^\s*\[CONSULTA\]\s*/u', $response);
+            $promise = (bool) preg_match('/d[ée]jame\s+(consultarlo|que\s+lo\s+consulte)|te\s+respondo\s+en\s+breve|lo\s+consulto\s+y\s+te|te\s+(contesto|digo|confirmo)\s+(en\s+breve|m[áa]s\s+tarde|en\s+cuanto\s+pueda)/iu', $response);
+
+            if ($marked || $promise) {
+                $ownerName = $config->owner_name ?: 'el equipo';
+                $response  = $marked
+                    ? trim(preg_replace('/^\s*\[CONSULTA\]\s*/u', '', $response))
+                    : "Ese dato no lo tengo yo a mano, así que se lo paso ahora mismo a {$ownerName} para que te responda directamente. ¿Te puedo ayudar con algo más mientras tanto?";
+
+                try {
+                    (new VeraNotificationService())->sendUnansweredQuestionAlert(
+                        $user,
+                        $this->contactName ?? $this->contactIdentifier,
+                        $this->message
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('Consulta sin respuesta: fallo el aviso al dueño', ['error' => $e->getMessage()]);
+                }
+
+                VeraActivityLog::record([
+                    'user_id'              => $user->id,
+                    'activity_type'        => 'escalation',
+                    'title'                => 'Consulta sin respuesta de ' . ($this->contactName ?? $this->contactIdentifier),
+                    'description'          => 'El cliente preguntó algo que no está en la información de Vera: "' . mb_substr(trim($this->message), 0, 200) . '". Se avisó al dueño para que responda directamente.',
+                    'metadata'             => ['channel' => $this->channel, 'contact' => $this->contactIdentifier, 'via' => 'unknown_info'],
+                    'counts_towards_limit' => false,
+                    'status'               => 'completed',
+                ]);
+
+                Log::info('[CONSULTA] derivada al dueño', [
+                    'user_id' => $user->id,
+                    'contact' => $this->maskedContact(),
+                    'marcada' => $marked,
+                ]);
+            }
+        }
+
         // Red de seguridad determinista: el clasificador LLM es poco fiable en mensajes
         // mixtos y se deja arrastrar por el historial (una conversación que venía de
         // cancelar hace que un "quiero reservar" salga como cancelacion, y viceversa).
