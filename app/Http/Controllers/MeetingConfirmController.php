@@ -102,7 +102,7 @@ class MeetingConfirmController extends Controller
         $config   = VeraConfig::where('user_id', $meetingRequest->user_id)->first();
         $negocio  = $config?->business_name ?: 'nuestro negocio';
         $owner    = $config?->owner_name ?: 'el equipo';
-        $closeMsg = "¡Me alegro de que hayamos podido ayudarte! A partir de ahora vuelves a hablar conmigo, Vera, la asistente virtual de {$negocio}. Lo que necesites me lo dices, y si quieres volver a hablar con {$owner}, solo tienes que pedírmelo.";
+        $closeMsg = "Tu consulta ha quedado atendida. ¡Gracias por la paciencia! 🙂\n\nA partir de ahora vuelvo a atenderte yo, Vera, la asistente virtual de {$negocio}: citas, horarios o cualquier duda del negocio. Y si en algún momento necesitas hablar de nuevo con {$owner}, solo tienes que pedírmelo.";
 
         // Aviso de reactivación solo en canales de mensajería (en email la
         // conversación vive en el hilo de Gmail). Best effort: si no se puede

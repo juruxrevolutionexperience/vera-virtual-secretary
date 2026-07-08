@@ -255,7 +255,22 @@ class ProcessIncomingMessage implements ShouldQueue
 
         if ($escalate) {
             $this->handleEscalation($user, $meetingRequest, $aiResponse);
-            $this->sendResponse($user, 'He recibido tu mensaje y lo he trasladado al equipo. En breve se pondrán en contacto contigo personalmente.', $config);
+
+            // Acuse HARDCODEADO (cero LLM en momentos delicados) pero humano:
+            // variantes con el nombre del dueño, no siempre la misma frase robótica.
+            $ownerName = $config->owner_name ?: 'el equipo';
+            $acks = [
+                "Siento mucho que hayas tenido esta experiencia. Le paso tu mensaje ahora mismo a {$ownerName} para que lo revise personalmente; te responderá por aquí lo antes posible.",
+                "Lamento las molestias, de verdad. Acabo de trasladarle tu mensaje a {$ownerName} para que lo atienda personalmente; en cuanto pueda te responde por aquí.",
+                "Gracias por contármelo, y siento el mal rato. Tu mensaje ya está en manos de {$ownerName}: te responderá personalmente por aquí lo antes posible.",
+            ];
+            $ack = $acks[array_rand($acks)];
+
+            // Guardar en el hilo la queja (transcrita si fue audio) y el acuse:
+            // sin esto la Bandeja mostraba la conversación SIN el mensaje clave.
+            $this->saveToHistory($meetingRequest, $ack);
+
+            $this->sendResponse($user, $ack, $config);
             $this->dispatchSynthesis($meetingRequest);
             return;
         }
@@ -1409,17 +1424,17 @@ class ProcessIncomingMessage implements ShouldQueue
      * variantes para no sonar clónica. Solo una vez por contacto: se registra
      * ai_disclosed_at en su metadata como constancia de cuándo se le informó.
      */
-    private function sendAiDisclosureIfFirst(callable $send, ?VeraConfig $config): void
+    private function sendAiDisclosureIfFirst(callable $send, ?VeraConfig $config): bool
     {
         if (!$this->firstInteraction || !$this->contactModel) {
-            return;
+            return false;
         }
 
         $negocio = $config?->business_name ?: 'nuestro negocio';
         $intros  = [
-            "¡Hola! Soy Vera, la asistente virtual de {$negocio} 🤖. Yo me encargo de atenderte por aquí.",
-            "¡Hola! Te atiende Vera, la asistente virtual de {$negocio} 🤖. Encantada de ayudarte.",
-            "¡Hola! Soy Vera, la asistente virtual de {$negocio} 🤖. Un placer atenderte.",
+            "¡Hola! Soy Vera, la asistente virtual de {$negocio} 🤖. Me encargo de la agenda y de resolver tus dudas sobre el negocio.",
+            "¡Hola! Te atiende Vera, la asistente virtual de {$negocio} 🤖. Estoy aquí para ayudarte con tu cita o con cualquier consulta.",
+            "¡Hola! Soy Vera, la asistente virtual de {$negocio} 🤖. Encantada de atenderte: citas, horarios, dudas... aquí estoy.",
         ];
 
         try {
@@ -1435,6 +1450,31 @@ class ProcessIncomingMessage implements ShouldQueue
             ]);
             $this->firstInteraction = false;
         }
+
+        return (bool) $ok;
+    }
+
+    /**
+     * Tras la presentación hardcodeada, un saludo extra del LLM sobra: quedaba
+     * "¡Hola! Soy Vera..." seguido de "Hola Freedrip21, ¿en qué te puedo ayudar?".
+     * El LLM ignora la instrucción de no saludar, así que se recorta en determinista.
+     */
+    private function stripLeadingGreeting(string $response): string
+    {
+        $clean = preg_replace(
+            '/^\s*[¡!]*\s*(hola|buenas(\s+(tardes|noches))?|buenos\s+d[ií]as|hello|hey)\b[^\n.!?¿]{0,40}[,.!?]?\s*/iu',
+            '',
+            $response,
+            1
+        );
+        $clean = trim((string) $clean);
+
+        if (mb_strlen($clean) < 8) {
+            // El cliente solo saludó: la pregunta de cortesía cierra la presentación.
+            return '¿En qué puedo ayudarte? 😊';
+        }
+
+        return mb_strtoupper(mb_substr($clean, 0, 1)) . mb_substr($clean, 1);
     }
 
     /**
@@ -1486,7 +1526,9 @@ class ProcessIncomingMessage implements ShouldQueue
             // presentación HARDCODEADA como mensaje aparte, antes de la respuesta.
             // Pool de variantes para no sonar clónica entre clientes; se registra
             // ai_disclosed_at en el contacto para no repetirla nunca.
-            $this->sendAiDisclosureIfFirst(fn (string $intro) => $telegram->sendMessage($config->telegram_bot_token, $chatId, $intro), $config);
+            if ($this->sendAiDisclosureIfFirst(fn (string $intro) => $telegram->sendMessage($config->telegram_bot_token, $chatId, $intro), $config)) {
+                $response = $this->stripLeadingGreeting($response);
+            }
             $ok       = $this->telegramButtons
                 ? $telegram->sendMessageWithButtons(
                     $config->telegram_bot_token,
@@ -1504,12 +1546,15 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         if ($this->channel === 'whatsapp' && $config?->hasWhatsAppConnected()) {
-            $this->sendAiDisclosureIfFirst(fn (string $intro) => (new WhatsAppService())->sendText(
+            $disclosed = $this->sendAiDisclosureIfFirst(fn (string $intro) => (new WhatsAppService())->sendText(
                 $config->whatsapp_phone_number_id,
                 $config->whatsapp_access_token,
                 $this->contactIdentifier,
                 $intro
             ), $config);
+            if ($disclosed) {
+                $response = $this->stripLeadingGreeting($response);
+            }
 
             $ok = (new WhatsAppService())->sendText(
                 $config->whatsapp_phone_number_id,
