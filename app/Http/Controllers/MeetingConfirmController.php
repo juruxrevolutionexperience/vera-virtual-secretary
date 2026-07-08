@@ -90,26 +90,43 @@ class MeetingConfirmController extends Controller
     }
 
     /**
-     * Marca una incidencia/queja escalada como gestionada por el dueño.
-     * No cambia el estado del request (sigue 'escalated' como histórico), solo
-     * añade context->handled_at para que salga del listado de "Requiere tu atención".
+     * Cierra la incidencia y devuelve la conversación a Vera. El cliente recibe
+     * un mensaje HARDCODEADO (cero LLM, cero delirio) que le explica que su
+     * consulta quedó atendida, que vuelve a hablar con Vera (IA) y que puede
+     * volver a pedir hablar con el dueño cuando quiera.
      */
     public function resolveEscalation(Request $request, MeetingRequest $meetingRequest): RedirectResponse
     {
         abort_if($meetingRequest->user_id !== auth()->id(), 403);
 
+        $config   = VeraConfig::where('user_id', $meetingRequest->user_id)->first();
+        $negocio  = $config?->business_name ?: 'nuestro negocio';
+        $owner    = $config?->owner_name ?: 'el equipo';
+        $closeMsg = "¡Me alegro de que hayamos podido ayudarte! A partir de ahora vuelves a hablar conmigo, Vera, la asistente virtual de {$negocio}. Lo que necesites me lo dices, y si quieres volver a hablar con {$owner}, solo tienes que pedírmelo.";
+
+        // Aviso de reactivación solo en canales de mensajería (en email la
+        // conversación vive en el hilo de Gmail). Best effort: si no se puede
+        // enviar, la incidencia se cierra igualmente.
+        if (in_array($meetingRequest->channel, ['telegram', 'whatsapp'])) {
+            $sent = $this->sendViaClientChannel($meetingRequest, $config, $closeMsg);
+            if ($sent) {
+                $meetingRequest->conversation?->addMessage('assistant', $closeMsg);
+            }
+        }
+
         $ctx = $meetingRequest->context ?? [];
         $ctx['handled_at'] = now()->toIso8601String();
         $meetingRequest->update(['context' => $ctx]);
 
-        return back()->with('success', 'Incidencia marcada como gestionada.');
+        return back()->with('success', 'Incidencia cerrada. Vera vuelve a atender a este cliente.');
     }
 
     /**
      * Responder al cliente VÍA VERA desde la Bandeja: el dueño escribe, Vera lo
      * envía por el canal original presentándolo ella ("Ya me ha pasado X la
-     * respuesta: ..."), y la incidencia queda gestionada automáticamente — con lo
-     * que Vera vuelve a hablar con ese contacto. Canales: telegram y whatsapp
+     * respuesta: ..."). La incidencia NO se cierra: la conversación sigue abierta
+     * (con Vera en silencio) para el ida y vuelta que haga falta, hasta que el
+     * dueño pulse "Cerrar y devolver a Vera". Canales: telegram y whatsapp
      * (email ya tiene "Abrir en Gmail", que responde en el hilo real).
      */
     public function respondViaVera(Request $request, MeetingRequest $meetingRequest): RedirectResponse
@@ -124,47 +141,29 @@ class MeetingConfirmController extends Controller
             ]
         );
 
+        if (!in_array($meetingRequest->channel, ['telegram', 'whatsapp'])) {
+            return back()->with('error', 'Este canal no admite respuesta directa desde la Bandeja. Para email, usa "Abrir en Gmail".');
+        }
+
         $config = VeraConfig::where('user_id', $meetingRequest->user_id)->first();
         $owner  = $config?->owner_name ?: 'el equipo';
         $text   = "Ya me ha pasado {$owner} la respuesta:\n\n" . trim($data['reply']);
 
-        if ($meetingRequest->channel === 'telegram' && $config?->telegram_bot_token) {
-            // chat_id numérico persistido en el contacto ("@username" no vale para
-            // chats privados). Fallback: telegram_id si es numérico (sin username).
-            $contact = $meetingRequest->contact
-                ?? \App\Models\Contact::where('user_id', $meetingRequest->user_id)
-                    ->where('telegram_id', $meetingRequest->contact_identifier)->first();
-            $chatId = $contact?->metadata['telegram_chat_id']
-                ?? (is_numeric($contact?->telegram_id) ? $contact->telegram_id : null);
-
-            if (!$chatId) {
-                Log::warning('responder-via-vera: contacto telegram sin chat_id persistido', [
-                    'meeting_request_id' => $meetingRequest->id,
-                ]);
-                return back()->with('error', 'Aún no tengo guardado el canal de este cliente (escribió antes de la última actualización). En cuanto vuelva a escribir, podrás responderle desde aquí.');
-            }
-
-            $sent = (new \App\Services\TelegramService())->sendMessage($config->telegram_bot_token, $chatId, $text);
-        } elseif ($meetingRequest->channel === 'whatsapp' && $config?->hasWhatsAppConnected()) {
-            $sent = (new \App\Services\WhatsAppService())->sendText(
-                $config->whatsapp_phone_number_id,
-                $config->whatsapp_access_token,
-                $meetingRequest->contact_identifier,
-                $text
-            );
-        } else {
-            return back()->with('error', 'Este canal no admite respuesta directa desde la Bandeja. Para email, usa "Abrir en Gmail".');
+        $sent = $this->sendViaClientChannel($meetingRequest, $config, $text);
+        if ($sent === null) {
+            return back()->with('error', 'Aún no tengo guardado el canal de este cliente (escribió antes de la última actualización). En cuanto vuelva a escribir, podrás responderle desde aquí.');
         }
-
         if (!$sent) {
             return back()->with('error', 'No se pudo enviar la respuesta. Inténtalo de nuevo en un momento.');
         }
 
-        // Enviada → la incidencia queda gestionada (y Vera se reactiva con el contacto).
+        // Guardar en el hilo (visible en la Bandeja y en el historial que verá
+        // Vera cuando se reactive) y marcar que el dueño ya contestó lo último.
+        $meetingRequest->conversation?->addMessage('assistant', $text);
+
         $ctx = $meetingRequest->context ?? [];
-        $ctx['handled_at']  = now()->toIso8601String();
-        $ctx['owner_reply'] = trim($data['reply']);
-        $ctx['replied_at']  = now()->toIso8601String();
+        $ctx['owner_replied_at'] = now()->toIso8601String();
+        unset($ctx['last_client_reply_at']);
         $meetingRequest->update(['context' => $ctx]);
 
         \App\Models\VeraActivityLog::record([
@@ -177,6 +176,44 @@ class MeetingConfirmController extends Controller
             'status'               => 'completed',
         ]);
 
-        return back()->with('success', 'Respuesta enviada al cliente vía Vera. Incidencia gestionada.');
+        return back()->with('success', 'Respuesta enviada. La conversación sigue abierta: cuando esté resuelta, ciérrala para devolvérsela a Vera.');
+    }
+
+    /**
+     * Envía un texto al cliente por su canal de mensajería (telegram/whatsapp).
+     * Devuelve true/false según el envío, o null si el contacto de Telegram aún
+     * no tiene chat_id persistido (escribió antes de que se guardara).
+     */
+    private function sendViaClientChannel(MeetingRequest $meetingRequest, ?VeraConfig $config, string $text): ?bool
+    {
+        if ($meetingRequest->channel === 'telegram' && $config?->telegram_bot_token) {
+            // chat_id numérico persistido en el contacto ("@username" no vale para
+            // chats privados). Fallback: telegram_id si es numérico (sin username).
+            $contact = $meetingRequest->contact
+                ?? \App\Models\Contact::where('user_id', $meetingRequest->user_id)
+                    ->where('telegram_id', $meetingRequest->contact_identifier)->first();
+            $chatId = $contact?->metadata['telegram_chat_id']
+                ?? (is_numeric($contact?->telegram_id) ? $contact->telegram_id : null);
+
+            if (!$chatId) {
+                Log::warning('bandeja: contacto telegram sin chat_id persistido', [
+                    'meeting_request_id' => $meetingRequest->id,
+                ]);
+                return null;
+            }
+
+            return (new \App\Services\TelegramService())->sendMessage($config->telegram_bot_token, $chatId, $text);
+        }
+
+        if ($meetingRequest->channel === 'whatsapp' && $config?->hasWhatsAppConnected()) {
+            return (new \App\Services\WhatsAppService())->sendText(
+                $config->whatsapp_phone_number_id,
+                $config->whatsapp_access_token,
+                $meetingRequest->contact_identifier,
+                $text
+            );
+        }
+
+        return false;
     }
 }

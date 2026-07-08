@@ -192,6 +192,25 @@ class VeraNotificationService
     }
 
     /**
+     * Avisar al dueño de que el cliente ha respondido en una incidencia ABIERTA
+     * (conversación dueño-cliente vía Vera desde la Bandeja). Solo campanita/push,
+     * sin email: en un ida y vuelta de varios mensajes el correo sería spam.
+     */
+    public function sendEscalationReplyAlert(User $user, string $contactName, string $clientMessage): ?VeraNotification
+    {
+        $resumen = mb_substr(trim(preg_replace('/\s+/', ' ', $clientMessage)), 0, 300);
+
+        return $this->createNotification([
+            'user_id' => $user->id,
+            'type'    => 'escalation_alert',
+            'title'   => '💬 ' . $contactName . ' ha respondido',
+            'message' => "El cliente ha respondido en la conversación abierta:\n\"{$resumen}\"\n\nContéstale desde la Bandeja.",
+            'data'    => ['contact' => $contactName],
+            'channel' => 'push',
+        ]);
+    }
+
+    /**
      * Crear notificación
      */
     protected function createNotification(array $data): VeraNotification

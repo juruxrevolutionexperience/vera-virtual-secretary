@@ -155,13 +155,30 @@ class ProcessIncomingMessage implements ShouldQueue
         // ── 1. Crear o recuperar la solicitud de reunión en curso ─────────────
         $meetingRequest = $this->getOrCreateMeetingRequest($user, $config);
 
-        // ── 2. Silencio total si hay una queja escalada sin resolver ─────────
-        // Vera ya mandó el aviso cuando detectó la queja. Mientras el dueño
-        // no la marque como "gestionada" (context->handled_at), Vera no interviene.
-        // Una vez gestionada, Vera vuelve a responder con normalidad.
+        // ── 2. Silencio de Vera si hay una incidencia escalada sin cerrar ────
+        // Vera no interviene, pero la conversación dueño-cliente sigue viva: el
+        // mensaje se guarda en el hilo (visible en la Bandeja) y se avisa al dueño
+        // por campanita para que conteste desde ahí, sin tener que coger el móvil.
+        // Vera vuelve a hablar cuando el dueño cierra la incidencia.
         $escaladaSinResolver = $meetingRequest->state === 'escalated'
             && empty($meetingRequest->context['handled_at']);
         if ($escaladaSinResolver) {
+            $this->saveToHistory($meetingRequest, null);
+
+            $ctx = $meetingRequest->context ?? [];
+            $ctx['last_message']         = $this->message;
+            $ctx['last_client_reply_at'] = now()->toIso8601String();
+            $meetingRequest->update(['context' => $ctx]);
+
+            try {
+                (new VeraNotificationService())->sendEscalationReplyAlert(
+                    $user,
+                    $this->contactName ?? $this->contactIdentifier,
+                    $this->message
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Incidencia abierta: fallo el aviso de respuesta del cliente', ['error' => $e->getMessage()]);
+            }
             return;
         }
 

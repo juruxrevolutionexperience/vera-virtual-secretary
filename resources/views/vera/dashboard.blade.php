@@ -156,6 +156,10 @@
                     $gmailUrl = $gmailMsgId
                         ? 'https://mail.google.com/mail/u/0/#all/' . $gmailMsgId
                         : ($clientEmail ? 'https://mail.google.com/mail/u/0/#search/from:' . urlencode($clientEmail) : null);
+                    // Hilo de la conversación (últimos mensajes): la incidencia es un
+                    // chat dueño-cliente hasta que se cierre, no un aviso de un solo golpe.
+                    $thread = $inc->conversation?->messages()->orderByDesc('created_at')->limit(8)->get()->reverse()->values() ?? collect();
+                    $clientReplied = !empty($inc->context['last_client_reply_at']);
                 @endphp
                 <div class="px-5 py-4" x-data="{ replying: false }">
                     <div class="flex items-start justify-between gap-4 mb-2">
@@ -167,11 +171,29 @@
                                 · {{ $inc->updated_at->diffForHumans() }}
                             </p>
                         </div>
-                        <span class="flex-shrink-0 text-[11px] uppercase tracking-wide font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded">Queja</span>
+                        <div class="flex-shrink-0 flex items-center gap-1.5">
+                            @if($clientReplied)
+                            <span class="text-[11px] uppercase tracking-wide font-semibold text-white bg-purple-600 px-2 py-0.5 rounded animate-pulse">💬 Ha respondido</span>
+                            @endif
+                            <span class="text-[11px] uppercase tracking-wide font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded">Queja</span>
+                        </div>
                     </div>
-                    <!-- Mensaje completo del cliente -->
+                    <!-- Hilo de la conversación (o el mensaje suelto si aún no hay hilo) -->
+                    @if($thread->isNotEmpty())
+                    <div class="bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 max-h-56 overflow-y-auto space-y-2">
+                        @foreach($thread as $msg)
+                        <div class="flex {{ $msg->role === 'user' ? 'justify-start' : 'justify-end' }}">
+                            <div class="max-w-[85%] text-sm rounded-lg px-3 py-1.5 whitespace-pre-line {{ $msg->role === 'user' ? 'bg-white border border-gray-200 text-gray-800' : 'bg-purple-50 border border-purple-100 text-purple-900' }}">
+                                <span class="block text-[10px] font-semibold {{ $msg->role === 'user' ? 'text-gray-400' : 'text-purple-400' }}">{{ $msg->role === 'user' ? 'Cliente' : 'Vera' }} · {{ $msg->created_at->format('d/m H:i') }}</span>
+                                {{ $msg->content }}
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    @else
                     <div class="bg-gray-50 border-l-2 border-red-300 rounded px-3 py-2 text-sm text-gray-700 whitespace-pre-line">{{ $fullMsg }}</div>
-                    <p class="text-[11px] text-amber-600 mt-2">🔇 Vera está en silencio con este contacto hasta que gestiones esta incidencia — respóndele o márcala como gestionada.</p>
+                    @endif
+                    <p class="text-[11px] text-amber-600 mt-2">🔇 Vera está en silencio con este contacto. La conversación es tuya: responde lo que haga falta y, cuando esté resuelta, ciérrala para devolvérsela a Vera.</p>
                     <!-- Acciones: responder + marcar gestionada -->
                     <div class="flex items-center gap-2 mt-3">
                         @if(in_array($inc->channel, ['telegram', 'whatsapp']))
@@ -202,8 +224,8 @@
                         <form action="{{ route('incidencias.gestionada', $inc) }}" method="POST">
                             @csrf
                             <button type="submit" class="px-3 py-1.5 bg-white border border-red-200 text-red-700 hover:bg-red-50 text-xs font-medium rounded-lg transition-colors"
-                                onclick="return confirm('¿Marcar esta incidencia como gestionada?')">
-                                ✓ Marcar gestionada
+                                onclick="return confirm('¿Cerrar la incidencia? El cliente recibirá un mensaje avisando de que Vera vuelve a atenderle.')">
+                                ✓ Cerrar y devolver a Vera
                             </button>
                         </form>
                     </div>
