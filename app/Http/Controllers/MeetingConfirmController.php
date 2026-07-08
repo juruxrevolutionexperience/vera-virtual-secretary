@@ -104,4 +104,79 @@ class MeetingConfirmController extends Controller
 
         return back()->with('success', 'Incidencia marcada como gestionada.');
     }
+
+    /**
+     * Responder al cliente VÍA VERA desde la Bandeja: el dueño escribe, Vera lo
+     * envía por el canal original presentándolo ella ("Ya me ha pasado X la
+     * respuesta: ..."), y la incidencia queda gestionada automáticamente — con lo
+     * que Vera vuelve a hablar con ese contacto. Canales: telegram y whatsapp
+     * (email ya tiene "Abrir en Gmail", que responde en el hilo real).
+     */
+    public function respondViaVera(Request $request, MeetingRequest $meetingRequest): RedirectResponse
+    {
+        abort_if($meetingRequest->user_id !== auth()->id(), 403);
+
+        $data = $request->validate(
+            ['reply' => ['required', 'string', 'max:2000']],
+            [
+                'reply.required' => 'Escribe la respuesta antes de enviar.',
+                'reply.max'      => 'La respuesta no puede pasar de 2000 caracteres.',
+            ]
+        );
+
+        $config = VeraConfig::where('user_id', $meetingRequest->user_id)->first();
+        $owner  = $config?->owner_name ?: 'el equipo';
+        $text   = "Ya me ha pasado {$owner} la respuesta:\n\n" . trim($data['reply']);
+
+        if ($meetingRequest->channel === 'telegram' && $config?->telegram_bot_token) {
+            // chat_id numérico persistido en el contacto ("@username" no vale para
+            // chats privados). Fallback: telegram_id si es numérico (sin username).
+            $contact = $meetingRequest->contact
+                ?? \App\Models\Contact::where('user_id', $meetingRequest->user_id)
+                    ->where('telegram_id', $meetingRequest->contact_identifier)->first();
+            $chatId = $contact?->metadata['telegram_chat_id']
+                ?? (is_numeric($contact?->telegram_id) ? $contact->telegram_id : null);
+
+            if (!$chatId) {
+                Log::warning('responder-via-vera: contacto telegram sin chat_id persistido', [
+                    'meeting_request_id' => $meetingRequest->id,
+                ]);
+                return back()->with('error', 'Aún no tengo guardado el canal de este cliente (escribió antes de la última actualización). En cuanto vuelva a escribir, podrás responderle desde aquí.');
+            }
+
+            $sent = (new \App\Services\TelegramService())->sendMessage($config->telegram_bot_token, $chatId, $text);
+        } elseif ($meetingRequest->channel === 'whatsapp' && $config?->hasWhatsAppConnected()) {
+            $sent = (new \App\Services\WhatsAppService())->sendText(
+                $config->whatsapp_phone_number_id,
+                $config->whatsapp_access_token,
+                $meetingRequest->contact_identifier,
+                $text
+            );
+        } else {
+            return back()->with('error', 'Este canal no admite respuesta directa desde la Bandeja. Para email, usa "Abrir en Gmail".');
+        }
+
+        if (!$sent) {
+            return back()->with('error', 'No se pudo enviar la respuesta. Inténtalo de nuevo en un momento.');
+        }
+
+        // Enviada → la incidencia queda gestionada (y Vera se reactiva con el contacto).
+        $ctx = $meetingRequest->context ?? [];
+        $ctx['handled_at']  = now()->toIso8601String();
+        $ctx['owner_reply'] = trim($data['reply']);
+        $ctx['replied_at']  = now()->toIso8601String();
+        $meetingRequest->update(['context' => $ctx]);
+
+        \App\Models\VeraActivityLog::record([
+            'user_id'              => $meetingRequest->user_id,
+            'activity_type'        => 'response_sent',
+            'title'                => 'Respuesta del dueño enviada vía Vera a ' . ($meetingRequest->contact?->name ?? $meetingRequest->contact_identifier),
+            'description'          => mb_substr(trim($data['reply']), 0, 200),
+            'metadata'             => ['channel' => $meetingRequest->channel, 'contact' => $meetingRequest->contact_identifier, 'via' => 'bandeja_reply'],
+            'counts_towards_limit' => false,
+            'status'               => 'completed',
+        ]);
+
+        return back()->with('success', 'Respuesta enviada al cliente vía Vera. Incidencia gestionada.');
+    }
 }

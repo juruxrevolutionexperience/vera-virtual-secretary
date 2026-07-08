@@ -624,6 +624,12 @@ class ProcessIncomingMessage implements ShouldQueue
     {
         $telegramId = $this->contactIdentifier; // "@username" o "chat_id" numérico
 
+        // chat_id NUMÉRICO del webhook: es lo único que acepta la API de Telegram
+        // para escribir a un chat privado (el "@username" no vale). Se persiste en
+        // metadata para poder responder al cliente EN FRÍO: recordatorios y
+        // "Responder vía Vera" desde la Bandeja.
+        $chatId = $this->metadata['chat_id'] ?? null;
+
         $contact = Contact::where('user_id', $user->id)
             ->where('telegram_id', $telegramId)
             ->first();
@@ -636,12 +642,19 @@ class ProcessIncomingMessage implements ShouldQueue
                 'name'             => $this->contactName,
                 'first_contact_at' => now(),
                 'last_contact_at'  => now(),
+                'metadata'         => $chatId ? ['telegram_chat_id' => (string) $chatId] : null,
             ]);
         } else {
             $contact->touch('last_contact_at');
             // Actualizar nombre si Telegram nos lo da y aún no lo teníamos
             if ($this->contactName && !$contact->name) {
                 $contact->update(['name' => $this->contactName]);
+            }
+            // Guardar/actualizar el chat_id sin pisar el resto del metadata (vera_insights...)
+            if ($chatId && (($contact->metadata['telegram_chat_id'] ?? null) !== (string) $chatId)) {
+                $contact->update([
+                    'metadata' => array_merge($contact->metadata ?? [], ['telegram_chat_id' => (string) $chatId]),
+                ]);
             }
         }
 

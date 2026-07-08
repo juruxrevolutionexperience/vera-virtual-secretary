@@ -133,7 +133,11 @@ class SendBookingReminders extends Command
     private function sendTelegramReminder(Meeting $meeting, string $kind, object $config, int $minutesBefore): bool
     {
         $contact  = $meeting->contact;
-        $chatId   = $contact?->telegram_id;
+        // chat_id NUMÉRICO persistido en metadata (el "@username" de telegram_id NO
+        // sirve para chats privados — la API lo rechaza). Fallback: telegram_id solo
+        // si es numérico (contactos sin username, donde el identificador ES el chat_id).
+        $chatId   = $contact?->metadata['telegram_chat_id']
+            ?? (is_numeric($contact?->telegram_id) ? $contact->telegram_id : null);
         $botToken = $config->telegram_bot_token ?? null;
 
         if (!$chatId || !$botToken) {
