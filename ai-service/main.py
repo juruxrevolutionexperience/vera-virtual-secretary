@@ -62,6 +62,7 @@ class ProcessRequest(BaseModel):
     meeting_state: Optional[str] = None         # estado actual: new | negotiating | confirmed | escalated
     shown_slots: list[str] = []                 # etiquetas de los slots propuestos en el mensaje anterior
     customer_profile: Optional[dict] = None     # perfil del cliente final si existe en Contact (CP2 - memoria del cliente)
+    first_interaction: bool = False             # primer contacto: el sistema ya mandó la presentación de Vera (IA) aparte — el LLM no debe saludar ni presentarse
 
 class ProcessResponse(BaseModel):
     response: Optional[str]
@@ -127,6 +128,7 @@ async def process_message(request: ProcessRequest) -> ProcessResponse:
             shown_slots=request.shown_slots,
             customer_profile=request.customer_profile,
             channel=request.channel,
+            first_interaction=request.first_interaction,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

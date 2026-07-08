@@ -58,6 +58,14 @@ class ProcessIncomingMessage implements ShouldQueue
      */
     private array $telegramButtons = [];
 
+    /**
+     * Primer contacto de este cliente con Vera (obligación de transparencia IA):
+     * el sistema manda una presentación HARDCODEADA como mensaje aparte antes de
+     * la respuesta, una única vez por contacto (se registra ai_disclosed_at).
+     */
+    private bool $firstInteraction = false;
+    private ?Contact $contactModel = null;
+
     public function __construct(
         public readonly int     $userId,
         public readonly string  $channel,
@@ -675,6 +683,11 @@ class ProcessIncomingMessage implements ShouldQueue
             }
         }
 
+        // Transparencia IA: si a este contacto nunca se le presentó Vera, el envío
+        // mandará la presentación hardcodeada como mensaje aparte (una sola vez).
+        $this->contactModel     = $contact;
+        $this->firstInteraction = empty($contact->metadata['ai_disclosed_at']);
+
         return $contact;
     }
 
@@ -692,6 +705,10 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         try {
+            // getCustomerProfile resuelve el Contact y deja seteado firstInteraction:
+            // debe evaluarse ANTES de leer la propiedad para el payload.
+            $customerProfile = $this->getCustomerProfile($user);
+
             $response = Http::timeout(30)->withHeaders(['X-Service-Token' => config('services.ai_service.secret')])->post("{$aiServiceUrl}/process", [
                 'user_id'                  => (string) $user->id,
                 'message'                  => $this->message,
@@ -701,7 +718,8 @@ class ProcessIncomingMessage implements ShouldQueue
                 'requested_slot_available' => $requestedSlotAvailable,
                 'meeting_state'            => $meetingRequest->state,
                 'shown_slots'              => array_column($meetingRequest->context['calendar_slots'] ?? [], 'label'),
-                'customer_profile'         => $this->getCustomerProfile($user),
+                'customer_profile'         => $customerProfile,
+                'first_interaction'        => $this->firstInteraction,
                 'brain'                    => [
                     'business_name'       => $config->business_name,
                     'owner_name'          => $config->owner_name,
@@ -1386,6 +1404,40 @@ class ProcessIncomingMessage implements ShouldQueue
     }
 
     /**
+     * Presentación de Vera como IA (transparencia obligatoria): mensaje HARDCODEADO
+     * enviado APARTE, antes de la primera respuesta a un contacto nuevo. Pool de
+     * variantes para no sonar clónica. Solo una vez por contacto: se registra
+     * ai_disclosed_at en su metadata como constancia de cuándo se le informó.
+     */
+    private function sendAiDisclosureIfFirst(callable $send, ?VeraConfig $config): void
+    {
+        if (!$this->firstInteraction || !$this->contactModel) {
+            return;
+        }
+
+        $negocio = $config?->business_name ?: 'nuestro negocio';
+        $intros  = [
+            "¡Hola! Soy Vera, la asistente virtual de {$negocio} 🤖. Yo me encargo de atenderte por aquí.",
+            "¡Hola! Te atiende Vera, la asistente virtual de {$negocio} 🤖. Encantada de ayudarte.",
+            "¡Hola! Soy Vera, la asistente virtual de {$negocio} 🤖. Un placer atenderte.",
+        ];
+
+        try {
+            $ok = $send($intros[array_rand($intros)]);
+        } catch (\Throwable $e) {
+            Log::warning('Presentación IA: fallo al enviar', ['error' => $e->getMessage()]);
+            $ok = false;
+        }
+
+        if ($ok) {
+            $this->contactModel->update([
+                'metadata' => array_merge($this->contactModel->fresh()->metadata ?? [], ['ai_disclosed_at' => now()->toIso8601String()]),
+            ]);
+            $this->firstInteraction = false;
+        }
+    }
+
+    /**
      * Envía la respuesta al cliente por el canal correspondiente.
      */
     private function sendResponse(User $user, string $response, ?VeraConfig $config = null): void
@@ -1429,6 +1481,12 @@ class ProcessIncomingMessage implements ShouldQueue
             }
 
             $telegram = new TelegramService();
+
+            // Transparencia IA (primera vez que este contacto habla con Vera):
+            // presentación HARDCODEADA como mensaje aparte, antes de la respuesta.
+            // Pool de variantes para no sonar clónica entre clientes; se registra
+            // ai_disclosed_at en el contacto para no repetirla nunca.
+            $this->sendAiDisclosureIfFirst(fn (string $intro) => $telegram->sendMessage($config->telegram_bot_token, $chatId, $intro), $config);
             $ok       = $this->telegramButtons
                 ? $telegram->sendMessageWithButtons(
                     $config->telegram_bot_token,
@@ -1446,6 +1504,13 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         if ($this->channel === 'whatsapp' && $config?->hasWhatsAppConnected()) {
+            $this->sendAiDisclosureIfFirst(fn (string $intro) => (new WhatsAppService())->sendText(
+                $config->whatsapp_phone_number_id,
+                $config->whatsapp_access_token,
+                $this->contactIdentifier,
+                $intro
+            ), $config);
+
             $ok = (new WhatsAppService())->sendText(
                 $config->whatsapp_phone_number_id,
                 $config->whatsapp_access_token,
