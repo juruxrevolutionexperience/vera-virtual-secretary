@@ -65,6 +65,6 @@ class SocialAuthController extends Controller
 
         Auth::login($user, true);
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->intended(route('vera.dashboard'));
     }
 }

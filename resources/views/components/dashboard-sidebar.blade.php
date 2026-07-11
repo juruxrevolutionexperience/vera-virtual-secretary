@@ -1,7 +1,7 @@
 <aside id="sidebar" class="sidebar w-56 bg-white border-r border-gray-200 fixed top-0 bottom-0 left-0 z-50 flex-col hidden lg:flex">
     <!-- Logo -->
     <div class="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-gray-200">
-        <a href="{{ route('dashboard') }}" class="flex items-center gap-2 group">
+        <a href="{{ route('vera.dashboard') }}" class="flex items-center gap-2 group">
             <div
                 class="w-6 h-6 bg-gradient-to-br from-purple-500 to-purple-600 rounded-md flex items-center justify-center group-hover:scale-110 transition-transform">
                 <span class="text-white font-bold text-sm">V</span>
@@ -18,14 +18,26 @@
 
     <!-- Navigation -->
     <nav class="flex-1 min-h-0 overflow-y-auto px-3 py-4 pb-20 text-sm">
-        <!-- Dashboard Section -->
-        <a href="{{ route('dashboard') }}"
-            class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('dashboard') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1">
+        {{-- Bandeja = home del panel: lo primero, con contador de pendientes.
+             El JS de la Bandeja actualiza [data-bandeja-count] en vivo. --}}
+        @php
+            try {
+                $bandejaPending = auth()->check()
+                    ? \App\Models\MeetingRequest::where('user_id', auth()->id())
+                        ->where('state', 'escalated')->whereNull('context->handled_at')->count()
+                      + \App\Models\Meeting::where('user_id', auth()->id())->where('status', 'pending')->count()
+                    : 0;
+            } catch (\Exception) { $bandejaPending = 0; }
+        @endphp
+        <a href="{{ route('vera.dashboard') }}"
+            class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('vera.dashboard') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
             </svg>
-            <span class="font-medium">Inicio</span>
+            <span class="flex-1 font-medium">Bandeja</span>
+            <span data-bandeja-count
+                class="text-xs bg-red-500 text-white px-1.5 py-0.5 rounded-full font-medium leading-none {{ $bandejaPending > 0 ? '' : 'hidden' }}">{{ $bandejaPending }}</span>
         </a>
 
         <!-- Separator -->
@@ -37,13 +49,13 @@
                 <p class="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Vera Agenda</p>
             </div>
 
-            <a href="{{ route('vera.dashboard') }}"
-                class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('vera.dashboard') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">
+            <a href="{{ route('dashboard') }}"
+                class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('dashboard') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <span class="flex-1">Bandeja</span>
+                <span class="flex-1">Resumen</span>
             </a>
 
             @if(auth()->user()?->hasFeature('crm_basic'))
@@ -120,33 +132,17 @@
                 </svg>
                 <span class="flex-1">Canales</span>
                 @php
+                    // Punto verde si hay ALGÚN canal conectado (Telegram o WhatsApp).
+                    // La página de Canales tiene pestañas para gestionar cada uno.
                     try {
-                        $telegramConnected = isset($telegramConnected)
-                            ? $telegramConnected
-                            : (auth()->check()
-                                ? \App\Models\VeraConfig::where('user_id', auth()->id())->value('telegram_bot_token') !== null
-                                : false);
-                    } catch (\Exception) { $telegramConnected = false; }
-                @endphp
-                @if($telegramConnected)
-                <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                @endif
-            </a>
-
-            <a href="{{ route('vera.channels.whatsapp') }}"
-                class="flex items-center gap-2 px-2 py-1.5 {{ request()->routeIs('vera.channels.whatsapp') ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} rounded-md mb-1 group">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24z"/>
-                </svg>
-                <span class="flex-1">WhatsApp</span>
-                @php
-                    try {
-                        $waConnected = auth()->check()
-                            ? \App\Models\VeraConfig::where('user_id', auth()->id())->value('whatsapp_phone_number_id') !== null
+                        $channelConnected = auth()->check()
+                            ? \App\Models\VeraConfig::where('user_id', auth()->id())
+                                ->where(fn ($q) => $q->whereNotNull('telegram_bot_token')->orWhereNotNull('whatsapp_phone_number_id'))
+                                ->exists()
                             : false;
-                    } catch (\Exception) { $waConnected = false; }
+                    } catch (\Exception) { $channelConnected = false; }
                 @endphp
-                @if($waConnected)
+                @if($channelConnected)
                 <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
                 @endif
             </a>

@@ -42,6 +42,15 @@
         </div>
 
         {{-- Header --}}
+        
+        {{-- Pestañas de canales: una sola entrada "Canales" en el menú --}}
+        <div class="flex items-center gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
+            <a href="{{ route('vera.channels.telegram') }}"
+               class="px-4 py-1.5 text-sm font-medium rounded-md {{ request()->routeIs('vera.channels.telegram') ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900' }}">Telegram</a>
+            <a href="{{ route('vera.channels.whatsapp') }}"
+               class="px-4 py-1.5 text-sm font-medium rounded-md {{ request()->routeIs('vera.channels.whatsapp') ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900' }}">WhatsApp</a>
+        </div>
+
         <div class="flex items-center gap-4 mb-8">
             <div class="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
                 <svg class="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 24 24">

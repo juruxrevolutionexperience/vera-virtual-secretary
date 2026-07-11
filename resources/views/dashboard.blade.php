@@ -230,7 +230,7 @@
                                 d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                    <h1 class="text-sm font-semibold text-gray-900">Inicio</h1>
+                    <h1 class="text-sm font-semibold text-gray-900">Resumen</h1>
                     <span class="hidden sm:inline-block text-xs text-gray-400">·</span>
                     <span class="hidden sm:inline-block text-xs text-gray-500">Última actualización: hace 2 min</span>
                 </div>

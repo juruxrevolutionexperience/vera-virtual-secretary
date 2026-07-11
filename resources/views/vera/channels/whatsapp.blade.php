@@ -35,6 +35,15 @@
             <span class="text-gray-600 font-medium">Conectar WhatsApp</span>
         </div>
 
+        
+        {{-- Pestañas de canales: una sola entrada "Canales" en el menú --}}
+        <div class="flex items-center gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
+            <a href="{{ route('vera.channels.telegram') }}"
+               class="px-4 py-1.5 text-sm font-medium rounded-md {{ request()->routeIs('vera.channels.telegram') ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900' }}">Telegram</a>
+            <a href="{{ route('vera.channels.whatsapp') }}"
+               class="px-4 py-1.5 text-sm font-medium rounded-md {{ request()->routeIs('vera.channels.whatsapp') ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900' }}">WhatsApp</a>
+        </div>
+
         <div class="flex items-center gap-4 mb-8">
             <div class="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
                 <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.515 5.26l-.999 3.648 3.973-1.607z"/></svg>

@@ -166,6 +166,8 @@ Route::middleware(['auth'])->prefix('google')->name('google.')->group(function (
 Route::middleware(['auth', 'subscribed'])->prefix('vera')->name('vera.')->group(function () {
     // Dashboard de Vera
     Route::get('/dashboard', [VeraController::class, 'dashboard'])->name('dashboard');
+    // Sondeo en vivo de la Bandeja (contador + huella de cambios)
+    Route::get('/bandeja/ping', [VeraController::class, 'bandejaPing'])->name('bandeja.ping');
 
     // Onboarding de Vera (primera configuración)
     Route::get('/onboarding', [VeraController::class, 'onboarding'])->name('onboarding');

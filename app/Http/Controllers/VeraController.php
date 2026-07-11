@@ -52,7 +52,44 @@ class VeraController extends Controller
             ->with('contact')
             ->latest()->get();
 
-        return view('vera.dashboard', compact('config', 'stats', 'upcomingMeetings', 'pendingMeetings', 'recentActivity', 'escalations'));
+        [, $bandejaFingerprint] = self::bandejaState($user->id);
+
+        return view('vera.dashboard', compact('config', 'stats', 'upcomingMeetings', 'pendingMeetings', 'recentActivity', 'escalations', 'bandejaFingerprint'));
+    }
+
+    /**
+     * Estado de la Bandeja para el sondeo en vivo: nº de pendientes y una huella
+     * que cambia con cualquier novedad (mensaje nuevo en un hilo, cita pendiente
+     * nueva, incidencia cerrada...). La comparten el dashboard y el ping.
+     */
+    public static function bandejaState(int $userId): array
+    {
+        $esc = \App\Models\MeetingRequest::forUser($userId)
+            ->where('state', 'escalated')
+            ->whereNull('context->handled_at')
+            ->orderBy('id')
+            ->get(['id', 'updated_at']);
+
+        $pend = Meeting::forUser($userId)
+            ->where('status', 'pending')
+            ->orderBy('id')
+            ->get(['id', 'updated_at']);
+
+        $pending     = $esc->count() + $pend->count();
+        $fingerprint = md5(
+            $esc->map(fn ($r) => $r->id . '|' . $r->updated_at)->implode(',')
+            . '#' . $pend->map(fn ($m) => $m->id . '|' . $m->updated_at)->implode(',')
+        );
+
+        return [$pending, $fingerprint];
+    }
+
+    /** Sondeo JS de la Bandeja: contador de pendientes + huella de cambios. */
+    public function bandejaPing()
+    {
+        [$pending, $fingerprint] = self::bandejaState(Auth::id());
+
+        return response()->json(['pending' => $pending, 'fingerprint' => $fingerprint]);
     }
 
     // ─── Onboarding ───────────────────────────────────────────────────────────

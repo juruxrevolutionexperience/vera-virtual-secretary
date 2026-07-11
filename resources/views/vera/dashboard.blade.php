@@ -35,10 +35,17 @@
         <!-- Header escritorio -->
         <div class="hidden lg:flex items-center justify-between mb-6">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">Bandeja de gestión</h1>
-                <p class="text-sm text-gray-500 mt-0.5">Todo lo que requiere tu acción: citas por confirmar e incidencias</p>
+                <h1 class="text-2xl font-bold text-gray-900">Bandeja</h1>
+                <p class="text-sm text-gray-500 mt-0.5">Todo lo que requiere tu acción: conversaciones, incidencias y citas por confirmar</p>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
+                @if($config)
+                    <a href="{{ route('vera.config') }}" title="Cambiar el modo de Vera"
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 text-xs font-medium rounded-full border border-purple-200 hover:bg-purple-100 transition-colors">
+                        <span class="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
+                        Vera: {{ $config->mode === 'autonomous' ? 'Autónoma' : 'Supervisada' }}
+                    </a>
+                @endif
                 @if($config && $config->hasCalendarConnected())
                     <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 text-xs font-medium rounded-full border border-green-200">
                         <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
@@ -65,56 +72,9 @@
             </div>
         </div>
 
-        <!-- Modo actual de Vera -->
-        @if($config)
-        <div class="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-xl flex items-center justify-between gap-3">
-            <div class="flex items-center gap-3 min-w-0">
-                <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                    </svg>
-                </div>
-                <div class="min-w-0">
-                    <p class="text-sm font-medium text-purple-900">
-                        Vera: modo <strong>{{ $config->mode === 'autonomous' ? 'Autónomo' : 'Supervisado' }}</strong>
-                    </p>
-                    <p class="text-xs text-purple-600 truncate">
-                        {{ $config->mode === 'autonomous' ? 'Agenda automáticamente' : 'Propone y espera confirmación' }}
-                    </p>
-                </div>
-            </div>
-            <a href="{{ route('vera.config') }}" class="text-xs text-purple-700 font-medium hover:text-purple-900 flex-shrink-0">Cambiar →</a>
-        </div>
-        @endif
-
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-            <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 text-center">
-                <p class="text-xs text-gray-500 mb-2">Hoy</p>
-                <p class="text-3xl font-bold text-gray-900">{{ $stats['today'] }}</p>
-                <p class="text-xs text-gray-400 mt-1">reuniones</p>
-            </div>
-            <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 text-center">
-                <p class="text-xs text-gray-500 mb-2">Esta semana</p>
-                <p class="text-3xl font-bold text-purple-600">{{ $stats['this_week'] }}</p>
-                <p class="text-xs text-gray-400 mt-1">confirmadas</p>
-            </div>
-            <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 text-center">
-                <p class="text-xs text-gray-500 mb-2">Este mes</p>
-                <p class="text-3xl font-bold text-blue-600">{{ $stats['this_month'] }}</p>
-                <p class="text-xs text-gray-400 mt-1">confirmadas</p>
-            </div>
-            <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 text-center">
-                <p class="text-xs text-gray-500 mb-2">Pendientes</p>
-                <p class="text-3xl font-bold text-amber-500">{{ $stats['pending'] }}</p>
-                <p class="text-xs text-gray-400 mt-1">por confirmar</p>
-            </div>
-            <div class="stat-card bg-white rounded-xl border border-gray-200 p-5 text-center">
-                <p class="text-xs text-gray-500 mb-2">Total</p>
-                <p class="text-3xl font-bold text-green-600">{{ $stats['total'] }}</p>
-                <p class="text-xs text-gray-400 mt-1">historial</p>
-            </div>
-        </div>
+        {{-- Recorte Fase A: el bloque grande de "Modo de Vera" pasó a badge en la
+             cabecera; las Stats Cards viven ahora en el Resumen. La Bandeja es solo
+             lo que requiere acción del dueño. --}}
 
         @if(session('success'))
         <div x-data="{ show: true }" x-show="show" x-init="setTimeout(()=>show=false,4000)"
@@ -341,100 +301,45 @@
 
         </div>
 
-        <!-- Actividad reciente de Vera -->
-        <div class="mt-6 bg-white rounded-xl border border-gray-200">
-            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-gray-900">Actividad reciente</h2>
-                <a href="{{ route('vera.activity.index') }}" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Ver todo →</a>
-            </div>
-            <div class="divide-y divide-gray-50">
-                @forelse($recentActivity as $log)
-                @php
-                    $icon = match($log->activity_type) {
-                        'message_received' => $log->metadata['ignored'] ?? false
-                            ? ['bg' => 'bg-gray-100', 'text' => 'text-gray-400', 'emoji' => '🚫']
-                            : ['bg' => 'bg-blue-100',  'text' => 'text-blue-600',  'emoji' => '📧'],
-                        'slot_proposed'    => ['bg' => 'bg-purple-100', 'text' => 'text-purple-600', 'emoji' => '📅'],
-                        'meeting_confirmed'=> ['bg' => 'bg-green-100',  'text' => 'text-green-600',  'emoji' => '✅'],
-                        'escalation'       => ['bg' => 'bg-red-100',    'text' => 'text-red-600',    'emoji' => '⚠️'],
-                        default            => ['bg' => 'bg-gray-100',   'text' => 'text-gray-500',   'emoji' => '•'],
-                    };
-                @endphp
-                <div class="px-5 py-3 flex items-center gap-3">
-                    <div class="w-8 h-8 {{ $icon['bg'] }} rounded-lg flex items-center justify-center flex-shrink-0 text-sm">
-                        {{ $icon['emoji'] }}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm text-gray-900 truncate">{{ $log->title }}</p>
-                        @if($log->description)
-                        <p class="text-xs text-gray-400 truncate">{{ $log->description }}</p>
-                        @endif
-                    </div>
-                    <span class="text-xs text-gray-400 flex-shrink-0">{{ $log->created_at->diffForHumans() }}</span>
-                </div>
-                @empty
-                <div class="px-5 py-8 text-center">
-                    <p class="text-sm text-gray-400">Vera aún no ha registrado actividad</p>
-                    <p class="text-xs text-gray-300 mt-1">Los emails procesados aparecerán aquí</p>
-                </div>
-                @endforelse
-            </div>
-        </div>
-
-        <!-- Canales activos -->
-        <div class="mt-6 bg-white rounded-xl border border-gray-200 p-5">
-            <h2 class="text-sm font-semibold text-gray-900 mb-4">Canales de entrada</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <!-- WhatsApp -->
-                <div class="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50">
-                    <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                        <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.108.549 4.086 1.512 5.8L0 24l6.362-1.493A11.955 11.955 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.908 0-3.704-.516-5.25-1.418l-.376-.224-3.9.916.945-3.808-.244-.393A9.951 9.951 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-xs font-medium text-gray-900">WhatsApp</p>
-                        <p class="text-xs text-gray-500">{{ env('WHATSAPP_VERIFY_TOKEN') ? 'Configurado' : 'Pendiente' }}</p>
-                    </div>
-                </div>
-                <!-- Telegram -->
-                <a href="{{ route('vera.channels.telegram') }}"
-                   class="flex items-center gap-3 p-3 rounded-lg border {{ $config && $config->hasTelegramConnected() ? 'border-blue-200 bg-blue-50' : 'border-gray-100 bg-gray-50 hover:bg-gray-100' }} transition-colors group">
-                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-xs font-medium text-gray-900">Telegram</p>
-                        @if($config && $config->hasTelegramConnected())
-                            <p class="text-xs text-blue-600 font-medium">Conectado</p>
-                        @else
-                            <p class="text-xs text-gray-400 group-hover:text-purple-600 transition-colors">Conectar →</p>
-                        @endif
-                    </div>
-                </a>
-                <!-- Google Calendar -->
-                <div class="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50">
-                    <div class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
-                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-xs font-medium text-gray-900">Google Calendar</p>
-                        <p class="text-xs {{ $config && $config->hasCalendarConnected() ? 'text-green-600' : 'text-gray-500' }}">
-                            {{ $config && $config->hasCalendarConnected() ? 'Conectado' : 'Sin conectar' }}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{-- Recorte Fase A: "Actividad reciente" vive en su página (Actividad) y
+             "Canales de entrada" en su sección (Canales). Aquí solo lo accionable. --}}
 
         </div>{{-- /p-4 lg:p-8 --}}
     </main>
 </div>
+
+{{-- Bandeja en vivo: sondeo ligero cada 12s. Actualiza el contador de la sidebar
+     y, si hay novedades (mensaje nuevo del cliente, cita nueva...), recarga la
+     página — salvo que el dueño esté escribiendo una respuesta, para no pisarle. --}}
+<script>
+(function () {
+    let fingerprint = @json($bandejaFingerprint ?? '');
+    const url = "{{ route('vera.bandeja.ping') }}";
+
+    async function tick() {
+        try {
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+            if (!res.ok) return;
+            const data = await res.json();
+
+            document.querySelectorAll('[data-bandeja-count]').forEach(function (el) {
+                el.textContent = data.pending;
+                el.classList.toggle('hidden', data.pending === 0);
+            });
+
+            const typing = Array.from(document.querySelectorAll('textarea')).some(function (t) {
+                return t.value.trim() !== '' || t === document.activeElement;
+            });
+
+            if (fingerprint && data.fingerprint !== fingerprint && !typing) {
+                location.reload();
+            }
+        } catch (e) { /* sin red: se reintenta en el siguiente tick */ }
+    }
+
+    setInterval(tick, 12000);
+})();
+</script>
 
 @stack('scripts')
 </body>
