@@ -285,14 +285,23 @@ class ProcessIncomingMessage implements ShouldQueue
             $marked  = (bool) preg_match('/^\s*\[CONSULTA\]\s*/u', $response);
             $promise = (bool) preg_match('/d[ée]jame\s+(consultarlo|que\s+lo\s+consulte)|te\s+respondo\s+en\s+breve|lo\s+consulto\s+y\s+te|te\s+(contesto|digo|confirmo)\s+(en\s+breve|m[áa]s\s+tarde|en\s+cuanto\s+pueda)/iu', $response);
 
+            // LA RED PRINCIPAL — juzga la PREGUNTA, no la respuesta: si el cliente
+            // pregunta por un servicio con términos que el negocio no conoce (ni en
+            // catálogo ni en cerebro), se deriva SÍ O SÍ, diga lo que diga el LLM.
+            // Inmune al historial envenenado (el LLM se re-citaba a sí mismo).
+            $ungrounded = !$marked && !$promise
+                && in_array($mode, ['respuesta', 'transicion'])
+                && $this->asksUnknownService($user);
+
             // Verificador DETERMINISTA de precios: si la respuesta menciona un precio
             // que no existe ni en el catálogo (vera_services) ni en el cerebro (chunks
             // activos), el LLM lo ha inventado — caso real: aplicó el precio de la
             // sesión de seguimiento a un "drenaje linfático" inexistente. Conservador
             // a propósito: ante la duda, derivar al dueño antes que inventar.
+            // Los [\s*_]* toleran negritas de WhatsApp/Telegram ("precio de *30*").
             $invented = false;
-            if (!$marked && !$promise) {
-                $precioRegex = '/(?:€|\beuros?\b|\$|(?:precio|cuesta|vale|cobramos)\s+(?:de|es|:)?)\s*(\d{1,4})|(\d{1,4})\s*(?:€|\beuros?\b|\$)/iu';
+            if (!$marked && !$promise && !$ungrounded) {
+                $precioRegex = '/(?:€|\beuros?\b|\$|(?:precio|cuesta|vale|cobramos)\s+(?:de|es|:)?)[\s*_]*(\d{1,4})|(\d{1,4})[\s*_]*(?:€|\beuros?\b|\$)/iu';
                 preg_match_all($precioRegex, $response, $mm);
                 $mencionados = array_values(array_unique(array_filter(array_merge($mm[1] ?? [], $mm[2] ?? []))));
 
@@ -321,7 +330,7 @@ class ProcessIncomingMessage implements ShouldQueue
                 }
             }
 
-            if ($marked || $promise || $invented) {
+            if ($marked || $promise || $ungrounded || $invented) {
                 $ownerName = $config->owner_name ?: 'el equipo';
                 $response  = $marked
                     ? trim(preg_replace('/^\s*\[CONSULTA\]\s*/u', '', $response))
@@ -1519,6 +1528,76 @@ class ProcessIncomingMessage implements ShouldQueue
         }
 
         return (bool) $ok;
+    }
+
+    /**
+     * ¿El cliente pregunta por un servicio que el negocio NO conoce?
+     *
+     * Juzga la PREGUNTA (determinista), no la respuesta del LLM: si el mensaje
+     * pregunta por servicios/precios y contiene términos que no aparecen ni en
+     * el catálogo (vera_services) ni en el cerebro (chunks activos), ese dato no
+     * existe y se fuerza la derivación al dueño — da igual lo que diga el LLM.
+     * Caso real que motiva esto: "¿hacéis drenaje linfático?" → el LLM afirmaba
+     * que sí con el precio de otro servicio, y encima se re-citaba a sí mismo
+     * desde el historial. Conservador a propósito: derivar de más es un aviso
+     * útil al dueño; inventar es inaceptable.
+     */
+    private function asksUnknownService(User $user): bool
+    {
+        $normalize = fn (string $s) => strtr(mb_strtolower($s), [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u',
+        ]);
+        $msg = $normalize($this->message);
+
+        // Solo aplica a preguntas de servicios/precios.
+        if (!preg_match('/hac[ée]is|hacen\b|ofrec[ée]is|ofrecen\b|ten[ée]is|tienen\b|cuanto\s+(cuesta|vale|cobra)|\bprecio/u', $msg)) {
+            return false;
+        }
+
+        static $stop = [
+            'hola', 'buenas', 'buenos', 'dias', 'tardes', 'noches', 'gracias', 'porfa', 'favor',
+            'cuanto', 'cuesta', 'cuestan', 'vale', 'valen', 'cobra', 'cobran', 'cobrais', 'precio', 'precios',
+            'euro', 'euros', 'dinero', 'pagar', 'pago',
+            'haceis', 'hacen', 'ofreceis', 'ofrecen', 'teneis', 'tienen', 'tenemos', 'podeis', 'pueden', 'podria', 'puedo',
+            'quiero', 'queria', 'quisiera', 'gustaria', 'necesito', 'saber', 'decirme', 'dime', 'cuentame', 'pregunta', 'preguntar',
+            'servicio', 'servicios', 'tratamiento', 'tratamientos', 'sesion', 'sesiones', 'cita', 'citas', 'hora', 'horas', 'horario', 'horarios',
+            'tipos', 'tipo', 'algun', 'alguna', 'algo', 'tambien', 'ademas', 'sobre', 'para', 'como', 'donde', 'cuando', 'porque', 'entonces',
+            'informacion', 'negocio', 'clinica', 'centro', 'vosotros', 'ustedes', 'usted', 'ahora', 'luego', 'antes', 'despues',
+            'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'semana', 'manana', 'tarde', 'noche', 'esta', 'este', 'estos', 'estas',
+            'tengo', 'tiene', 'estoy', 'siento', 'duele', 'dolor', 'problema', 'problemas', 'casa', 'primera', 'primero',
+            // agenda/logística: nunca son "servicios" que verificar
+            'hueco', 'huecos', 'libre', 'libres', 'disponible', 'disponibles', 'disponibilidad', 'agenda',
+            'reservar', 'reserva', 'reservas', 'apuntar', 'cancelar', 'cancelacion', 'cambiar', 'mover', 'confirmar',
+            'telefono', 'numero', 'direccion', 'ubicacion', 'llegar', 'abierto', 'abierta', 'cerrado', 'cerrais', 'abris',
+            'cuanta', 'cuantos', 'cuantas', 'cuales',
+        ];
+
+        preg_match_all('/[\p{L}]{4,}/u', $msg, $wm);
+        $terms = array_diff(array_unique($wm[0] ?? []), $stop);
+        if (!$terms) {
+            return false;
+        }
+
+        $haystack = $normalize(implode(' ', array_merge(
+            \App\Models\VeraService::where('user_id', $user->id)->where('is_active', true)->pluck('name')->all(),
+            \App\Models\VeraMemoryChunk::where('user_id', $user->id)->where('is_active', true)->pluck('content')->all(),
+        )));
+
+        foreach ($terms as $term) {
+            // Raíz simple (sin las 2 últimas letras) para tolerar plural/género:
+            // "masajes" → "masaj" casa con "Masaje deportivo".
+            $root = mb_substr($term, 0, max(4, mb_strlen($term) - 2));
+            if (!str_contains($haystack, $root)) {
+                Log::info('[CONSULTA] termino de servicio desconocido', [
+                    'termino' => $term,
+                    'user_id' => $user->id,
+                    'contact' => $this->maskedContact(),
+                ]);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
