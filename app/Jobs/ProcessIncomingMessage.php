@@ -285,7 +285,43 @@ class ProcessIncomingMessage implements ShouldQueue
             $marked  = (bool) preg_match('/^\s*\[CONSULTA\]\s*/u', $response);
             $promise = (bool) preg_match('/d[ée]jame\s+(consultarlo|que\s+lo\s+consulte)|te\s+respondo\s+en\s+breve|lo\s+consulto\s+y\s+te|te\s+(contesto|digo|confirmo)\s+(en\s+breve|m[áa]s\s+tarde|en\s+cuanto\s+pueda)/iu', $response);
 
-            if ($marked || $promise) {
+            // Verificador DETERMINISTA de precios: si la respuesta menciona un precio
+            // que no existe ni en el catálogo (vera_services) ni en el cerebro (chunks
+            // activos), el LLM lo ha inventado — caso real: aplicó el precio de la
+            // sesión de seguimiento a un "drenaje linfático" inexistente. Conservador
+            // a propósito: ante la duda, derivar al dueño antes que inventar.
+            $invented = false;
+            if (!$marked && !$promise) {
+                $precioRegex = '/(?:€|\beuros?\b|\$|(?:precio|cuesta|vale|cobramos)\s+(?:de|es|:)?)\s*(\d{1,4})|(\d{1,4})\s*(?:€|\beuros?\b|\$)/iu';
+                preg_match_all($precioRegex, $response, $mm);
+                $mencionados = array_values(array_unique(array_filter(array_merge($mm[1] ?? [], $mm[2] ?? []))));
+
+                if ($mencionados) {
+                    $permitidos = \App\Models\VeraService::where('user_id', $user->id)
+                        ->where('is_active', true)->pluck('price')
+                        ->map(fn ($p) => preg_replace('/\D/', '', (string) $p))
+                        ->filter()->values()->all();
+                    // Precios legítimos también en el cerebro (FAQs aprendidas, info cargada)
+                    $chunkText = \App\Models\VeraMemoryChunk::where('user_id', $user->id)
+                        ->where('is_active', true)->pluck('content')->implode(' ');
+                    preg_match_all($precioRegex, $chunkText, $cc);
+                    $permitidos = array_merge($permitidos, array_filter(array_merge($cc[1] ?? [], $cc[2] ?? [])));
+
+                    foreach ($mencionados as $precio) {
+                        if (!in_array((string) (int) $precio, array_map(fn ($p) => (string) (int) $p, $permitidos), true)) {
+                            $invented = true;
+                            Log::warning('[CONSULTA] precio fuera de catalogo detectado', [
+                                'precio'  => $precio,
+                                'user_id' => $user->id,
+                                'contact' => $this->maskedContact(),
+                            ]);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if ($marked || $promise || $invented) {
                 $ownerName = $config->owner_name ?: 'el equipo';
                 $response  = $marked
                     ? trim(preg_replace('/^\s*\[CONSULTA\]\s*/u', '', $response))
@@ -761,6 +797,13 @@ class ProcessIncomingMessage implements ShouldQueue
                 'first_interaction'        => $this->firstInteraction,
                 'brain'                    => [
                     'business_name'       => $config->business_name,
+                    // Catálogo COMPLETO y literal desde la config: no depende del RAG
+                    // (que recupera trozos y deja que el LLM rellene huecos inventando).
+                    'services'            => \App\Models\VeraService::where('user_id', $user->id)
+                        ->where('is_active', true)
+                        ->orderBy('sort_order')
+                        ->get(['name', 'duration_minutes', 'price'])
+                        ->toArray(),
                     'owner_name'          => $config->owner_name,
                     'business_address'    => $config->business_address,
                     'tone'                => $config->tone,

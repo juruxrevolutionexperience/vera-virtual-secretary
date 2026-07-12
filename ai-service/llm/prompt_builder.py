@@ -109,9 +109,29 @@ La cancelación domina igual que la agenda: si el cliente pide cancelar/anular u
             f"(Si el cliente pregunta dónde estáis o cómo llegar, dale la dirección con naturalidad.)"
         )
 
+    # Catálogo de servicios COMPLETO desde la config (no RAG: el RAG recupera
+    # trozos y el LLM rellenaba los huecos inventando servicios y precios).
+    catalogo = ""
+    servicios = brain.get("services") or []
+    if servicios:
+        lineas = []
+        for s in servicios:
+            partes = [s.get("name", "")]
+            if s.get("duration_minutes"):
+                partes.append(f"{s['duration_minutes']} min")
+            precio = s.get("price")
+            partes.append(f"precio: {precio}" if precio not in (None, "") else "precio: consultar con el dueño")
+            lineas.append("- " + " · ".join(partes))
+        catalogo = (
+            "\n\nCATÁLOGO DE SERVICIOS (lista COMPLETA y CERRADA — no existe ningún otro servicio):\n"
+            + "\n".join(lineas)
+            + "\nCualquier servicio que NO esté en esta lista NO existe en este negocio. Si preguntan por uno que no está, NO afirmes que se ofrece ni que no se ofrece, ni le apliques el precio de otro: responde con la marca [CONSULTA] derivando al dueño."
+        )
+
     system_prompt = f"""{identidad}
 
 FECHA DE HOY: {hoy}
+{catalogo}
 
 INFORMACIÓN DEL NEGOCIO:
 {rag_context if rag_context else "Todavía no tienes información del negocio cargada."}

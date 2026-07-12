@@ -31,6 +31,7 @@ class HistoryMessage(BaseModel):
 
 class Brain(BaseModel):
     business_name: str
+    services: list[dict] = []   # catálogo COMPLETO desde la config: [{name, duration_minutes, price}]
     owner_name: str
     business_address: Optional[str] = None
     tone: str
