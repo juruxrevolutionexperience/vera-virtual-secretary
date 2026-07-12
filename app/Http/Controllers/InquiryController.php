@@ -42,7 +42,11 @@ class InquiryController extends Controller
         // Email: el dueño responde desde Gmail; aquí solo se registra (y aprende).
         if (in_array($inquiry->channel, ['telegram', 'whatsapp'])) {
             $owner = $config?->owner_name ?: 'el equipo';
-            $text  = "Ya me ha pasado {$owner} la respuesta:\n\n" . $answer;
+            // Citar la consulta a la que se responde: el cliente pudo preguntar hace
+            // horas (o varias cosas) y la respuesta debe entenderse sola.
+            $quote = mb_substr(trim($inquiry->question), 0, 200)
+                . (mb_strlen(trim($inquiry->question)) > 200 ? '…' : '');
+            $text  = "Sobre tu consulta:\n«{$quote}»\n\nYa me ha pasado {$owner} la respuesta:\n\n" . $answer;
 
             $sent = (new ClientChannelService())->send(
                 $config,
