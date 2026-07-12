@@ -223,20 +223,52 @@
             </div>
             <div class="divide-y divide-amber-50">
                 @foreach($inquiries as $inq)
+                @php
+                    // Hilo de la conversación: la consulta es un diálogo abierto hasta
+                    // que el dueño la cierre, no un formulario de un solo golpe.
+                    $inqThread = $inq->meeting_request_id
+                        ? \App\Models\MeetingRequest::find($inq->meeting_request_id)?->conversation
+                            ?->messages()->orderByDesc('created_at')->limit(6)->get()->reverse()->values()
+                        : null;
+                @endphp
                 <div class="px-5 py-4" x-data="{ answering: false }">
                     <div class="flex items-start justify-between gap-4 mb-2">
                         <div class="min-w-0">
                             <p class="text-sm font-semibold text-gray-900">{{ $inq->contact?->name ?? $inq->contact_name ?? $inq->contact_identifier }}</p>
                             <p class="text-xs text-gray-500">via {{ ucfirst($inq->channel) }} · {{ $inq->created_at->diffForHumans() }}</p>
                         </div>
-                        <span class="flex-shrink-0 text-[11px] uppercase tracking-wide font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Consulta</span>
+                        <div class="flex-shrink-0 flex items-center gap-1.5">
+                            @if($inq->answered_at)
+                            <span class="text-[11px] uppercase tracking-wide font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded">Respondida</span>
+                            @endif
+                            <span class="text-[11px] uppercase tracking-wide font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Consulta</span>
+                        </div>
                     </div>
                     <div class="bg-gray-50 border-l-2 border-amber-300 rounded px-3 py-2 text-sm text-gray-700 whitespace-pre-line">{{ $inq->question }}</div>
+                    @if($inqThread && $inqThread->count() > 1)
+                    <div class="mt-2 max-h-48 overflow-y-auto space-y-1.5 border border-gray-100 rounded-lg p-2 bg-white">
+                        @foreach($inqThread as $m)
+                        <div class="flex {{ $m->role === 'user' ? 'justify-start' : 'justify-end' }}">
+                            <div class="max-w-[85%] px-2.5 py-1.5 rounded-lg text-xs whitespace-pre-line {{ $m->role === 'user' ? 'bg-gray-100 text-gray-800' : 'bg-purple-50 text-purple-900' }}">
+                                {{ mb_substr($m->content, 0, 400) }}
+                                <span class="block text-[10px] opacity-60 mt-0.5">{{ $m->created_at->format('d/m H:i') }}</span>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    @endif
                     <div class="flex items-center gap-2 mt-3">
                         <button type="button" @click="answering = !answering"
                             class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors">
                             {{ in_array($inq->channel, ['telegram', 'whatsapp']) ? '💬 Responder vía Vera' : '✍️ Registrar respuesta' }}
                         </button>
+                        <form action="{{ route('consultas.cerrar', $inq) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="px-3 py-1.5 bg-white border border-green-200 text-green-700 hover:bg-green-50 text-xs font-medium rounded-lg transition-colors"
+                                onclick="return confirm('¿Cerrar esta consulta? Desaparecerá de pendientes.')">
+                                ✓ Cerrar consulta
+                            </button>
+                        </form>
                         <form action="{{ route('consultas.descartar', $inq) }}" method="POST">
                             @csrf
                             <button type="submit" class="px-3 py-1.5 bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 text-xs font-medium rounded-lg transition-colors"

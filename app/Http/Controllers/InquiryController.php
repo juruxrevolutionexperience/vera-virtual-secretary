@@ -60,11 +60,20 @@ class InquiryController extends Controller
             }
         }
 
+        // La consulta NO se cierra al responder: el flujo lo cierra el dueño
+        // (igual que las incidencias) — el cliente puede repreguntar y la
+        // conversación sigue viva en la tarjeta hasta que él pulse cerrar.
         $inquiry->update([
             'answer'      => $answer,
-            'status'      => 'answered',
             'answered_at' => now(),
         ]);
+
+        // Guardar la respuesta en el hilo de la conversación (visible en la tarjeta
+        // y en el historial que verá Vera en los siguientes mensajes).
+        if (in_array($inquiry->channel, ['telegram', 'whatsapp'])) {
+            \App\Models\MeetingRequest::find($inquiry->meeting_request_id)
+                ?->conversation?->addMessage('assistant', $text ?? $answer);
+        }
 
         // Aprendizaje: pregunta + respuesta pasan al cerebro de Vera (FAQ) y se
         // sincronizan a ChromaDB al momento — la próxima vez contesta ella sola.
@@ -89,13 +98,23 @@ class InquiryController extends Controller
         ]);
 
         $msg = in_array($inquiry->channel, ['telegram', 'whatsapp'])
-            ? 'Respuesta enviada al cliente vía Vera.'
-            : 'Respuesta registrada (recuerda contestar al cliente desde Gmail).';
+            ? 'Respuesta enviada al cliente vía Vera. La consulta sigue abierta: ciérrala cuando esté resuelta.'
+            : 'Respuesta registrada (recuerda contestar al cliente desde Gmail). Cierra la consulta cuando esté resuelta.';
         if ($learned) {
-            $msg .= ' Guardada en la información de Vera: la próxima vez responde ella sola.';
+            $msg .= ' Y guardada en la información de Vera: la próxima vez responde ella sola.';
         }
 
         return back()->with('success', $msg);
+    }
+
+    /** Cierre explícito: el dueño decide cuándo termina el flujo, no el sistema. */
+    public function close(VeraInquiry $inquiry): RedirectResponse
+    {
+        abort_if($inquiry->user_id !== auth()->id(), 403);
+
+        $inquiry->update(['status' => 'answered', 'answered_at' => $inquiry->answered_at ?? now()]);
+
+        return back()->with('success', 'Consulta cerrada.');
     }
 
     public function dismiss(VeraInquiry $inquiry): RedirectResponse

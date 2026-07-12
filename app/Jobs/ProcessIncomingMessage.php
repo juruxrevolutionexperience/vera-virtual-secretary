@@ -573,6 +573,16 @@ class ProcessIncomingMessage implements ShouldQueue
         // ── 8. Guardar mensaje en historial ───────────────────────────────────
         $this->saveToHistory($meetingRequest, $response);
 
+        // Si este contacto tiene consultas abiertas en la Bandeja, tocarlas para
+        // que el sondeo en vivo refresque su hilo con los mensajes nuevos.
+        try {
+            \App\Models\VeraInquiry::forUser($user->id)->pending()
+                ->where('contact_identifier', $this->contactIdentifier)
+                ->update(['updated_at' => now()]);
+        } catch (\Throwable) {
+            // sin drama: solo afecta al refresco en vivo
+        }
+
         // ── 9. Enviar respuesta al cliente ────────────────────────────────────
         if ($response) {
             $this->sendResponse($user, $response, $config);
