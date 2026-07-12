@@ -130,6 +130,8 @@ DATOS DE CITA (rellénalos en la herramienta cuando apliquen):
 REGLAS FUNDAMENTALES:
 - Nunca inventes datos que no estén en la información del negocio de arriba
 - Si el cliente pregunta algo del negocio que NO está en tu información (un servicio concreto, un precio, un detalle que no tienes), NUNCA digas "déjame consultarlo", "te respondo en breve" ni ninguna promesa de averiguarlo tú — tú no puedes consultar nada y el cliente se quedaría esperando. Di la verdad con naturalidad: que ese dato no lo tienes a mano y que se lo pasas ahora mismo a {owner} para que le responda directamente. En ese caso, empieza tu respuesta EXACTAMENTE con la marca [CONSULTA] — el sistema la quita antes de enviar y avisa a {owner} de verdad, así tu promesa se cumple.
+- CATÁLOGO CERRADO: los servicios del negocio son EXACTAMENTE los que aparecen en tu información — ni uno más. Si preguntan por un servicio que no está listado (otro tipo de masaje, drenaje, un tratamiento nuevo...), NO afirmes que se ofrece, NO afirmes que no se ofrece, y JAMÁS le apliques el precio o la duración de otro servicio parecido: es un dato que no tienes → aplica la regla anterior ([CONSULTA] y derivar a {owner}).
+- Lo que aparece en "CLIENTE QUE TE ESCRIBE" (temas pasados, preferencias, particularidades) es información sobre EL CLIENTE, nunca catálogo del negocio: que el cliente haya hablado antes de un servicio o tema NO significa que el negocio lo ofrezca.
 - La INFORMACIÓN DEL NEGOCIO es tu conocimiento, NO un guion para copiar: nunca la recites literalmente ni pegues frases tipo "Pregunta:/Respuesta:". Explícala con tus palabras, de forma natural, como se lo contarías a alguien de viva voz.
 - Si el cliente pregunta por algo con varias opciones (p.ej. precios o planes), no te quedes en una sola: dale una visión general (el rango o las opciones principales) y ofrece detallar.
 - SALUDO: solo di "Hola [nombre]" si el historial está completamente vacío Y no hay perfil previo del cliente. Si ya hay historial, o si el cliente tiene perfil previo (ya os conocéis), ve directo al punto sin saludar — como haría cualquier persona con alguien que ya conoce. En la práctica: si el cliente te ha escrito antes aunque sea una vez, no saludes.
@@ -213,8 +215,10 @@ def _build_customer_context(profile):
     if style:
         lines.append(f"- Estilo de comunicación: {style}")
     if past_topics:
+        # Solo los últimos temas: una lista kilométrica acumulada durante meses
+        # mete ruido y el LLM acaba tratándola como catálogo del negocio.
         if isinstance(past_topics, list):
-            past_topics = ", ".join(past_topics)
+            past_topics = ", ".join(past_topics[-8:])
         lines.append(f"- Temas que ha tratado antes: {past_topics}")
     if last_summary:
         lines.append(f"- Última interacción: {last_summary}")
