@@ -26,6 +26,7 @@
                     ? \App\Models\MeetingRequest::where('user_id', auth()->id())
                         ->where('state', 'escalated')->whereNull('context->handled_at')->count()
                       + \App\Models\Meeting::where('user_id', auth()->id())->where('status', 'pending')->count()
+                      + \App\Models\VeraInquiry::where('user_id', auth()->id())->where('status', 'pending')->count()
                     : 0;
             } catch (\Exception) { $bandejaPending = 0; }
         @endphp

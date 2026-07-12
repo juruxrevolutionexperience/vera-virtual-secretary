@@ -180,40 +180,17 @@ class MeetingConfirmController extends Controller
     }
 
     /**
-     * Envía un texto al cliente por su canal de mensajería (telegram/whatsapp).
-     * Devuelve true/false según el envío, o null si el contacto de Telegram aún
-     * no tiene chat_id persistido (escribió antes de que se guardara).
+     * Envía un texto al cliente por su canal de mensajería. La lógica vive en
+     * ClientChannelService (compartida con las consultas de la Bandeja).
      */
     private function sendViaClientChannel(MeetingRequest $meetingRequest, ?VeraConfig $config, string $text): ?bool
     {
-        if ($meetingRequest->channel === 'telegram' && $config?->telegram_bot_token) {
-            // chat_id numérico persistido en el contacto ("@username" no vale para
-            // chats privados). Fallback: telegram_id si es numérico (sin username).
-            $contact = $meetingRequest->contact
-                ?? \App\Models\Contact::where('user_id', $meetingRequest->user_id)
-                    ->where('telegram_id', $meetingRequest->contact_identifier)->first();
-            $chatId = $contact?->metadata['telegram_chat_id']
-                ?? (is_numeric($contact?->telegram_id) ? $contact->telegram_id : null);
-
-            if (!$chatId) {
-                Log::warning('bandeja: contacto telegram sin chat_id persistido', [
-                    'meeting_request_id' => $meetingRequest->id,
-                ]);
-                return null;
-            }
-
-            return (new \App\Services\TelegramService())->sendMessage($config->telegram_bot_token, $chatId, $text);
-        }
-
-        if ($meetingRequest->channel === 'whatsapp' && $config?->hasWhatsAppConnected()) {
-            return (new \App\Services\WhatsAppService())->sendText(
-                $config->whatsapp_phone_number_id,
-                $config->whatsapp_access_token,
-                $meetingRequest->contact_identifier,
-                $text
-            );
-        }
-
-        return false;
+        return (new \App\Services\ClientChannelService())->send(
+            $config,
+            $meetingRequest->channel,
+            $meetingRequest->contact_identifier,
+            $meetingRequest->contact,
+            $text
+        );
     }
 }

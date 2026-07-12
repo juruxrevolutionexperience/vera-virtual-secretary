@@ -52,9 +52,16 @@ class VeraController extends Controller
             ->with('contact')
             ->latest()->get();
 
+        // Consultas sin respuesta pendientes (Fase C): el dueño responde vía Vera
+        // y puede guardarlas como FAQ para que Vera aprenda.
+        $inquiries = \App\Models\VeraInquiry::forUser($user->id)
+            ->pending()
+            ->with('contact')
+            ->latest()->get();
+
         [, $bandejaFingerprint] = self::bandejaState($user->id);
 
-        return view('vera.dashboard', compact('config', 'stats', 'upcomingMeetings', 'pendingMeetings', 'recentActivity', 'escalations', 'bandejaFingerprint'));
+        return view('vera.dashboard', compact('config', 'stats', 'upcomingMeetings', 'pendingMeetings', 'recentActivity', 'escalations', 'inquiries', 'bandejaFingerprint'));
     }
 
     /**
@@ -75,10 +82,16 @@ class VeraController extends Controller
             ->orderBy('id')
             ->get(['id', 'updated_at']);
 
-        $pending     = $esc->count() + $pend->count();
+        $inq = \App\Models\VeraInquiry::forUser($userId)
+            ->pending()
+            ->orderBy('id')
+            ->get(['id', 'updated_at']);
+
+        $pending     = $esc->count() + $pend->count() + $inq->count();
         $fingerprint = md5(
             $esc->map(fn ($r) => $r->id . '|' . $r->updated_at)->implode(',')
             . '#' . $pend->map(fn ($m) => $m->id . '|' . $m->updated_at)->implode(',')
+            . '#' . $inq->map(fn ($i) => $i->id . '|' . $i->updated_at)->implode(',')
         );
 
         return [$pending, $fingerprint];

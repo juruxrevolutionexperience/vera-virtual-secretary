@@ -210,6 +210,66 @@
         </div>
         @endif
 
+        <!-- Consultas sin respuesta (Fase C): Vera no tenía el dato — respóndele tú
+             y, si quieres, guárdalo como FAQ para que la próxima vez responda ella. -->
+        @if(isset($inquiries) && $inquiries->isNotEmpty())
+        <div class="mb-6 bg-white border border-amber-200 rounded-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-amber-100 bg-amber-50 flex items-center justify-between">
+                <div>
+                    <h2 class="text-sm font-semibold text-amber-900">❓ Consultas sin respuesta</h2>
+                    <p class="text-xs text-amber-700 mt-0.5">Vera no tenía este dato. Respóndele tú y, si lo guardas, la próxima vez contesta ella sola</p>
+                </div>
+                <span class="inline-flex items-center justify-center w-6 h-6 bg-amber-500 text-white text-xs font-bold rounded-full">{{ $inquiries->count() }}</span>
+            </div>
+            <div class="divide-y divide-amber-50">
+                @foreach($inquiries as $inq)
+                <div class="px-5 py-4" x-data="{ answering: false }">
+                    <div class="flex items-start justify-between gap-4 mb-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-gray-900">{{ $inq->contact?->name ?? $inq->contact_name ?? $inq->contact_identifier }}</p>
+                            <p class="text-xs text-gray-500">via {{ ucfirst($inq->channel) }} · {{ $inq->created_at->diffForHumans() }}</p>
+                        </div>
+                        <span class="flex-shrink-0 text-[11px] uppercase tracking-wide font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Consulta</span>
+                    </div>
+                    <div class="bg-gray-50 border-l-2 border-amber-300 rounded px-3 py-2 text-sm text-gray-700 whitespace-pre-line">{{ $inq->question }}</div>
+                    <div class="flex items-center gap-2 mt-3">
+                        <button type="button" @click="answering = !answering"
+                            class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors">
+                            {{ in_array($inq->channel, ['telegram', 'whatsapp']) ? '💬 Responder vía Vera' : '✍️ Registrar respuesta' }}
+                        </button>
+                        <form action="{{ route('consultas.descartar', $inq) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="px-3 py-1.5 bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 text-xs font-medium rounded-lg transition-colors"
+                                onclick="return confirm('¿Descartar esta consulta sin responder?')">
+                                Descartar
+                            </button>
+                        </form>
+                    </div>
+                    <form x-show="answering" x-cloak action="{{ route('consultas.responder', $inq) }}" method="POST" class="mt-3">
+                        @csrf
+                        <textarea name="answer" rows="3" required maxlength="2000"
+                            placeholder="Escribe la respuesta para el cliente..."
+                            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-y"></textarea>
+                        <div class="flex items-center justify-between gap-3 mt-2 flex-wrap">
+                            <label class="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                                <input type="checkbox" name="save_faq" value="1" checked
+                                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                Guardar en la información de Vera (la próxima vez responde ella sola)
+                            </label>
+                            <button type="submit" class="flex-shrink-0 px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors">
+                                {{ in_array($inq->channel, ['telegram', 'whatsapp']) ? 'Enviar vía Vera' : 'Guardar respuesta' }}
+                            </button>
+                        </div>
+                        @if(!in_array($inq->channel, ['telegram', 'whatsapp']))
+                        <p class="text-[11px] text-gray-400 mt-1">Consulta llegada por email: recuerda contestar al cliente desde Gmail. Aquí queda registrada y Vera la aprende.</p>
+                        @endif
+                    </form>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             <!-- Próximas reuniones -->

@@ -216,6 +216,20 @@ class VeraMemoryService
     }
 
     /**
+     * FAQ aprendida desde la Bandeja (consulta sin respuesta que el dueño contestó):
+     * se guarda Y se sincroniza a ChromaDB al momento, para que Vera sepa la
+     * respuesta desde el siguiente mensaje — sin esperar al próximo guardado de config.
+     */
+    public function addFAQFromInquiry(int $userId, string $question, string $answer): VeraMemoryChunk
+    {
+        $chunk = $this->addFAQ($userId, $question, $answer);
+        $chunk->update(['source' => 'bandeja']);
+        $this->syncChunkToAiService($userId, $chunk);
+
+        return $chunk;
+    }
+
+    /**
      * Envía un chunk a ChromaDB vía ai-service.
      * Si ai-service no está disponible, MySQL sigue funcionando (fallback).
      */

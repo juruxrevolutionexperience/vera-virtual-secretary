@@ -87,6 +87,8 @@ Route::middleware(['auth', 'verified', 'subscribed'])->group(function () {
     Route::post('/meetings/{meeting}/reject',  [\App\Http\Controllers\MeetingConfirmController::class, 'reject'])->name('meetings.reject');
     Route::post('/incidencias/{meetingRequest}/gestionada', [\App\Http\Controllers\MeetingConfirmController::class, 'resolveEscalation'])->name('incidencias.gestionada');
     Route::post('/incidencias/{meetingRequest}/responder',  [\App\Http\Controllers\MeetingConfirmController::class, 'respondViaVera'])->name('incidencias.responder');
+    Route::post('/consultas/{inquiry}/responder', [\App\Http\Controllers\InquiryController::class, 'respond'])->name('consultas.responder');
+    Route::post('/consultas/{inquiry}/descartar', [\App\Http\Controllers\InquiryController::class, 'dismiss'])->name('consultas.descartar');
 });
 
 // Rutas de Perfil (requiere autenticación)

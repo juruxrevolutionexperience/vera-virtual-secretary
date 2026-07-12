@@ -301,6 +301,30 @@ class ProcessIncomingMessage implements ShouldQueue
                     Log::warning('Consulta sin respuesta: fallo el aviso al dueño', ['error' => $e->getMessage()]);
                 }
 
+                // Tarjeta gestionable en la Bandeja (Fase C): el dueño responde vía
+                // Vera y puede guardarla como FAQ. Anti-duplicado: si el cliente
+                // repite la misma pregunta con una consulta aún pendiente, no se apila.
+                try {
+                    $question = mb_substr(trim($this->message), 0, 2000);
+                    $yaExiste = \App\Models\VeraInquiry::forUser($user->id)->pending()
+                        ->where('contact_identifier', $this->contactIdentifier)
+                        ->where('question', $question)
+                        ->exists();
+                    if (!$yaExiste) {
+                        \App\Models\VeraInquiry::create([
+                            'user_id'            => $user->id,
+                            'contact_id'         => $this->contactModel?->id,
+                            'contact_identifier' => $this->contactIdentifier,
+                            'contact_name'       => $this->contactName,
+                            'channel'            => $this->channel,
+                            'question'           => $question,
+                            'meeting_request_id' => $meetingRequest->id,
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Consulta sin respuesta: no se pudo crear la tarjeta', ['error' => $e->getMessage()]);
+                }
+
                 VeraActivityLog::record([
                     'user_id'              => $user->id,
                     'activity_type'        => 'escalation',
