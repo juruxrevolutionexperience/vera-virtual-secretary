@@ -8,6 +8,7 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Europe/Madrid"
+      
     # Agrupa todas las actualizaciones de seguridad en un solo PR
     groups:
       security-updates:
