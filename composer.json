@@ -17,7 +17,7 @@
         "laravel/horizon": "^5.45",
         "laravel/socialite": "^5.23",
         "laravel/tinker": "^2.10.1",
-        "maatwebsite/excel": "^3.1",
+        "maatwebsite/excel": "^4.0",
         "microsoft/microsoft-graph": "^2.50",
         "pragmarx/google2fa-laravel": "^2.3",
         "resend/resend-laravel": "*",
